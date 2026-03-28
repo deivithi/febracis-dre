@@ -73,7 +73,8 @@
 ### Notas
 
 - O push desta rodada foi restrito a documentacao e higiene de versionamento; artefatos temporarios como `.playwright-cli` e `supabase/.temp/` permaneceram ignorados.
-- O link compartilhavel do repositÃ³rio e `https://github.com/deivithi/febracis-dre`.
+- O link compartilhavel do repositorio e `https://github.com/deivithi/febracis-dre`.
+- Commit publicado desta rodada: `57c04b1` (`docs: publish validated project documentation`).
 
 ## Rodada Atual - Dashboard Executivo e Agente Guiado DRE
 
