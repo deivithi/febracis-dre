@@ -40,6 +40,32 @@ Portal gerencial multi-franquias da Febracis para coleta padronizada de DRE, wor
 npm run build
 ```
 
+## Validacao da fundacao DRE
+
+Para a fase pesada de validacao da fundacao:
+
+```bash
+npm run validate:phase1
+```
+
+Para uma rodada apenas de prontidao local:
+
+```bash
+npm run validate:phase1:local
+```
+
+O protocolo completo, as variaveis necessarias e os artefatos gerados estao em `docs/validacao-da-fundacao-dre-fase-01.md`.
+
+## Validacao de configuracoes e coligada
+
+Para validar a liberacao de acessos por codigo da coligada:
+
+```bash
+npm run validate:settings
+```
+
+O protocolo desta rodada esta em `docs/validacao-de-configuracoes-e-coligada.md`.
+
 ## Deploy no GitHub Pages
 
 O projeto está preparado para publicar no GitHub Pages por meio da branch `gh-pages`, sem commitar o arquivo `.env.local`.
