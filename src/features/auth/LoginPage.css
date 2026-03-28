@@ -1,0 +1,231 @@
+/* =========================================================
+   LOGIN PAGE — Premium Febracis Dark
+   ========================================================= */
+
+.login-page {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Background gradient */
+.login-page__bg {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    #060B18 0%,
+    #0A1628 25%,
+    #0F1D36 50%,
+    #0A1628 75%,
+    #060B18 100%
+  );
+  z-index: -2;
+}
+
+.login-page__bg::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 800px;
+  height: 800px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(46, 123, 246, 0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.login-page__bg::after {
+  content: '';
+  position: absolute;
+  bottom: -30%;
+  left: -10%;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(240, 183, 62, 0.04) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* ================================================
+   LEFT SIDE — Branding
+   ================================================ */
+
+.login-page__branding {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-16);
+  position: relative;
+}
+
+.login-page__branding::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 10%;
+  bottom: 10%;
+  width: 1px;
+  background: linear-gradient(to bottom, transparent, var(--border-default), transparent);
+}
+
+.login-page__branding-content {
+  max-width: 480px;
+}
+
+.login-page__logo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: var(--space-12);
+}
+
+.login-page__logo-text {
+  font-family: var(--font-heading);
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.12em;
+  background: linear-gradient(135deg, var(--accent-gold) 0%, #F5D786 50%, var(--accent-gold) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.login-page__logo-sub {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.login-page__headline {
+  font-family: var(--font-heading);
+  font-size: var(--text-5xl);
+  font-weight: var(--weight-bold);
+  line-height: 1.15;
+  color: var(--text-primary);
+  margin-bottom: var(--space-6);
+}
+
+.login-page__headline-accent {
+  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.login-page__description {
+  font-size: var(--text-lg);
+  color: var(--text-secondary);
+  line-height: var(--leading-relaxed);
+  max-width: 400px;
+}
+
+/* ================================================
+   RIGHT SIDE — Login Form
+   ================================================ */
+
+.login-page__form-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-16);
+}
+
+.login-page__form-container {
+  width: 100%;
+  max-width: 420px;
+  background: rgba(26, 31, 46, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-2xl);
+  padding: var(--space-10);
+  box-shadow: var(--shadow-xl);
+}
+
+.login-page__form-header {
+  margin-bottom: var(--space-8);
+}
+
+.login-page__form-title {
+  font-family: var(--font-heading);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+  margin-bottom: var(--space-2);
+}
+
+.login-page__form-subtitle {
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+}
+
+.login-page__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.login-page__alert {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--status-danger-soft);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  color: var(--status-danger);
+  animation: fadeInDown var(--transition-slow) ease;
+}
+
+.login-page__toggle-password {
+  position: absolute;
+  right: var(--space-3);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
+  transition: color var(--transition-fast);
+  cursor: pointer;
+  background: none;
+  border: none;
+}
+
+.login-page__toggle-password:hover {
+  color: var(--text-primary);
+}
+
+.login-page__footer {
+  margin-top: var(--space-8);
+  text-align: center;
+}
+
+.login-page__footer-text {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+/* ================================================
+   RESPONSIVE
+   ================================================ */
+
+@media (max-width: 1024px) {
+  .login-page {
+    grid-template-columns: 1fr;
+  }
+
+  .login-page__branding {
+    display: none;
+  }
+
+  .login-page__form-section {
+    padding: var(--space-6);
+  }
+}

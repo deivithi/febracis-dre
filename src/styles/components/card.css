@@ -1,0 +1,216 @@
+/* =========================================================
+   CARD Component — Febracis Design System
+   ========================================================= */
+
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: all var(--transition-base);
+}
+
+.card:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-md);
+}
+
+.card--elevated {
+  box-shadow: var(--shadow-lg);
+}
+
+.card--accent {
+  border-color: var(--border-accent);
+}
+
+.card--gold {
+  border-color: var(--border-gold);
+}
+
+.card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.card__title {
+  font-family: var(--font-heading);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+
+.card__subtitle {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-top: var(--space-1);
+}
+
+.card__body {
+  padding: var(--space-6);
+}
+
+.card__body--compact {
+  padding: var(--space-4);
+}
+
+.card__footer {
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+/* =========================================================
+   KPI CARD — Dashboard Indicator Card
+   ========================================================= */
+
+.kpi-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  transition: all var(--transition-base);
+  position: relative;
+  overflow: hidden;
+}
+
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--accent-primary);
+  opacity: 0;
+  transition: opacity var(--transition-base);
+}
+
+.kpi-card:hover {
+  border-color: var(--border-accent);
+  box-shadow: var(--shadow-glow-blue);
+  transform: translateY(-2px);
+}
+
+.kpi-card:hover::before {
+  opacity: 1;
+}
+
+.kpi-card--gold::before {
+  background: var(--accent-gold);
+}
+
+.kpi-card--gold:hover {
+  border-color: var(--border-gold);
+  box-shadow: var(--shadow-glow-gold);
+}
+
+.kpi-card--success::before {
+  background: var(--status-success);
+}
+
+.kpi-card--warning::before {
+  background: var(--status-warning);
+}
+
+.kpi-card--danger::before {
+  background: var(--status-danger);
+}
+
+.kpi-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.kpi-card__label {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.kpi-card__icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  background: var(--accent-primary-soft);
+  color: var(--accent-primary);
+}
+
+.kpi-card--gold .kpi-card__icon {
+  background: var(--accent-gold-soft);
+  color: var(--accent-gold);
+}
+
+.kpi-card--success .kpi-card__icon {
+  background: var(--status-success-soft);
+  color: var(--status-success);
+}
+
+.kpi-card__icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.kpi-card__value {
+  font-family: var(--font-mono);
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.kpi-card__value--gold {
+  color: var(--accent-gold);
+}
+
+.kpi-card__value--success {
+  color: var(--status-success);
+}
+
+.kpi-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.kpi-card__percent {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.kpi-card__trend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.kpi-card__trend--up {
+  color: var(--status-success);
+}
+
+.kpi-card__trend--down {
+  color: var(--status-danger);
+}
+
+.kpi-card__trend svg {
+  width: 14px;
+  height: 14px;
+}
