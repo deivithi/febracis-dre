@@ -42,22 +42,29 @@ npm run build
 
 ## Deploy no GitHub Pages
 
-O projeto está preparado para publicar no GitHub Pages via GitHub Actions.
-
-### Secrets exigidos no repositório
-
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY`
+O projeto está preparado para publicar no GitHub Pages por meio da branch `gh-pages`, sem commitar o arquivo `.env.local`.
 
 ### Fluxo
 
-- O workflow usa GitHub Actions para instalar dependências, gerar o build e publicar o conteúdo de `dist`.
-- O `base` do Vite é configurado automaticamente pelo ambiente de CI para funcionar em subpath de repositório.
-- O workflow copia `dist/index.html` para `dist/404.html`, o que ajuda o SPA a sobreviver a recarregamentos em rotas internas no GitHub Pages.
+- O script local gera o build com o `base` correto para o repositório.
+- O script copia `dist/index.html` para `dist/404.html`, o que ajuda o SPA a sobreviver a recarregamentos em rotas internas no GitHub Pages.
+- O conteúdo publicado vai para a branch `gh-pages`.
+
+### Comando
+
+```bash
+npm run deploy:pages
+```
+
+### Pré-requisitos
+
+- O repositório precisa ter `origin` configurado no GitHub.
+- O GitHub Pages deve estar configurado para publicar a branch `gh-pages` na pasta `/` do repositório.
+- As variáveis `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` precisam existir em `.env.local`.
 
 ### Importante sobre segurança
 
-- A `VITE_SUPABASE_ANON_KEY` não deve ser commitada e fica armazenada como secret do GitHub.
+- A `VITE_SUPABASE_ANON_KEY` não deve ser commitada.
 - Mesmo assim, por se tratar de um app frontend estático, a chave `anon/publishable` continuará recuperável no bundle final do navegador. Isso é esperado no modelo oficial do Supabase para componentes públicos.
 - Nunca use `service_role` no frontend.
 - A proteção real dos dados depende de RLS, políticas corretas e escopos de acesso no Supabase.
