@@ -24,6 +24,9 @@ import {
 
 const DEFAULT_OPENROUTER_MODEL = 'minimax/minimax-m2.7';
 
+/** Limite de caracteres por mensagem do utilizador (custo LLM / payload). */
+export const AGENT_USER_MESSAGE_MAX_LENGTH = 12000;
+
 interface AgentApiRequest {
   method?: string;
   headers: Record<string, string | string[] | undefined>;
@@ -39,7 +42,7 @@ interface AgentApiResponse {
 const requestSchema = z.object({
   sessionId: z.string().uuid(),
   submissionId: z.string().uuid(),
-  message: z.string().min(1),
+  message: z.string().min(1).max(AGENT_USER_MESSAGE_MAX_LENGTH),
 });
 
 const turnResultSchema = z.object({
@@ -120,6 +123,10 @@ async function loadSessionContext(
 
   if (sessionError || !session) {
     throw new Error(`Sessao do assistente nao encontrada. ${sessionError?.message ?? ''}`.trim());
+  }
+
+  if (session.submission_id !== submissionId) {
+    throw new Error('Sessao do assistente nao corresponde a esta submissao.');
   }
 
   const [

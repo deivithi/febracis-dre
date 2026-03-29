@@ -1,11 +1,35 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+const CORS_ALLOW_HEADERS = "authorization, x-client-info, apikey, content-type";
+const CORS_ALLOW_METHODS = "POST, OPTIONS";
+
+/** Origens permitidas (lista separada por vírgulas), ex.: https://app.exemplo.com,http://localhost:5173 */
+function parseAllowedOrigins(): string[] {
+  const raw = Deno.env.get("ADMIN_PROVISION_ALLOWED_ORIGINS") ?? "";
+  return raw.split(",").map((s) => s.trim()).filter(Boolean);
+}
+
+function buildCorsHeaders(request: Request): Record<string, string> {
+  const origin = request.headers.get("Origin");
+  const allowed = parseAllowedOrigins();
+  const base: Record<string, string> = {
+    "Access-Control-Allow-Headers": CORS_ALLOW_HEADERS,
+    "Access-Control-Allow-Methods": CORS_ALLOW_METHODS,
+  };
+  if (origin && allowed.includes(origin)) {
+    return { ...base, "Access-Control-Allow-Origin": origin };
+  }
+  return base;
+}
+
+function originAllowed(request: Request): boolean {
+  const origin = request.headers.get("Origin");
+  if (!origin) {
+    return true;
+  }
+  return parseAllowedOrigins().includes(origin);
+}
 
 type ScopeType = "franchise" | "regional" | "network";
 
@@ -28,11 +52,11 @@ if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceRoleKey) {
   throw new Error("Supabase environment variables are not configured for the function.");
 }
 
-function jsonResponse(status: number, body: unknown) {
+function jsonResponse(request: Request, status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
-      ...corsHeaders,
+      ...buildCorsHeaders(request),
       "Content-Type": "application/json",
     },
   });
@@ -84,17 +108,27 @@ async function findAuthUserIdByEmail(adminClient: ReturnType<typeof createClient
 
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    if (!originAllowed(request)) {
+      return new Response(JSON.stringify({ error: "Origin not allowed." }), {
+        status: 403,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    return new Response("ok", { headers: buildCorsHeaders(request) });
   }
 
   if (request.method !== "POST") {
-    return jsonResponse(405, { error: "Method not allowed." });
+    return jsonResponse(request, 405, { error: "Method not allowed." });
+  }
+
+  if (!originAllowed(request)) {
+    return jsonResponse(request, 403, { error: "Origin not allowed." });
   }
 
   const authorization = request.headers.get("Authorization");
 
   if (!authorization) {
-    return jsonResponse(401, { error: "Missing authorization header." });
+    return jsonResponse(request, 401, { error: "Missing authorization header." });
   }
 
   const userClient = createClient(supabaseUrl, supabaseAnonKey, {
@@ -123,11 +157,11 @@ Deno.serve(async (request) => {
     ]);
 
   if (authUserError || !authUserData.user) {
-    return jsonResponse(401, { error: "Authenticated user not found." });
+    return jsonResponse(request, 401, { error: "Authenticated user not found." });
   }
 
   if (adminCheckError || !isAdmin) {
-    return jsonResponse(403, { error: "Only administrators can provision users." });
+    return jsonResponse(request, 403, { error: "Only administrators can provision users." });
   }
 
   let payload: ProvisionUserPayload;
@@ -135,11 +169,11 @@ Deno.serve(async (request) => {
   try {
     payload = normalizePayload(await request.json());
   } catch {
-    return jsonResponse(400, { error: "Invalid request body." });
+    return jsonResponse(request, 400, { error: "Invalid request body." });
   }
 
   if (!payload.email || !payload.fullName || !payload.roleCode || !payload.scopeType) {
-    return jsonResponse(400, {
+    return jsonResponse(request, 400, {
       error: "Email, nome completo, papel e escopo sao obrigatorios.",
     });
   }
@@ -247,7 +281,7 @@ Deno.serve(async (request) => {
       throw accessError;
     }
 
-    return jsonResponse(200, {
+    return jsonResponse(request, 200, {
       ok: true,
       created,
       invited,
@@ -262,6 +296,6 @@ Deno.serve(async (request) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected error.";
 
-    return jsonResponse(400, { error: message });
+    return jsonResponse(request, 400, { error: message });
   }
 });
