@@ -15,7 +15,8 @@
     "validate:phase1:apply-migration": "node scripts/validate-dre-foundation.mjs --apply-migration",
     "test:e2e": "playwright test",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "favicons": "node scripts/generate-favicons.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -44,6 +45,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
+    "sharp": "^0.34.1",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.57.0",
     "vite": "^8.0.1",

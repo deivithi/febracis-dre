@@ -52,6 +52,14 @@ Portal gerencial multi-franquias da Febracis para coleta padronizada da **DRE** 
 npm run build
 ```
 
+## Favicons (aba do navegador / iOS)
+
+Os ícones em `public/` (`favicon-16.png`, `favicon-32.png`, `apple-touch-icon.png`) são gerados a partir de `public/images/logo-febracis.png` (mesmo asset da sidebar). Depois de alterar o logo oficial, regenere:
+
+```bash
+npm run favicons
+```
+
 ## Validação da fundação DRE
 
 Para a fase pesada de validação da fundação:
