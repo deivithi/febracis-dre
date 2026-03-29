@@ -4,9 +4,10 @@
  * - favicon-16 / favicon-32: só a **águia** — recorte horizontal à esquerda de `logo-febracis.png` + `trim` alpha.
  * - apple-touch-icon: **lockup completo** (águia + “Febracis”).
  *
- * **Fundo por defeito: transparente** (sem quadrado claro na aba). Fundo sólido opcional: `FAVICON_BG_HEX=#RRGGBB`.
+ * **Fundo por defeito na geração: `#FBF6EC`** (contraste na aba). Transparente: `FAVICON_TRANSPARENT=1`. Cor: `FAVICON_BG_HEX=#RRGGBB`.
  *
- * Filtro dourado alinhado à sidebar (variante leve no raster para menos halo em fundo transparente).
+ * favicon 16/32: águia com `sharp` cover 512×512 (preenche o quadrado; evita mancha minúscula com `contain`).
+ * Filtro **sem** drop-shadow no raster da águia (nitidez a 16px). Apple-touch: variante leve com sombra dourada.
  *
  * Fallback: `public/images/logo-febracis-favicon.png` (sem filtro CSS).
  *
@@ -27,9 +28,19 @@ const outDir = join(root, 'public');
 const defaultLogoPath = join(root, 'public', 'images', 'logo-febracis.png');
 const optionalGoldPath = join(root, 'public', 'images', 'logo-febracis-favicon.png');
 
-/** Ver `.sidebar__logo-image` em `layout.css` — o raster usa variante leve (`FAVICON_LOGO_FILTER_LIGHT`). */
+/** Fundo do raster quando não há `FAVICON_BG_HEX` nem `FAVICON_TRANSPARENT=1`. */
+const DEFAULT_FAVICON_BG_HEX = '#FBF6EC';
 
-/** Variante leve do filtro da sidebar: sem sombra escura (menos halo em fundo transparente). */
+/** Ver `.sidebar__logo-image` em `layout.css`. */
+
+/** Só cor (sem sombra) — raster da águia 16/32 para nitidez máxima. */
+const FAVICON_LOGO_FILTER_FLAT = [
+  'brightness(0) saturate(100%)',
+  'invert(79%) sepia(49%) saturate(624%) hue-rotate(354deg)',
+  'brightness(104%) contrast(99%)',
+].join(' ');
+
+/** Apple-touch / lockup: variante leve com sombra dourada (sem sombra escura da sidebar). */
 const FAVICON_LOGO_FILTER_LIGHT = [
   'brightness(0) saturate(100%)',
   'invert(79%) sepia(49%) saturate(624%) hue-rotate(354deg)',
@@ -43,11 +54,15 @@ const RASTER_SIZE = 512;
 const FAVICON_EAGLE_LEFT_PCT = 0;
 const FAVICON_EAGLE_WIDTH_PCT = 46;
 
+/** Recorte vertical opcional (percentagem da altura do PNG original). Afinar para bbox mais quadrado. */
+const FAVICON_EAGLE_TOP_PCT = 0;
+const FAVICON_EAGLE_HEIGHT_PCT = 100;
+
 /** Lockup completo no #mark (apple-touch). */
 const FAVICON_FULL_IMG_MAX_WIDTH_PCT = 98;
 const FAVICON_FULL_IMG_MAX_HEIGHT_PCT = 92;
 
-/** Só águia: preencher o canvas após trim. */
+/** Só águia: após `cover` 512 o bitmap já preenche o canvas; manter 100% no #mark. */
 const FAVICON_EAGLE_IMG_MAX_WIDTH_PCT = 100;
 const FAVICON_EAGLE_IMG_MAX_HEIGHT_PCT = 100;
 
@@ -69,12 +84,30 @@ async function extractEagleMarkPng(inputBuf) {
     Math.round((FAVICON_EAGLE_WIDTH_PCT / 100) * w),
     w - left,
   );
+  const top = Math.round((FAVICON_EAGLE_TOP_PCT / 100) * h);
+  const extractHeight = Math.min(
+    Math.round((FAVICON_EAGLE_HEIGHT_PCT / 100) * h),
+    h - top,
+  );
   /** Dois passos: `extract`+`trim` na mesma chain falha neste sharp/libvips (“bad extract area”). */
   const cropped = await sharp(inputBuf)
-    .extract({ left, top: 0, width: extractWidth, height: h })
+    .extract({ left, top, width: extractWidth, height: extractHeight })
     .png()
     .toBuffer();
   return sharp(cropped).trim().png().toBuffer();
+}
+
+/**
+ * Preenche o quadrado 512×512 (equivalente a `object-fit: cover`) para a águia não ficar minúscula no downscale.
+ *
+ * @param {Buffer} trimmedEagleBuf
+ * @returns {Promise<Buffer>}
+ */
+async function prepareEagleForFaviconRaster(trimmedEagleBuf) {
+  return sharp(trimmedEagleBuf)
+    .resize(RASTER_SIZE, RASTER_SIZE, { fit: 'cover', position: 'center' })
+    .png()
+    .toBuffer();
 }
 
 /**
@@ -93,20 +126,29 @@ function parseSolidBgHex(raw) {
 }
 
 /**
- * Fundo sólido só com `FAVICON_BG_HEX` válido; caso contrário transparente.
+ * Fundo do raster: transparente só com `FAVICON_TRANSPARENT=1` (opt-in).
+ * Sem isso: `FAVICON_BG_HEX` válido, senão defeito `#FBF6EC` (contraste na aba).
  * @returns {string | null} hex ou null
  */
 function resolveSolidBackgroundHex() {
+  if (process.env.FAVICON_TRANSPARENT === '1') {
+    if (process.env.FAVICON_BG_HEX !== undefined && String(process.env.FAVICON_BG_HEX).trim() !== '') {
+      console.warn('FAVICON_TRANSPARENT=1: FAVICON_BG_HEX ignorado (fundo transparente).');
+    }
+    return null;
+  }
   const raw = process.env.FAVICON_BG_HEX;
   if (raw === undefined || String(raw).trim() === '') {
-    return null;
+    return DEFAULT_FAVICON_BG_HEX;
   }
   const parsed = parseSolidBgHex(raw);
   if (parsed !== null) {
     return parsed;
   }
-  console.warn('FAVICON_BG_HEX inválido (use #RRGGBB). A usar fundo transparente.');
-  return null;
+  console.warn(
+    `FAVICON_BG_HEX inválido (use #RRGGBB). A usar defeito ${DEFAULT_FAVICON_BG_HEX}.`,
+  );
+  return DEFAULT_FAVICON_BG_HEX;
 }
 
 /**
@@ -213,36 +255,42 @@ async function main() {
   const applyCssFilter = !useOptionalGold;
 
   const sourceBuf = readFileSync(sourcePath);
-  const eagleBuf = await extractEagleMarkPng(sourceBuf);
+  const eagleTrimmed = await extractEagleMarkPng(sourceBuf);
+  const eagleBuf = await prepareEagleForFaviconRaster(eagleTrimmed);
 
-  const filterCssRaster = applyCssFilter ? FAVICON_LOGO_FILTER_LIGHT : 'none';
+  const filterCssEagle = applyCssFilter ? FAVICON_LOGO_FILTER_FLAT : 'none';
+  const filterCssFull = applyCssFilter ? FAVICON_LOGO_FILTER_LIGHT : 'none';
 
   const layoutEagle = {
     imgMaxWidthPct: FAVICON_EAGLE_IMG_MAX_WIDTH_PCT,
     imgMaxHeightPct: FAVICON_EAGLE_IMG_MAX_HEIGHT_PCT,
-    filterCss: filterCssRaster,
+    filterCss: filterCssEagle,
   };
 
   const layoutFull = {
     imgMaxWidthPct: FAVICON_FULL_IMG_MAX_WIDTH_PCT,
     imgMaxHeightPct: FAVICON_FULL_IMG_MAX_HEIGHT_PCT,
-    filterCss: filterCssRaster,
+    filterCss: filterCssFull,
   };
 
   if (useOptionalGold) {
     console.log('Usando logo-febracis-favicon.png (marca dourada, sem filtro CSS).');
   } else {
-    console.log('Raster com filtro da sidebar (variante leve; Playwright + Chromium).');
+    console.log('Raster: águia com filtro plano (sem drop-shadow); lockup com variante leve (Playwright).');
   }
 
   if (solidBgHex !== null) {
-    console.log(`Fundo sólido: ${solidBgHex} (FAVICON_BG_HEX).`);
+    const src =
+      process.env.FAVICON_BG_HEX !== undefined && String(process.env.FAVICON_BG_HEX).trim() !== ''
+        ? 'FAVICON_BG_HEX'
+        : 'defeito';
+    console.log(`Fundo sólido: ${solidBgHex} (${src}).`);
   } else {
-    console.log('Fundo transparente (ícone assenta na aba do browser).');
+    console.log('Fundo transparente (FAVICON_TRANSPARENT=1).');
   }
 
   console.log(
-    `favicon-16/32: águia (recorte ${FAVICON_EAGLE_WIDTH_PCT}% largura + trim); apple-touch: lockup completo.`,
+    `favicon-16/32: águia (recorte ${FAVICON_EAGLE_WIDTH_PCT}%×${FAVICON_EAGLE_HEIGHT_PCT}% + trim + cover ${RASTER_SIZE}); apple-touch: lockup completo.`,
   );
 
   const rasterSmall = await rasterizeMarkPngFromBuffer(eagleBuf, applyCssFilter, solidBgHex, layoutEagle);

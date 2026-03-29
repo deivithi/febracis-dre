@@ -48,4 +48,4 @@ O dado nasce na franquia, passa pela controladoria e só depois sobe para as vis
 
 ## Identidade na web (favicon)
 
-O ícone da **aba do browser** e o **apple-touch-icon** (iOS) são ficheiros estáticos em `public/` (`favicon-16.png`, `favicon-32.png`, `apple-touch-icon.png`). A cor dourada replica uma variante leve do filtro da sidebar (rasterizado em `npm run favicons`). Os ícones **16/32** mostram **só a águia** (recorte horizontal + trim do `logo-febracis.png`); o **180×180** usa o lockup completo. O **fundo** por defeito é **transparente**; fundo sólido opcional via `FAVICON_BG_HEX` — detalhes em **Favicons** no `README.md`.
+O ícone da **aba do browser** e o **apple-touch-icon** (iOS) são ficheiros estáticos em `public/` (`favicon-16.png`, `favicon-32.png`, `apple-touch-icon.png`). A cor dourada replica o filtro da marca (rasterizado em `npm run favicons`). Os ícones **16/32** mostram **só a águia** (recorte + trim + preenchimento quadrado); o **180×180** usa o lockup completo. O **fundo** por defeito na geração é **claro** (`#FBF6EC`); transparente ou outra cor via variáveis de ambiente — detalhes em **Favicons** no `README.md`.
