@@ -3,16 +3,23 @@ import { ChatOpenAI } from '@langchain/openai';
 import { Annotation, END, START, StateGraph } from '@langchain/langgraph';
 import { createClient } from '@supabase/supabase-js';
 import type { AgentMessageRow, AgentSessionRow, DreInputCatalogLine } from '../src/features/shared/portal.types.js';
+import { canAssistantMutateSubmission } from '../src/features/submissions/agentPermissions.js';
 import {
+  AGENT_MESSAGE_HISTORY_LIMIT,
+  buildConversationSummaryFromMessages,
+  buildFlowCheckpoint,
   buildOrderedFieldFlowForPrompt,
   buildQuestionForLine,
   findNextGuidedLine,
   retrieveRelevantAssistantKnowledge,
   runLocalAssistantTurn,
   shouldUseDeterministicAssistantTurn,
+  stripCalculatedMetricClaimsFromAnswer,
   stripInternalLineCodesFromUserText,
+  validateAssistantFieldUpdates,
   type DreAssistantCitation,
   type DreAssistantTurnResult,
+  type FlowCheckpoint,
 } from '../src/features/submissions/dreAssistant.js';
 
 const DEFAULT_OPENROUTER_MODEL = 'minimax/minimax-m2.7';
@@ -56,6 +63,8 @@ const TurnState = Annotation.Root({
   userMessage: Annotation<string>(),
   currentLineCode: Annotation<string | null>(),
   citations: Annotation<DreAssistantCitation[]>(),
+  explainOnly: Annotation<boolean>(),
+  conversationSummary: Annotation<string | null>(),
   result: Annotation<DreAssistantTurnResult>(),
 });
 
@@ -118,6 +127,8 @@ async function loadSessionContext(
     lineRows,
     valueRows,
     messageRows,
+    submissionRow,
+    userRoleLinks,
   ] = await Promise.all([
     supabase
       .from('dre_sections')
@@ -138,19 +149,45 @@ async function loadSessionContext(
       .select('id, session_id, role, content, citations, payload, created_at')
       .eq('session_id', sessionId)
       .order('created_at', { ascending: true })
-      .limit(16),
+      .limit(AGENT_MESSAGE_HISTORY_LIMIT),
+    supabase.from('submissions').select('status').eq('id', submissionId).maybeSingle(),
+    supabase.from('user_roles').select('role_id').eq('profile_id', userData.user.id),
   ]);
 
-  if (sectionRows.error || lineRows.error || valueRows.error || messageRows.error) {
+  if (
+    sectionRows.error ||
+    lineRows.error ||
+    valueRows.error ||
+    messageRows.error ||
+    submissionRow.error ||
+    userRoleLinks.error
+  ) {
     throw new Error(
       [
         sectionRows.error?.message,
         lineRows.error?.message,
         valueRows.error?.message,
         messageRows.error?.message,
-      ].filter(Boolean).join(' '),
+        submissionRow.error?.message,
+        userRoleLinks.error?.message,
+      ]
+        .filter(Boolean)
+        .join(' '),
     );
   }
+
+  const roleIdList = [...new Set((userRoleLinks.data ?? []).map((row) => row.role_id))];
+  const rolesLookup =
+    roleIdList.length > 0
+      ? await supabase.from('roles').select('code').in('id', roleIdList)
+      : { data: [] as { code: string }[], error: null };
+
+  if (rolesLookup.error) {
+    throw new Error(rolesLookup.error.message);
+  }
+
+  const roleCodes = (rolesLookup.data ?? []).map((row) => row.code);
+  const submissionStatus = submissionRow.data?.status ?? 'draft';
 
   const sectionMap = new Map(
     (sectionRows.data ?? []).map((section) => [section.id, section]),
@@ -196,11 +233,22 @@ async function loadSessionContext(
     ]),
   );
 
+  const messages = (messageRows.data ?? []) as AgentMessageRow[];
+  const conversationSummary =
+    messages.length >= 12
+      ? buildConversationSummaryFromMessages(
+          messages.map((m) => ({ role: m.role, content: m.content })),
+        )
+      : null;
+
   return {
     session: session as AgentSessionRow,
     lines,
     currentValues,
-    messages: (messageRows.data ?? []) as AgentMessageRow[],
+    messages,
+    submissionStatus,
+    roleCodes,
+    conversationSummary,
   };
 }
 
@@ -208,9 +256,14 @@ function sanitizeResult(
   rawResult: DreAssistantTurnResult,
   lines: DreInputCatalogLine[],
   currentValues: Record<string, string>,
+  explainOnly: boolean,
 ) {
   const knownLines = new Map(lines.map((line) => [line.line_code, line]));
-  const sanitizedUpdates = rawResult.fieldUpdates.filter((update) => knownLines.has(update.lineCode));
+  const knownCodes = new Set(knownLines.keys());
+  let sanitizedUpdates = validateAssistantFieldUpdates(rawResult.fieldUpdates, knownCodes);
+  if (explainOnly) {
+    sanitizedUpdates = [];
+  }
   const nextLine = rawResult.focusLineCode
     ? knownLines.get(rawResult.focusLineCode) ?? null
     : findNextGuidedLine(lines, currentValues, rawResult.focusLineCode);
@@ -222,6 +275,8 @@ function sanitizeResult(
     nextPrompt:
       rawResult.nextPrompt ??
       (nextLine ? buildQuestionForLine(nextLine) : null),
+    requestSave: explainOnly ? false : rawResult.requestSave,
+    requestSubmit: explainOnly ? false : rawResult.requestSubmit,
   } satisfies DreAssistantTurnResult;
 }
 
@@ -232,6 +287,8 @@ async function runModelTurn(input: {
   currentLineCode: string | null;
   userMessage: string;
   citations: DreAssistantCitation[];
+  explainOnly: boolean;
+  conversationSummary: string | null;
 }) {
   const apiKey = getEnv('OPENROUTER_API_KEY');
 
@@ -241,6 +298,7 @@ async function runModelTurn(input: {
       lines: input.lines,
       currentValues: input.currentValues,
       currentLineCode: input.currentLineCode,
+      explainOnly: input.explainOnly,
     });
   }
 
@@ -250,6 +308,7 @@ async function runModelTurn(input: {
       lines: input.lines,
       currentValues: input.currentValues,
       currentLineCode: input.currentLineCode,
+      explainOnly: input.explainOnly,
     });
   }
 
@@ -275,29 +334,47 @@ async function runModelTurn(input: {
 
   const fieldOrderGuide = buildOrderedFieldFlowForPrompt(input.lines);
 
+  const modeRules = input.explainOnly
+    ? [
+        'MODO ORIENTACAO (LEITURA): o utilizador ve a submissao mas nao pode aplicar valores.',
+        '- fieldUpdates deve ser SEMPRE []. Nunca envie valores monetarios para aplicar.',
+        '- requestSave e requestSubmit sempre false.',
+        '- Explique campos da DRE, ordem da planilha, significado das linhas e fluxo de revisao.',
+        '- Se o usuario enviar numeros, diga que quem opera a submissao deve inserir na conversa ou na planilha com perfil de franqueado.',
+        '- Nunca apresente MC1, MC2, EBITDA 1 ou EBITDA 2 com valores calculados; diga que o painel recalcula apos salvar.',
+        '- Classifique internamente: se a mensagem for fora do tema DRE/submissao, responda em uma frase e volte ao glossario.',
+      ]
+    : [
+        'Regras criticas:',
+        '- Nunca invente line_code. So use lineCode que exista em allowed_fields.',
+        '- Nunca calcule nem estime MC1, MC2, EBITDA 1 ou EBITDA 2; o sistema recalcula sozinho.',
+        '- So envie fieldUpdates para campos editaveis da lista allowed_fields.',
+        '- Nunca mostre line_code, snake_case ou identificadores tecnicos ao usuario. Use apenas os nomes em allowed_fields.label.',
+        '- No campo answer: texto corrido em 2 a 4 paragrafos curtos em portugues do Brasil. Explique o que precisa, como enviar o valor (só numeros em reais, ex. 15000 ou 1.234,56, pode dizer "50 mil"), e reforce o proximo passo se fizer sentido.',
+        '- Uma unica pergunta operacional por mensagem no fluxo guiado.',
+        '- Se o usuario cumprimentar (ola, bom dia) ou pedir para comecar, explique o processo em uma frase e faca a primeira pergunta do passo em aberto.',
+        '- Se o usuario mandar um valor monetario claro, proponha fieldUpdates so para o campo em foco ou para o campo que ele citou explicitamente.',
+        '- Nao peca envio final da submissao; isso continua nos botoes oficiais da tela.',
+        '- O campo nextPrompt deve ser uma unica pergunta curta + exemplo numerico + lembrete de formato, sem codigos internos.',
+        '- Se a mensagem for claramente fora do tema DRE (piada, politica, outro assunto), responda brevemente e retome o proximo passo sem fieldUpdates.',
+      ];
+
   const prompt = [
-    'Voce e o assistente humano da Febracis que guia o franqueado no preenchimento da DRE oficial, um campo de cada vez.',
+    input.explainOnly
+      ? 'Voce e o assistente da Febracis em MODO ORIENTACAO: ajuda a entender a DRE e o fluxo, sem preencher dados.'
+      : 'Voce e o assistente humano da Febracis que guia o franqueado no preenchimento da DRE oficial, um campo de cada vez.',
     'Tom: acolhedor, claro, profissional — como um especialista ao telefone. Sem listas com #, sem titulos Markdown, sem ###.',
     '',
-    'Regras criticas:',
-    '- Nunca invente line_code. So use lineCode que exista em allowed_fields.',
-    '- Nunca calcule nem estime MC1, MC2, EBITDA 1 ou EBITDA 2; o sistema recalcula sozinho.',
-    '- So envie fieldUpdates para campos editaveis da lista allowed_fields.',
-    '- Nunca mostre line_code, snake_case ou identificadores tecnicos ao usuario. Use apenas os nomes em allowed_fields.label.',
-    '- No campo answer: texto corrido em 2 a 4 paragrafos curtos em portugues do Brasil. Explique o que precisa, como enviar o valor (só numeros em reais, ex. 15000 ou 1.234,56, pode dizer "50 mil"), e reforce o proximo passo se fizer sentido.',
-    '- Uma unica pergunta operacional por mensagem no fluxo guiado.',
-    '- Se o usuario cumprimentar (ola, bom dia) ou pedir para comecar, explique o processo em uma frase e faca a primeira pergunta do passo em aberto.',
-    '- Se o usuario mandar um valor monetario claro, proponha fieldUpdates so para o campo em foco ou para o campo que ele citou explicitamente.',
-    '- Nao peca envio final da submissao; isso continua nos botoes oficiais da tela.',
-    '- O campo nextPrompt deve ser uma unica pergunta curta + exemplo numerico + lembrete de formato, sem codigos internos.',
+    ...modeRules,
     '',
-    'Ordem oficial dos campos (siga esta sequencia ao guiar; pergunte o proximo ainda vazio):',
+    'Ordem oficial dos campos (referencia; siga ao explicar ou ao guiar):',
     fieldOrderGuide,
     '',
     `Campo em foco atual (interno): ${input.currentLineCode ?? 'inferir: proximo campo vazio na ordem acima'}`,
     `allowed_fields: ${JSON.stringify(allowedFields)}`,
     `valores_atuais: ${JSON.stringify(input.currentValues)}`,
     `knowledge_docs: ${JSON.stringify(input.citations)}`,
+    input.conversationSummary ? `contexto_compacto: ${input.conversationSummary}` : '',
     `historico_recente: ${JSON.stringify(input.messages.map((message) => ({
       role: message.role,
       content: message.content,
@@ -305,7 +382,9 @@ async function runModelTurn(input: {
     `mensagem_usuario: ${input.userMessage}`,
     '',
     'Retorne answer, fieldUpdates, focusLineCode, nextPrompt, requestSave e requestSubmit.',
-  ].join('\n');
+  ]
+    .filter(Boolean)
+    .join('\n');
 
   try {
     const result = await model.invoke(prompt);
@@ -329,6 +408,7 @@ async function runModelTurn(input: {
       lines: input.lines,
       currentValues: input.currentValues,
       currentLineCode: input.currentLineCode,
+      explainOnly: input.explainOnly,
     });
 
     return {
@@ -360,6 +440,8 @@ const workflow = new StateGraph(TurnState)
       currentLineCode: state.currentLineCode,
       userMessage: state.userMessage,
       citations: state.citations,
+      explainOnly: state.explainOnly,
+      conversationSummary: state.conversationSummary,
     });
 
     return {
@@ -373,11 +455,14 @@ const workflow = new StateGraph(TurnState)
     const cleanNextRaw = base.nextPrompt
       ? stripInternalLineCodesFromUserText(base.nextPrompt, lineCodes)
       : '';
+    const afterMetrics = stripCalculatedMetricClaimsFromAnswer(
+      cleanAnswer.length > 0 ? cleanAnswer : base.answer,
+    );
 
     return {
       result: {
         ...base,
-        answer: cleanAnswer.length > 0 ? cleanAnswer : base.answer,
+        answer: afterMetrics,
         nextPrompt: cleanNextRaw.length > 0 ? cleanNextRaw : null,
       },
     };
@@ -420,6 +505,9 @@ export default async function handler(req: AgentApiRequest, res: AgentApiRespons
         ? context.session.state_json.guided_line_code
         : null;
 
+    const writeAllowed = canAssistantMutateSubmission(context.roleCodes, context.submissionStatus);
+    const explainOnly = !writeAllowed;
+
     const resultState = await workflow.invoke({
       session: context.session,
       lines: context.lines,
@@ -428,6 +516,8 @@ export default async function handler(req: AgentApiRequest, res: AgentApiRespons
       userMessage: parsedBody.data.message,
       currentLineCode,
       citations: [],
+      explainOnly,
+      conversationSummary: context.conversationSummary,
       result: {
         answer: '',
         citations: [],
@@ -440,11 +530,21 @@ export default async function handler(req: AgentApiRequest, res: AgentApiRespons
       },
     });
 
-    const result = sanitizeResult(resultState.result, context.lines, context.currentValues);
+    const result = sanitizeResult(resultState.result, context.lines, context.currentValues, explainOnly);
+
+    const flowCheckpoint: FlowCheckpoint = buildFlowCheckpoint({
+      lines: context.lines,
+      currentValues: context.currentValues,
+      focusLineCode: result.focusLineCode,
+      userMessage: parsedBody.data.message,
+      explainOnly,
+    });
 
     return jsonResponse(res, 200, {
       ok: true,
       result,
+      flow_checkpoint: flowCheckpoint,
+      interaction_mode: explainOnly ? 'explain_only' : 'full',
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unexpected agent error.';

@@ -10,6 +10,7 @@ import {
   Users,
 } from 'lucide-react';
 import { useAccessProfile } from '../auth/useAccessProfile';
+import { GuideLearningTrail } from './GuideLearningTrail';
 import './GuidePage.css';
 
 const platformPillars = [
@@ -28,7 +29,7 @@ const platformPillars = [
   {
     title: 'Assistente guiado (chat)',
     description:
-      'Na tela de Submissões, o assistente conversa no estilo de um chat moderno (paleta Febracis), com atalhos e compositor fixo. Com API configurada, respostas online; sem chave, modo guiado local.',
+      'Em Submissões, o assistente usa a paleta Febracis e compositor fixo. Quem opera a submissão pode gravar campos pela conversa; quem está só em leitura fica em modo orientação. Com API: respostas online; sem chave: modo guiado local.',
     icon: Sparkles,
   },
   {
@@ -59,7 +60,7 @@ const roleMatrix = [
   {
     role: 'Regional manager',
     scope: 'Regional vinculada',
-    can: 'Compara franquias da carteira, acompanha dashboards e enxerga submissões do escopo em modo de leitura.',
+    can: 'Compara franquias da carteira, acompanha dashboards e enxerga submissões do escopo em modo de leitura; o assistente DRE responde só em orientação (sem preencher a DRE por conversa).',
   },
   {
     role: 'Franchise user',
@@ -146,169 +147,146 @@ export function GuidePage() {
           <span className="badge badge--gold">Guia oficial da plataforma</span>
           <h1 className="page-container__title">Como explicar o sistema com segurança</h1>
           <p className="page-container__subtitle guide-hero__subtitle">
-            Este material resume o objetivo do produto, a lógica da DRE, o modelo de acesso e a
-            narrativa recomendada para a apresentação.
+            Este material resume o objetivo do produto, a lógica da DRE, o modelo de acesso e a narrativa recomendada
+            para a apresentação.
+          </p>
+          <p className="guide-hero__cta">
+            <a href="#trilha" className="guide-hero__cta-link">
+              Começar a trilha (minicurso em 3 passos)
+            </a>
           </p>
         </div>
 
         <div className="guide-hero__panel glass">
           <div className="guide-hero__panel-header">
-            <Sparkles size={16} />
+            <Sparkles size={16} aria-hidden />
             <span>Tese central</span>
           </div>
           <p className="guide-hero__panel-text">
-            O dado nasce na franquia, passa pela controladoria e chega ao executivo como leitura
-            oficial. O portal existe para padronizar esse caminho com governança, cálculo e trilha
-            de auditoria.
+            O dado nasce na franquia, passa pela controladoria e chega ao executivo como leitura oficial. O portal
+            existe para padronizar esse caminho com governança, cálculo e trilha de auditoria.
           </p>
         </div>
       </section>
 
-      <div className="page-grid page-grid--wide">
-        {platformPillars.map((pillar) => {
-          const Icon = pillar.icon;
-          return (
-            <article key={pillar.title} className="card guide-card">
-              <div className="card__body">
-                <div className="guide-card__icon">
+      <GuideLearningTrail showViewerHint={showViewerHint} />
+
+      <section className="guide-pillars-section" aria-labelledby="guide-pillars-heading">
+        <h2 id="guide-pillars-heading" className="guide-pillars-section__title">
+          Pilares da plataforma
+        </h2>
+        <p className="guide-pillars-section__subtitle">
+          Visão rápida — passe o cursor sobre cada item para ler o detalhe (ou consulte a trilha acima).
+        </p>
+        <div className="guide-pillars-strip" role="list">
+          {platformPillars.map((pillar) => {
+            const Icon = pillar.icon;
+            return (
+              <div
+                key={pillar.title}
+                className="guide-pillar-chip"
+                role="listitem"
+                title={pillar.description}
+              >
+                <span className="guide-pillar-chip__icon" aria-hidden>
                   <Icon size={18} />
-                </div>
-                <h3 className="guide-card__title">{pillar.title}</h3>
-                <p className="guide-card__text">{pillar.description}</p>
+                </span>
+                <span className="guide-pillar-chip__label">{pillar.title}</span>
               </div>
-            </article>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      </section>
 
-      <div className="page-grid page-grid--wide">
-        <div className="card">
-          <div className="card__header">
-            <div>
-              <h3 className="card__title">Matriz de acesso</h3>
-              <p className="card__subtitle">
-                O papel define o que a pessoa pode fazer. O escopo define onde ela pode fazer.
-              </p>
-            </div>
-            <BookOpenText size={18} />
+      <section id="matriz-acesso" className="card">
+        <div className="card__header">
+          <div>
+            <h2 className="card__title">Consulta rápida — matriz de acesso</h2>
+            <p className="card__subtitle">
+              O papel define o que a pessoa pode fazer. O escopo define onde ela pode fazer.
+            </p>
           </div>
-          <div className="card__body card__body--compact">
-            <div className="table-shell">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Perfil</th>
-                    <th>Escopo</th>
-                    <th>Capacidade principal</th>
+          <BookOpenText size={18} aria-hidden />
+        </div>
+        <div className="card__body card__body--compact">
+          <div className="table-shell">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Perfil</th>
+                  <th>Escopo</th>
+                  <th>Capacidade principal</th>
+                </tr>
+              </thead>
+              <tbody>
+                {roleMatrix.map((row) => (
+                  <tr key={row.role}>
+                    <td>{row.role}</td>
+                    <td>{row.scope}</td>
+                    <td>{row.can}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {roleMatrix.map((row) => (
-                    <tr key={row.role}>
-                      <td>{row.role}</td>
-                      <td>{row.scope}</td>
-                      <td>{row.can}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
+      </section>
 
-        <div className="card">
-          <div className="card__header">
-            <div>
-              <h3 className="card__title">Regra mais importante</h3>
-              <p className="card__subtitle">O dashboard é a ponta final do processo.</p>
-            </div>
-            <BadgeCheck size={18} />
+      <section className="guide-accordions card" aria-label="Detalhe das jornadas operacionais">
+        <div className="card__header">
+          <div>
+            <h2 className="card__title">Jornadas em detalhe</h2>
+            <p className="card__subtitle">Expandir para ver o passo a passo completo de cada lado do processo.</p>
           </div>
-          <div className="card__body">
-            <div className="list-stack">
-              <div className="list-row">
-                <div>
-                  <div className="list-row__title">1. Entrada</div>
-                  <div className="list-row__meta">
-                    A unidade informa a DRE na tela de Submissões.
-                  </div>
-                </div>
-              </div>
-              <div className="list-row">
-                <div>
-                  <div className="list-row__title">2. Motor de cálculo</div>
-                  <div className="list-row__meta">
-                    Funções SQL recalculam MC1, MC2, EBITDA 1, EBITDA 2 e percentuais.
-                  </div>
-                </div>
-              </div>
-              <div className="list-row">
-                <div>
-                  <div className="list-row__title">3. Workflow</div>
-                  <div className="list-row__meta">
-                    A controladoria valida, aprova ou devolve para ajuste.
-                  </div>
-                </div>
-              </div>
-              <div className="list-row">
-                <div>
-                  <div className="list-row__title">4. Dashboard</div>
-                  <div className="list-row__meta">
-                    As views oficiais refletem o resultado consolidado por escopo.
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <BadgeCheck size={18} aria-hidden />
         </div>
-      </div>
+        <div className="card__body guide-accordions__body">
+          <details className="guide-accordion">
+            <summary className="guide-accordion__summary">
+              <span className="guide-accordion__summary-inner">
+                <Building2 size={18} aria-hidden />
+                Jornada da franquia
+              </span>
+            </summary>
+            <div className="guide-accordion__content">
+              <p className="guide-accordion__intro">O que o franqueado faz dentro da plataforma.</p>
+              <ol className="guide-list">
+                {franchiseJourney.map((step, i) => (
+                  <li key={i}>{step}</li>
+                ))}
+              </ol>
+            </div>
+          </details>
+
+          <details className="guide-accordion">
+            <summary className="guide-accordion__summary">
+              <span className="guide-accordion__summary-inner">
+                <ShieldCheck size={18} aria-hidden />
+                Jornada da controladoria
+              </span>
+            </summary>
+            <div className="guide-accordion__content">
+              <p className="guide-accordion__intro">Como a governança fecha o ciclo operacional.</p>
+              <ol className="guide-list">
+                {reviewJourney.map((step, i) => (
+                  <li key={i}>{step}</li>
+                ))}
+              </ol>
+            </div>
+          </details>
+        </div>
+      </section>
 
       <div className="page-grid page-grid--wide">
-        <div className="card">
+        <section id="logica-dre" className="card">
           <div className="card__header">
             <div>
-              <h3 className="card__title">Jornada da franquia</h3>
-              <p className="card__subtitle">O que o franqueado faz dentro da plataforma.</p>
-            </div>
-            <Building2 size={18} />
-          </div>
-          <div className="card__body">
-            <ol className="guide-list">
-              {franchiseJourney.map((step) => (
-                <li key={step}>{step}</li>
-              ))}
-            </ol>
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="card__header">
-            <div>
-              <h3 className="card__title">Jornada da controladoria</h3>
-              <p className="card__subtitle">Como a governança fecha o ciclo operacional.</p>
-            </div>
-            <ShieldCheck size={18} />
-          </div>
-          <div className="card__body">
-            <ol className="guide-list">
-              {reviewJourney.map((step) => (
-                <li key={step}>{step}</li>
-              ))}
-            </ol>
-          </div>
-        </div>
-      </div>
-
-      <div className="page-grid page-grid--wide">
-        <div className="card">
-          <div className="card__header">
-            <div>
-              <h3 className="card__title">Lógica da DRE</h3>
+              <h2 className="card__title">Lógica da DRE</h2>
               <p className="card__subtitle">
                 Estas são as fórmulas principais que o sistema recalcula automaticamente.
               </p>
             </div>
-            <Calculator size={18} />
+            <Calculator size={18} aria-hidden />
           </div>
           <div className="card__body">
             <div className="guide-formulas">
@@ -319,17 +297,15 @@ export function GuidePage() {
               ))}
             </div>
           </div>
-        </div>
+        </section>
 
-        <div className="card">
+        <section id="roteiro-demo" className="card">
           <div className="card__header">
             <div>
-              <h3 className="card__title">Roteiro da demo de segunda-feira</h3>
-              <p className="card__subtitle">
-                Ordem recomendada para explicar o produto com clareza.
-              </p>
+              <h2 className="card__title">Roteiro da demo</h2>
+              <p className="card__subtitle">Checklist na ordem recomendada para explicar o produto com clareza.</p>
             </div>
-            <ClipboardCheck size={18} />
+            <ClipboardCheck size={18} aria-hidden />
           </div>
           <div className="card__body">
             <div className="list-stack">
@@ -343,7 +319,7 @@ export function GuidePage() {
               ))}
             </div>
           </div>
-        </div>
+        </section>
       </div>
     </div>
   );

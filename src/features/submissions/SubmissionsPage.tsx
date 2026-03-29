@@ -20,10 +20,12 @@ import {
 } from '../shared/portal.api';
 import { DreAssistantPanel } from './DreAssistantPanel';
 import { DreStatementTable } from './DreStatementTable';
+import { resolveAssistantInteractionMode } from './agentPermissions';
 import {
   buildQuestionForLine,
   findNextGuidedLine,
   getFieldGuide,
+  parseFlowCheckpointFromState,
   stripInternalLineCodesFromUserText,
   type DreAssistantTurnResult,
 } from './dreAssistant';
@@ -201,6 +203,9 @@ export function SubmissionsPage() {
     (!currentSubmission || isEditableSubmissionStatus(currentSubmission.status));
   const canEditActiveSubmission = canEdit && isEditableSubmissionStatus(activeSubmissionStatus);
   const assistantEnabled = Boolean(activeSubmissionId && workspaceQuery.data?.submission);
+  const assistantInteractionMode = !workspaceQuery.data?.submission
+    ? ('full' as const)
+    : resolveAssistantInteractionMode(access?.roleCodes ?? [], workspaceQuery.data.submission.status);
   const assistantState = agentSessionQuery.data?.state_json;
   const assistantStoredFocusLineCode = readSessionStateString(assistantState, 'guided_line_code');
   const assistantStoredNextPrompt = readSessionStateString(assistantState, 'next_prompt');
@@ -218,6 +223,31 @@ export function SubmissionsPage() {
   const assistantNextPrompt = assistantNextPromptRaw
     ? stripInternalLineCodesFromUserText(assistantNextPromptRaw, inputLineCodes)
     : null;
+  const storedFlowCheckpoint = useMemo(
+    () => parseFlowCheckpointFromState(agentSessionQuery.data?.state_json),
+    [agentSessionQuery.data?.state_json],
+  );
+  const assistantFlowPhaseLabel = useMemo(() => {
+    if (!storedFlowCheckpoint) {
+      return null;
+    }
+    const labels: Record<string, string> = {
+      collecting: 'Fase: preenchimento',
+      complete: 'Fase: rascunho completo',
+      explain_only: 'Fase: só orientação',
+    };
+    return labels[storedFlowCheckpoint.phase] ?? null;
+  }, [storedFlowCheckpoint]);
+  const assistantRealignHint = useMemo(() => {
+    if (!storedFlowCheckpoint || storedFlowCheckpoint.last_user_intent !== 'off_topic') {
+      return null;
+    }
+    const stepText = assistantNextPrompt ?? assistantFocusLabel;
+    if (!stepText) {
+      return 'Esse tema fica fora do escopo da DRE. Retomo o acompanhamento do formulário.';
+    }
+    return `Esse tema fica fora do escopo da DRE. Próximo passo sugerido: ${stepText}`;
+  }, [storedFlowCheckpoint, assistantNextPrompt, assistantFocusLabel]);
   const filledInputCount = !workspaceQuery.data?.inputLines.length
     ? 0
     : workspaceQuery.data.inputLines.filter((line) => {
@@ -270,7 +300,12 @@ export function SubmissionsPage() {
   };
 
   const applyAssistantFieldUpdates = (result: DreAssistantTurnResult) => {
-    if (!workspaceQuery.data?.submission || !canEditActiveSubmission || result.fieldUpdates.length === 0) {
+    if (
+      assistantInteractionMode === 'explain_only' ||
+      !workspaceQuery.data?.submission ||
+      !canEditActiveSubmission ||
+      result.fieldUpdates.length === 0
+    ) {
       return effectiveLineValues;
     }
 
@@ -385,9 +420,19 @@ export function SubmissionsPage() {
         throw fetchError;
       }
 
-      let body: { error?: string; result?: DreAssistantTurnResult };
+      let body: {
+        error?: string;
+        result?: DreAssistantTurnResult;
+        flow_checkpoint?: Record<string, unknown>;
+        interaction_mode?: string;
+      };
       try {
-        body = (await response.json()) as { error?: string; result?: DreAssistantTurnResult };
+        body = (await response.json()) as {
+          error?: string;
+          result?: DreAssistantTurnResult;
+          flow_checkpoint?: Record<string, unknown>;
+          interaction_mode?: string;
+        };
       } catch {
         throw new Error(
           response.status === 404
@@ -402,9 +447,14 @@ export function SubmissionsPage() {
 
       const result = body.result;
       const appliedValues = applyAssistantFieldUpdates(result);
-      const blockedByWorkflow = result.fieldUpdates.length > 0 && !canEditActiveSubmission;
-      const autoSaveRequested = result.requestSave && canEditActiveSubmission;
+      const blockedByWorkflow =
+        assistantInteractionMode !== 'explain_only' &&
+        result.fieldUpdates.length > 0 &&
+        !canEditActiveSubmission;
+      const autoSaveRequested =
+        assistantInteractionMode !== 'explain_only' && result.requestSave && canEditActiveSubmission;
       const shouldPersistAfterAgent =
+        assistantInteractionMode !== 'explain_only' &&
         canEditActiveSubmission &&
         !blockedByWorkflow &&
         (result.fieldUpdates.length > 0 || autoSaveRequested);
@@ -440,6 +490,8 @@ export function SubmissionsPage() {
           last_answer: answer,
           last_citations: result.citations,
           auto_saved: shouldPersistAfterAgent,
+          flow_checkpoint: body.flow_checkpoint,
+          last_interaction_mode: body.interaction_mode ?? null,
         },
         focusLine ? `Campo em foco: ${getFieldGuide(focusLine).label}` : agentSessionQuery.data.summary,
       );
@@ -751,6 +803,8 @@ export function SubmissionsPage() {
             pending={assistantMutation.isPending}
             focusLabel={assistantFocusLabel}
             nextPrompt={assistantNextPrompt}
+            flowPhaseLabel={assistantFlowPhaseLabel}
+            realignHint={assistantRealignHint}
             messages={assistantMessages}
             draftValue={assistantDraft}
             lastCitations={lastAssistantCitations}
@@ -758,6 +812,7 @@ export function SubmissionsPage() {
             filledSteps={filledInputCount}
             totalSteps={workspaceQuery.data?.inputLines.length ?? 0}
             agentMode={assistantAgentMode}
+            interactionMode={assistantInteractionMode}
             onDraftChange={setAssistantDraft}
             onSend={() => sendAssistantPrompt(assistantDraft)}
             onQuickAction={sendAssistantPrompt}

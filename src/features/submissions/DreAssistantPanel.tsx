@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, type KeyboardEvent } from 'rea
 import { Bot, BookOpenText, CornerDownLeft, HelpCircle, Loader2, SkipForward, Sparkles } from 'lucide-react';
 import type { AgentMessageRow } from '../shared/portal.types';
 import { AssistantProse } from './AssistantProse';
+import type { AssistantInteractionMode } from './agentPermissions';
 import type { DreAssistantCitation } from './dreAssistant';
 import { stripInternalLineCodesFromUserText } from './dreAssistant';
 
@@ -11,6 +12,10 @@ interface DreAssistantPanelProps {
   pending: boolean;
   focusLabel: string | null;
   nextPrompt: string | null;
+  /** Rótulo da fase persistida em `flow_checkpoint` (state_json). */
+  flowPhaseLabel: string | null;
+  /** Linha de realinhamento quando a última intenção foi off-topic. */
+  realignHint: string | null;
   messages: AgentMessageRow[];
   draftValue: string;
   lastCitations: DreAssistantCitation[];
@@ -19,6 +24,8 @@ interface DreAssistantPanelProps {
   filledSteps: number;
   totalSteps: number;
   agentMode: 'llm' | 'fallback' | null;
+  /** Operação completa vs. só orientação (leitura na submissão). */
+  interactionMode: AssistantInteractionMode;
   onDraftChange: (value: string) => void;
   onSend: () => void;
   onQuickAction: (prompt: string) => void;
@@ -26,11 +33,16 @@ interface DreAssistantPanelProps {
 
 const OLA_PROMPT = 'Olá! Vamos começar o preenchimento da DRE.';
 
-const QUICK_ACTIONS: { label: string; prompt: string; variant?: 'primary' }[] = [
+const QUICK_ACTIONS_FULL: { label: string; prompt: string; variant?: 'primary' }[] = [
   { label: 'Olá', prompt: OLA_PROMPT, variant: 'primary' },
   { label: 'Explicar campo', prompt: 'Explicar o campo atual' },
   { label: 'Saltar por agora', prompt: 'Quero pular o campo em foco por agora' },
   { label: 'Salvar rascunho', prompt: 'Salvar rascunho atual' },
+];
+
+const QUICK_ACTIONS_EXPLAIN: { label: string; prompt: string; variant?: 'primary' }[] = [
+  { label: 'Olá', prompt: OLA_PROMPT, variant: 'primary' },
+  { label: 'Explicar campo', prompt: 'Explicar o campo atual' },
 ];
 
 /** Altura máxima do textarea (~8 linhas) em px, alinhada ao line-height do composer. */
@@ -42,6 +54,8 @@ export function DreAssistantPanel({
   pending,
   focusLabel,
   nextPrompt,
+  flowPhaseLabel,
+  realignHint,
   messages,
   draftValue,
   lastCitations,
@@ -49,11 +63,13 @@ export function DreAssistantPanel({
   filledSteps,
   totalSteps,
   agentMode,
+  interactionMode,
   onDraftChange,
   onSend,
   onQuickAction,
 }: DreAssistantPanelProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const quickActions = interactionMode === 'explain_only' ? QUICK_ACTIONS_EXPLAIN : QUICK_ACTIONS_FULL;
 
   const progressPercent = useMemo(() => {
     if (totalSteps <= 0) {
@@ -114,10 +130,22 @@ export function DreAssistantPanel({
             <Bot />
           </div>
           <div>
-            <h3 className="dre-assistant__hero-title">Conversa guiada</h3>
+            <h3 className="dre-assistant__hero-title">
+              {interactionMode === 'explain_only' ? 'Orientação sobre a DRE' : 'Conversa guiada'}
+            </h3>
             <p className="dre-assistant__hero-sub">
-              Toque em <strong>Olá</strong> ou escreva abaixo. <kbd className="dre-assistant__kbd">Enter</kbd> envia;{' '}
-              <kbd className="dre-assistant__kbd">Shift+Enter</kbd> nova linha.
+              {interactionMode === 'explain_only' ? (
+                <>
+                  Modo leitura: explico campos e fluxo; quem preenche valores é o franqueado com permissão de operação.{' '}
+                  <kbd className="dre-assistant__kbd">Enter</kbd> envia; <kbd className="dre-assistant__kbd">Shift+Enter</kbd>{' '}
+                  nova linha.
+                </>
+              ) : (
+                <>
+                  Toque em <strong>Olá</strong> ou escreva abaixo. <kbd className="dre-assistant__kbd">Enter</kbd> envia;{' '}
+                  <kbd className="dre-assistant__kbd">Shift+Enter</kbd> nova linha.
+                </>
+              )}
             </p>
           </div>
         </div>
@@ -137,12 +165,25 @@ export function DreAssistantPanel({
           </div>
         ) : (
           <div className="dre-assistant__shell">
+            {interactionMode === 'explain_only' ? (
+              <div className="inline-message dre-assistant__mode-banner" role="status">
+                <strong>Modo orientação.</strong> Sem aplicar valores na submissão — use o painel para acompanhar os
+                números oficiais.
+              </div>
+            ) : null}
             <div className="dre-assistant__progress-block" aria-label="Progresso do preenchimento">
               <div className="dre-assistant__progress-meta">
                 <span>{progressLabel}</span>
-                {totalSteps > 0 ? (
-                  <span className="dre-assistant__progress-percent">{progressPercent}%</span>
-                ) : null}
+                <span className="dre-assistant__progress-meta-right">
+                  {flowPhaseLabel ? (
+                    <span className="dre-assistant__phase-pill" title="Estado do fluxo guardado na sessão">
+                      {flowPhaseLabel}
+                    </span>
+                  ) : null}
+                  {totalSteps > 0 ? (
+                    <span className="dre-assistant__progress-percent">{progressPercent}%</span>
+                  ) : null}
+                </span>
               </div>
               <div
                 className="dre-assistant__progress-track"
@@ -160,6 +201,7 @@ export function DreAssistantPanel({
               <p className="dre-assistant__focus-line">
                 <HelpCircle size={14} aria-hidden />
                 <span>
+                  <strong>Próximo passo:</strong>{' '}
                   <strong>{focusLabel ?? 'Aguardando o próximo passo'}</strong>
                   {nextPrompt ? (
                     <>
@@ -169,10 +211,15 @@ export function DreAssistantPanel({
                   ) : null}
                 </span>
               </p>
+              {realignHint ? (
+                <p className="dre-assistant__realign-hint" role="status">
+                  {realignHint}
+                </p>
+              ) : null}
             </div>
 
             <div className="dre-assistant__chips" role="toolbar" aria-label="Atalhos do assistente">
-              {QUICK_ACTIONS.map((action) => (
+              {quickActions.map((action) => (
                 <button
                   key={action.prompt}
                   type="button"
@@ -207,8 +254,9 @@ export function DreAssistantPanel({
                 ) : messages.length === 0 ? (
                   <div className="dre-assistant__ola-gate">
                     <p className="dre-assistant__ola-gate-text">
-                      Comece por aqui: o assistente percorre todos os campos da DRE na ordem correta e diz exatamente o
-                      que precisa em cada mensagem.
+                      {interactionMode === 'explain_only'
+                        ? 'Pergunte sobre qualquer campo da DRE ou sobre o fluxo de submissão. Não aplico valores neste perfil.'
+                        : 'Comece por aqui: o assistente percorre todos os campos da DRE na ordem correta e diz exatamente o que precisa em cada mensagem.'}
                     </p>
                     <button
                       type="button"
@@ -300,7 +348,11 @@ export function DreAssistantPanel({
                   value={draftValue}
                   onChange={(event) => onDraftChange(event.target.value)}
                   onKeyDown={handleComposerKeyDown}
-                  placeholder="Valor em reais, dúvida sobre o campo ou pedido para salvar…"
+                  placeholder={
+                    interactionMode === 'explain_only'
+                      ? 'Dúvida sobre um campo da DRE ou sobre o fluxo…'
+                      : 'Valor em reais, dúvida sobre o campo ou pedido para salvar…'
+                  }
                   disabled={pending}
                   rows={1}
                   aria-label="Mensagem para o assistente DRE"
