@@ -354,6 +354,58 @@
   }
 }
 
+/* --- Matriz de acesso --- */
+.guide-matrix {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.guide-matrix__table thead th {
+  background: var(--bg-secondary);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.guide-matrix__table tbody tr {
+  transition: background 0.15s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guide-matrix__table tbody tr {
+    transition: none;
+  }
+}
+
+.guide-matrix__table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.guide-matrix__table tbody tr:hover {
+  background: rgba(46, 123, 246, 0.06);
+}
+
+.guide-matrix__row--gold td:first-child {
+  border-left: 3px solid var(--border-gold);
+}
+
+.guide-matrix__row--blue td:first-child {
+  border-left: 3px solid rgba(46, 123, 246, 0.55);
+}
+
+.guide-matrix__role {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-sm);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  max-width: 100%;
+}
+
 /* --- Acordeões jornada --- */
 .guide-accordions__body {
   display: flex;
@@ -367,6 +419,20 @@
   border-radius: var(--radius-lg);
   background: rgba(10, 14, 26, 0.35);
   overflow: hidden;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.guide-accordion[open] {
+  border-color: rgba(46, 123, 246, 0.35);
+  box-shadow:
+    0 0 0 1px rgba(46, 123, 246, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guide-accordion {
+    transition: none;
+  }
 }
 
 .guide-accordion__summary {
@@ -375,6 +441,10 @@
   padding: var(--space-4) var(--space-4);
   font-weight: var(--weight-semibold);
   color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
 }
 
 .guide-accordion__summary::-webkit-details-marker {
@@ -385,6 +455,28 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-3);
+}
+
+.guide-accordion__chevron {
+  flex-shrink: 0;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-right: 2px solid var(--text-muted);
+  border-bottom: 2px solid var(--text-muted);
+  transform: rotate(45deg);
+  transition: transform 0.2s ease, border-color 0.2s ease;
+  margin-inline-end: 2px;
+}
+
+.guide-accordion[open] .guide-accordion__chevron {
+  transform: rotate(-135deg);
+  border-color: var(--accent-secondary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guide-accordion__chevron {
+    transition: none;
+  }
 }
 
 .guide-accordion__content {
@@ -430,6 +522,38 @@
   line-height: 1.75;
 }
 
+.guide-list--rail {
+  list-style: none;
+  padding-left: 0;
+  counter-reset: guide-journey-step;
+}
+
+.guide-list--rail li {
+  counter-increment: guide-journey-step;
+  display: grid;
+  grid-template-columns: 2.25rem minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.guide-list--rail li::before {
+  content: counter(guide-journey-step);
+  font-family: var(--font-heading);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  color: var(--text-accent);
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(46, 123, 246, 0.4);
+  background: var(--accent-primary-soft);
+  flex-shrink: 0;
+  line-height: 1;
+}
+
 .guide-formulas {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -438,15 +562,93 @@
 
 .guide-formulas__item {
   padding: var(--space-4);
-  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-lg);
-  background: rgba(10, 14, 26, 0.42);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
-.guide-formulas__item code {
+.guide-formulas__item--blue {
+  border: 1px solid rgba(46, 123, 246, 0.28);
+  background: linear-gradient(
+    145deg,
+    rgba(46, 123, 246, 0.1) 0%,
+    rgba(10, 14, 26, 0.5) 100%
+  );
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.guide-formulas__item--gold {
+  border: 1px solid var(--border-gold);
+  background: linear-gradient(
+    145deg,
+    rgba(240, 183, 62, 0.08) 0%,
+    rgba(10, 14, 26, 0.48) 100%
+  );
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.guide-formulas__label {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.guide-formulas__item--gold .guide-formulas__label {
+  color: var(--text-gold);
+}
+
+.guide-formulas__item--blue .guide-formulas__label {
+  color: var(--text-accent);
+}
+
+.guide-formulas__code {
   white-space: pre-wrap;
   color: var(--text-primary);
   font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: 1.55;
+  margin: 0;
+}
+
+/* --- Roteiro demo (mini-trilha) --- */
+.card__body--demo-trail {
+  padding-top: var(--space-2);
+}
+
+.guide-trail--demo {
+  gap: 0;
+}
+
+.guide-trail__item--demo {
+  grid-template-columns: 2.75rem minmax(0, 1fr);
+}
+
+.guide-trail__node--demo {
+  width: 2.125rem;
+  height: 2.125rem;
+}
+
+.guide-trail__rail-line--demo {
+  min-height: var(--space-4);
+}
+
+.guide-trail__card--demo {
+  margin-bottom: var(--space-4);
+  padding: var(--space-4);
+}
+
+.guide-trail__card-title--demo {
+  font-size: var(--text-lg);
+}
+
+.guide-demo-script__description {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.65;
   font-size: var(--text-sm);
 }
 

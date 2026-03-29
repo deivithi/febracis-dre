@@ -10,8 +10,18 @@ import {
   Users,
 } from 'lucide-react';
 import { useAccessProfile } from '../auth/useAccessProfile';
+import { GuideDemoScriptTrail } from './GuideDemoScriptTrail';
 import { GuideLearningTrail } from './GuideLearningTrail';
 import './GuidePage.css';
+
+type MatrixAccent = 'gold' | 'blue';
+
+interface RoleMatrixRow {
+  role: string;
+  scope: string;
+  can: string;
+  accent: MatrixAccent;
+}
 
 const platformPillars = [
   {
@@ -46,31 +56,36 @@ const platformPillars = [
   },
 ];
 
-const roleMatrix = [
+const roleMatrix: RoleMatrixRow[] = [
   {
     role: 'System admin',
     scope: 'Rede inteira',
     can: 'Configura usuários, prepara ou zera demo, consulta todos os módulos e pode operar submissão.',
+    accent: 'gold',
   },
   {
     role: 'Finance controller',
     scope: 'Rede ou escopo definido',
     can: 'Assume revisão, aprova, devolve para ajuste, acompanha auditoria e governança.',
+    accent: 'blue',
   },
   {
     role: 'Regional manager',
     scope: 'Regional vinculada',
     can: 'Compara franquias da carteira, acompanha dashboards e enxerga submissões do escopo em modo de leitura; o assistente DRE responde só em orientação (sem preencher a DRE por conversa).',
+    accent: 'gold',
   },
   {
     role: 'Franchise user',
     scope: 'Coligada vinculada',
     can: 'Preenche a DRE da própria unidade, salva rascunho, envia para revisão e acompanha retorno.',
+    accent: 'blue',
   },
   {
     role: 'Viewer',
     scope: 'Rede, regional ou coligada',
     can: 'Modo leitura: Dashboard e Guia. O menu oculta Submissões e demais módulos operacionais; URLs diretas exibem aviso de permissão.',
+    accent: 'gold',
   },
 ];
 
@@ -89,40 +104,95 @@ const reviewJourney = [
   'O status oficial da submissão muda e o dashboard consome a nova leitura.',
 ];
 
-const formulas = [
-  'deductions_total = soma de todas as deduções',
-  'mc1 = gross_revenue - deductions_total',
-  'event_expenses_total = soma das despesas de evento',
-  'marketing_total = soma das despesas de marketing',
-  'default_net = default_gross - default_recovery',
-  'mc2 = mc1 - event_expenses_total - variable_expenses - marketing_total - default_net',
-  'ebitda_1 = mc2 - people - cto - utilities_services - general_expenses',
-  'ebitda_2 = ebitda_1 - taxes',
+type FormulaVariant = 'gold' | 'blue';
+
+interface GuideFormula {
+  id: string;
+  label: string;
+  expression: string;
+  variant: FormulaVariant;
+}
+
+const formulas: GuideFormula[] = [
+  {
+    id: 'deductions_total',
+    label: 'deductions_total',
+    expression: 'soma de todas as deduções',
+    variant: 'blue',
+  },
+  {
+    id: 'mc1',
+    label: 'mc1',
+    expression: 'gross_revenue - deductions_total',
+    variant: 'gold',
+  },
+  {
+    id: 'event_expenses_total',
+    label: 'event_expenses_total',
+    expression: 'soma das despesas de evento',
+    variant: 'blue',
+  },
+  {
+    id: 'marketing_total',
+    label: 'marketing_total',
+    expression: 'soma das despesas de marketing',
+    variant: 'gold',
+  },
+  {
+    id: 'default_net',
+    label: 'default_net',
+    expression: 'default_gross - default_recovery',
+    variant: 'blue',
+  },
+  {
+    id: 'mc2',
+    label: 'mc2',
+    expression:
+      'mc1 - event_expenses_total - variable_expenses - marketing_total - default_net',
+    variant: 'gold',
+  },
+  {
+    id: 'ebitda_1',
+    label: 'ebitda_1',
+    expression: 'mc2 - people - cto - utilities_services - general_expenses',
+    variant: 'blue',
+  },
+  {
+    id: 'ebitda_2',
+    label: 'ebitda_2',
+    expression: 'ebitda_1 - taxes',
+    variant: 'gold',
+  },
 ];
 
 const mondayDemoScript = [
   {
-    title: '1. Abrir a visão do produto',
+    stepNumber: 1,
+    title: 'Abrir a visão do produto',
     description:
       'Entrar pelo login e contextualizar que o portal organiza a coleta da DRE, a revisão e a leitura executiva.',
   },
   {
-    title: '2. Mostrar a governança de acesso',
+    stepNumber: 2,
+    title: 'Mostrar a governança de acesso',
     description:
       'Entrar em Configurações e explicar que o admin cria usuários, define papel e prende o acesso ao código da coligada correto.',
   },
   {
-    title: '3. Simular a jornada da franquia',
+    stepNumber: 3,
+    title: 'Simular a jornada da franquia',
     description:
       'Abrir Submissões, selecionar coligada, competência e evento, mostrar o assistente (thread + compositor), editar linhas da DRE e destacar o preview automático.',
   },
   {
-    title: '4. Simular a jornada da controladoria',
+    stepNumber: 4,
+    title: 'Simular a jornada da controladoria',
     description:
       'Abrir Aprovações, assumir revisão, aprovar ou devolver para ajuste e explicar a trilha de governança.',
   },
   {
-    title: '5. Fechar no dashboard',
+    stepNumber: 5,
+    title: 'Fechar no dashboard',
     description:
       'Mostrar que o dashboard não é o início da história: ele exibe a saída oficial consolidada por escopo.',
   },
@@ -209,19 +279,21 @@ export function GuidePage() {
           <BookOpenText size={18} aria-hidden />
         </div>
         <div className="card__body card__body--compact">
-          <div className="table-shell">
-            <table className="data-table">
+          <div className="table-shell guide-matrix">
+            <table className="data-table guide-matrix__table">
               <thead>
                 <tr>
-                  <th>Perfil</th>
-                  <th>Escopo</th>
-                  <th>Capacidade principal</th>
+                  <th scope="col">Perfil</th>
+                  <th scope="col">Escopo</th>
+                  <th scope="col">Capacidade principal</th>
                 </tr>
               </thead>
               <tbody>
                 {roleMatrix.map((row) => (
-                  <tr key={row.role}>
-                    <td>{row.role}</td>
+                  <tr key={row.role} className={`guide-matrix__row guide-matrix__row--${row.accent}`}>
+                    <td>
+                      <span className="guide-matrix__role">{row.role}</span>
+                    </td>
                     <td>{row.scope}</td>
                     <td>{row.can}</td>
                   </tr>
@@ -247,10 +319,11 @@ export function GuidePage() {
                 <Building2 size={18} aria-hidden />
                 Jornada da franquia
               </span>
+              <span className="guide-accordion__chevron" aria-hidden />
             </summary>
             <div className="guide-accordion__content">
               <p className="guide-accordion__intro">O que o franqueado faz dentro da plataforma.</p>
-              <ol className="guide-list">
+              <ol className="guide-list guide-list--rail">
                 {franchiseJourney.map((step, i) => (
                   <li key={i}>{step}</li>
                 ))}
@@ -264,10 +337,11 @@ export function GuidePage() {
                 <ShieldCheck size={18} aria-hidden />
                 Jornada da controladoria
               </span>
+              <span className="guide-accordion__chevron" aria-hidden />
             </summary>
             <div className="guide-accordion__content">
               <p className="guide-accordion__intro">Como a governança fecha o ciclo operacional.</p>
-              <ol className="guide-list">
+              <ol className="guide-list guide-list--rail">
                 {reviewJourney.map((step, i) => (
                   <li key={i}>{step}</li>
                 ))}
@@ -291,8 +365,14 @@ export function GuidePage() {
           <div className="card__body">
             <div className="guide-formulas">
               {formulas.map((formula) => (
-                <div key={formula} className="guide-formulas__item">
-                  <code>{formula}</code>
+                <div
+                  key={formula.id}
+                  className={`guide-formulas__item guide-formulas__item--${formula.variant}`}
+                >
+                  <div className="guide-formulas__label">{formula.label}</div>
+                  <code className="guide-formulas__code">
+                    {formula.label} = {formula.expression}
+                  </code>
                 </div>
               ))}
             </div>
@@ -307,17 +387,8 @@ export function GuidePage() {
             </div>
             <ClipboardCheck size={18} aria-hidden />
           </div>
-          <div className="card__body">
-            <div className="list-stack">
-              {mondayDemoScript.map((step) => (
-                <div key={step.title} className="list-row">
-                  <div>
-                    <div className="list-row__title">{step.title}</div>
-                    <div className="list-row__meta">{step.description}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
+          <div className="card__body card__body--demo-trail">
+            <GuideDemoScriptTrail steps={mondayDemoScript} />
           </div>
         </section>
       </div>
