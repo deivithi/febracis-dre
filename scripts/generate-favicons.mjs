@@ -1,11 +1,13 @@
 /**
- * Gera favicons PNG (16 / 32 / apple-touch 180) alinhados ao aspeto dourado da sidebar.
+ * Gera favicons PNG (16 / 32 / apple-touch 180) com o lockup Febracis (águia + texto).
  *
- * A sidebar aplica filtros CSS em `.sidebar__logo-image` (layout.css); o favicon é estático,
- * por isso rasterizamos com o mesmo filtro via Playwright (Chromium) e fundo tipo `.sidebar__logo-mark`.
+ * O filtro de cor dourada replica `.sidebar__logo-image` em layout.css; o FUNDO não replica
+ * o painel escuro da sidebar — por defeito o raster usa fundo transparente para o ícone
+ * assentar no "fundo normal" da aba do browser. Opcional: fundo sólido claro quente via
+ * variável de ambiente `FAVICON_BG_HEX` (ex.: `#FBF6EC` se o contraste em algum contexto
+ * for insuficiente).
  *
- * Fallback opcional: se existir `public/images/logo-febracis-favicon.png` (marca já em dourado),
- * usa-se esse ficheiro sem filtro CSS.
+ * Fallback: se existir `public/images/logo-febracis-favicon.png`, usa-se sem filtro CSS.
  *
  * Manter em sync com .sidebar__logo-image em src/styles/components/layout.css
  *
@@ -36,11 +38,28 @@ const SIDEBAR_LOGO_FILTER = [
 const RASTER_SIZE = 512;
 
 /**
- * Fundo aproximado ao painel da marca (sidebar__logo-mark): gradiente + base escura.
- * Não é fundo amarelo de página — só o mesmo “lift” subtil do UI.
+ * @param {string | undefined} raw
+ * @returns {string | null} hex #RRGGBB ou null
  */
-function buildMarkupPage(imageDataUrl, applyCssFilter) {
+function parseSolidBgHex(raw) {
+  if (raw === undefined || raw === null || String(raw).trim() === '') {
+    return null;
+  }
+  const s = String(raw).trim();
+  if (/^#[0-9A-Fa-f]{6}$/.test(s)) {
+    return s;
+  }
+  return null;
+}
+
+/**
+ * @param {string} imageDataUrl
+ * @param {boolean} applyCssFilter
+ * @param {string | null} solidBgHex
+ */
+function buildMarkupPage(imageDataUrl, applyCssFilter, solidBgHex) {
   const imgFilter = applyCssFilter ? SIDEBAR_LOGO_FILTER : 'none';
+  const bg = solidBgHex === null ? 'transparent' : solidBgHex;
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -48,7 +67,7 @@ function buildMarkupPage(imageDataUrl, applyCssFilter) {
   <style>
     * { margin: 0; box-sizing: border-box; }
     body {
-      background: #0a0e1a;
+      background: ${bg};
       display: flex;
       align-items: center;
       justify-content: center;
@@ -60,18 +79,11 @@ function buildMarkupPage(imageDataUrl, applyCssFilter) {
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 64px;
-      border: 1px solid rgba(240, 183, 62, 0.18);
-      background:
-        linear-gradient(135deg, rgba(240, 183, 62, 0.14), rgba(240, 183, 62, 0.04)),
-        rgba(10, 14, 26, 0.36);
-      box-shadow:
-        inset 0 1px 0 rgba(255, 244, 215, 0.09),
-        0 10px 24px rgba(0, 0, 0, 0.22);
+      background: ${bg};
     }
     #mark img {
-      max-width: 88%;
-      max-height: 48%;
+      max-width: 92%;
+      max-height: 76%;
       width: auto;
       height: auto;
       object-fit: contain;
@@ -89,13 +101,16 @@ function buildMarkupPage(imageDataUrl, applyCssFilter) {
 /**
  * @param {string} imagePath
  * @param {boolean} applyCssFilter
+ * @param {string | null} solidBgHex
  * @returns {Promise<Buffer>}
  */
-async function rasterizeMarkPng(imagePath, applyCssFilter) {
+async function rasterizeMarkPng(imagePath, applyCssFilter, solidBgHex) {
   const buf = readFileSync(imagePath);
   const b64 = buf.toString('base64');
   const dataUrl = `data:image/png;base64,${b64}`;
-  const html = buildMarkupPage(dataUrl, applyCssFilter);
+  const html = buildMarkupPage(dataUrl, applyCssFilter, solidBgHex);
+
+  const omitBackground = solidBgHex === null;
 
   const browser = await chromium.launch({ headless: true });
   try {
@@ -105,7 +120,10 @@ async function rasterizeMarkPng(imagePath, applyCssFilter) {
     });
     await page.setContent(html, { waitUntil: 'load', timeout: 30_000 });
     const locator = page.locator('#mark');
-    return await locator.screenshot({ type: 'png' });
+    return await locator.screenshot({
+      type: 'png',
+      omitBackground,
+    });
   } finally {
     await browser.close();
   }
@@ -128,6 +146,13 @@ async function main() {
     throw new Error(`Ficheiro em falta: ${defaultLogoPath}`);
   }
 
+  const solidBgHex = parseSolidBgHex(process.env.FAVICON_BG_HEX);
+  if (process.env.FAVICON_BG_HEX !== undefined && process.env.FAVICON_BG_HEX !== '' && solidBgHex === null) {
+    console.warn(
+      'FAVICON_BG_HEX ignorado (use formato #RRGGBB, ex.: #FBF6EC). A usar fundo transparente.',
+    );
+  }
+
   const useOptionalGold = existsSync(optionalGoldPath);
   const sourcePath = useOptionalGold ? optionalGoldPath : defaultLogoPath;
   const applyCssFilter = !useOptionalGold;
@@ -138,7 +163,13 @@ async function main() {
     console.log('Raster com filtro da sidebar (Playwright + Chromium).');
   }
 
-  const raster512 = await rasterizeMarkPng(sourcePath, applyCssFilter);
+  if (solidBgHex !== null) {
+    console.log(`Fundo sólido do favicon: ${solidBgHex} (FAVICON_BG_HEX).`);
+  } else {
+    console.log('Fundo transparente (ícone assenta na aba do browser).');
+  }
+
+  const raster512 = await rasterizeMarkPng(sourcePath, applyCssFilter, solidBgHex);
 
   await writeIconFromRaster(raster512, 16, 'favicon-16.png');
   await writeIconFromRaster(raster512, 32, 'favicon-32.png');

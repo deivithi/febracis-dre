@@ -48,4 +48,4 @@ O dado nasce na franquia, passa pela controladoria e só depois sobe para as vis
 
 ## Identidade na web (favicon)
 
-O ícone da **aba do browser** e o **apple-touch-icon** (iOS) são ficheiros estáticos em `public/` (`favicon-16.png`, `favicon-32.png`, `apple-touch-icon.png`). O aspeto dourado alinha-se ao painel da marca na sidebar (filtros CSS rasterizados em build de assets). Para regenerar após mudar o logo ou o filtro em `src/styles/components/layout.css`, ver a secção **Favicons** no `README.md` e o script `npm run favicons` (requer Chromium do Playwright).
+O ícone da **aba do browser** e o **apple-touch-icon** (iOS) são ficheiros estáticos em `public/` (`favicon-16.png`, `favicon-32.png`, `apple-touch-icon.png`). A cor dourada do lockup replica o filtro da sidebar (rasterizado em `npm run favicons`); o **fundo** do favicon é por defeito **transparente** (não é o painel escuro da UI). Detalhes e variável opcional `FAVICON_BG_HEX` estão na secção **Favicons** do `README.md`.

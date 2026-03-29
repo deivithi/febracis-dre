@@ -56,7 +56,16 @@ npm run build
 
 Os ícones em `public/` (`favicon-16.png`, `favicon-32.png`, `apple-touch-icon.png`) são gerados por `scripts/generate-favicons.mjs`.
 
-**Por quê não basta copiar o PNG?** Na sidebar, o ficheiro `public/images/logo-febracis.png` é recolorido com **filtros CSS** (`.sidebar__logo-image` em `src/styles/components/layout.css`). O ícone da aba é um ficheiro estático — não recebe CSS — por isso o script rasteriza o mesmo filtro e o mesmo tipo de fundo do “painel” da marca (Playwright + Chromium) e depois redimensiona com `sharp`.
+**Por quê não basta copiar o PNG?** Na sidebar, o ficheiro `public/images/logo-febracis.png` é recolorido com **filtros CSS** (`.sidebar__logo-image` em `src/styles/components/layout.css`). O ícone da aba é estático — não recebe CSS — por isso o script rasteriza o **mesmo filtro** com Playwright + Chromium e redimensiona com `sharp`. O **fundo do favicon não imita** o painel escuro da sidebar: por defeito o PNG usa **fundo transparente**, para o lockup assentar no fundo normal da aba do browser. Opcionalmente pode definir-se um fundo **sólido claro** (melhor contraste com o dourado em alguns contextos):
+
+```bash
+# Windows PowerShell (exemplo)
+$env:FAVICON_BG_HEX="#FBF6EC"; npm run favicons
+```
+
+Use um hex `#RRGGBB` válido; valor inválido é ignorado e volta ao transparente.
+
+**Limitação honesta:** num ícone **16×16** um wordmark horizontal continua com pouco detalhe; o ganho é contraste e área útil; o **180×180** (`apple-touch-icon`) é onde o nome deve ficar claramente legível.
 
 **Requisito:** navegador Chromium do Playwright instalado (uma vez por máquina/CI):
 
