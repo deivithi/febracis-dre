@@ -60,11 +60,19 @@ Os ícones em `public/` (`favicon-16.png`, `favicon-32.png`, `apple-touch-icon.p
 
 **Tamanho na aba:** o lockup é horizontal (ex. 300×170). Para **favicon-16** e **favicon-32** o script **recorta a zona da águia** (percentagens de largura e altura configuráveis no script), **`trim()`** no alpha e depois **`resize` 512×512 com `fit: cover`** para o símbolo **preencher o quadrado** (evita mancha minúscula com `contain`). O raster da águia usa **filtro só de cor** (sem `drop-shadow`) para nitidez a 16px. O **apple-touch-icon** (180×180) usa o **lockup completo** com variante leve (sombra dourada). O **180×180** é onde o nome aparece com clareza.
 
-**Fundo na geração:** por defeito **`#FBF6EC`** (contraste em abas escuras; o desenho deve preencher o quadrado). **Transparente** (opt-in): `FAVICON_TRANSPARENT=1` antes de `npm run favicons`. **Cor custom:** `FAVICON_BG_HEX=#RRGGBB`. Hex inválido → volta ao defeito com aviso.
+**Fundo na geração (política separada):**
+
+| Saída | Defeito | Override |
+|--------|---------|----------|
+| **favicon-16 / favicon-32** (aba) | **Transparente** — evita o “quadrado claro” na aba | Sólido: `FAVICON_TAB_BG_HEX=#RRGGBB`. `FAVICON_TRANSPARENT=1` força transparente e ignora `FAVICON_TAB_BG_HEX` (legado). |
+| **apple-touch-icon** (180×180, iOS) | **`#FBF6EC`** (lockup legível) | Cor: `FAVICON_APPLE_BG_HEX` ou `FAVICON_BG_HEX`. Transparente: `FAVICON_APPLE_TRANSPARENT=1`. |
 
 ```powershell
-# Windows PowerShell — fundo transparente (opt-in)
-$env:FAVICON_TRANSPARENT="1"; npm run favicons
+# Aba com fundo sólido (opcional)
+$env:FAVICON_TAB_BG_HEX="#FBF6EC"; npm run favicons
+
+# Apple-touch transparente (raro)
+$env:FAVICON_APPLE_TRANSPARENT="1"; npm run favicons
 ```
 
 **Limitação honesta:** em **16×16** o wordmark completo continua ilegível; os **16/32** mostram só a **águia**.

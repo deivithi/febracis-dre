@@ -4,7 +4,9 @@
  * - favicon-16 / favicon-32: só a **águia** — recorte horizontal à esquerda de `logo-febracis.png` + `trim` alpha.
  * - apple-touch-icon: **lockup completo** (águia + “Febracis”).
  *
- * **Fundo por defeito na geração: `#FBF6EC`** (contraste na aba). Transparente: `FAVICON_TRANSPARENT=1`. Cor: `FAVICON_BG_HEX=#RRGGBB`.
+ * **Fundo:** favicon **16/32 (aba)** — transparente por defeito (sem quadrado claro). Sólido opcional: `FAVICON_TAB_BG_HEX=#RRGGBB`.
+ * **Apple-touch 180** — defeito `#FBF6EC`; override: `FAVICON_APPLE_BG_HEX` ou `FAVICON_BG_HEX`; transparente: `FAVICON_APPLE_TRANSPARENT=1`.
+ * `FAVICON_TRANSPARENT=1` força a **aba** transparente e ignora `FAVICON_TAB_BG_HEX` (legado).
  *
  * favicon 16/32: águia com `sharp` cover 512×512 (preenche o quadrado; evita mancha minúscula com `contain`).
  * Filtro **sem** drop-shadow no raster da águia (nitidez a 16px). Apple-touch: variante leve com sombra dourada.
@@ -28,8 +30,8 @@ const outDir = join(root, 'public');
 const defaultLogoPath = join(root, 'public', 'images', 'logo-febracis.png');
 const optionalGoldPath = join(root, 'public', 'images', 'logo-febracis-favicon.png');
 
-/** Fundo do raster quando não há `FAVICON_BG_HEX` nem `FAVICON_TRANSPARENT=1`. */
-const DEFAULT_FAVICON_BG_HEX = '#FBF6EC';
+/** Fundo do raster do apple-touch quando não há override de env. */
+const DEFAULT_APPLE_BG_HEX = '#FBF6EC';
 
 /** Ver `.sidebar__logo-image` em `layout.css`. */
 
@@ -52,7 +54,8 @@ const RASTER_SIZE = 512;
 
 /** Recorte horizontal da águia (percentagem da largura do PNG original). Afinar se a marca mudar. */
 const FAVICON_EAGLE_LEFT_PCT = 0;
-const FAVICON_EAGLE_WIDTH_PCT = 46;
+/** Afinado para não incluir o início do wordmark no ícone da aba (ex.: “FEB”). */
+const FAVICON_EAGLE_WIDTH_PCT = 40;
 
 /** Recorte vertical opcional (percentagem da altura do PNG original). Afinar para bbox mais quadrado. */
 const FAVICON_EAGLE_TOP_PCT = 0;
@@ -126,29 +129,68 @@ function parseSolidBgHex(raw) {
 }
 
 /**
- * Fundo do raster: transparente só com `FAVICON_TRANSPARENT=1` (opt-in).
- * Sem isso: `FAVICON_BG_HEX` válido, senão defeito `#FBF6EC` (contraste na aba).
- * @returns {string | null} hex ou null
+ * Fundo do raster da **águia** (favicon-16 / favicon-32): por defeito **transparente**.
+ * `FAVICON_TRANSPARENT=1` força transparente e ignora `FAVICON_TAB_BG_HEX`.
+ * @returns {string | null} hex ou null (transparente)
  */
-function resolveSolidBackgroundHex() {
+function resolveTabBackgroundHex() {
   if (process.env.FAVICON_TRANSPARENT === '1') {
-    if (process.env.FAVICON_BG_HEX !== undefined && String(process.env.FAVICON_BG_HEX).trim() !== '') {
-      console.warn('FAVICON_TRANSPARENT=1: FAVICON_BG_HEX ignorado (fundo transparente).');
+    if (process.env.FAVICON_TAB_BG_HEX !== undefined && String(process.env.FAVICON_TAB_BG_HEX).trim() !== '') {
+      console.warn('FAVICON_TRANSPARENT=1: FAVICON_TAB_BG_HEX ignorado (aba transparente).');
     }
     return null;
   }
-  const raw = process.env.FAVICON_BG_HEX;
+  const raw = process.env.FAVICON_TAB_BG_HEX;
   if (raw === undefined || String(raw).trim() === '') {
-    return DEFAULT_FAVICON_BG_HEX;
+    return null;
+  }
+  const parsed = parseSolidBgHex(raw);
+  if (parsed !== null) {
+    return parsed;
+  }
+  console.warn('FAVICON_TAB_BG_HEX inválido (use #RRGGBB). A usar fundo transparente na aba.');
+  return null;
+}
+
+/**
+ * Fundo do **apple-touch-icon** (180): por defeito `#FBF6EC`.
+ * Prioridade: `FAVICON_APPLE_BG_HEX` → `FAVICON_BG_HEX` → defeito.
+ * `FAVICON_APPLE_TRANSPARENT=1` → transparente.
+ * @returns {string | null} hex ou null
+ */
+function resolveAppleBackgroundHex() {
+  if (process.env.FAVICON_APPLE_TRANSPARENT === '1') {
+    const apple = process.env.FAVICON_APPLE_BG_HEX;
+    const legacy = process.env.FAVICON_BG_HEX;
+    if (
+      (apple !== undefined && String(apple).trim() !== '') ||
+      (legacy !== undefined && String(legacy).trim() !== '')
+    ) {
+      console.warn(
+        'FAVICON_APPLE_TRANSPARENT=1: FAVICON_APPLE_BG_HEX / FAVICON_BG_HEX ignorados (apple-touch transparente).',
+      );
+    }
+    return null;
+  }
+  const rawApple = process.env.FAVICON_APPLE_BG_HEX;
+  const rawLegacy = process.env.FAVICON_BG_HEX;
+  const raw =
+    rawApple !== undefined && String(rawApple).trim() !== ''
+      ? rawApple
+      : rawLegacy !== undefined && String(rawLegacy).trim() !== ''
+        ? rawLegacy
+        : undefined;
+  if (raw === undefined || String(raw).trim() === '') {
+    return DEFAULT_APPLE_BG_HEX;
   }
   const parsed = parseSolidBgHex(raw);
   if (parsed !== null) {
     return parsed;
   }
   console.warn(
-    `FAVICON_BG_HEX inválido (use #RRGGBB). A usar defeito ${DEFAULT_FAVICON_BG_HEX}.`,
+    `FAVICON_APPLE_BG_HEX / FAVICON_BG_HEX inválido (use #RRGGBB). A usar defeito ${DEFAULT_APPLE_BG_HEX}.`,
   );
-  return DEFAULT_FAVICON_BG_HEX;
+  return DEFAULT_APPLE_BG_HEX;
 }
 
 /**
@@ -248,7 +290,8 @@ async function main() {
     throw new Error(`Ficheiro em falta: ${defaultLogoPath}`);
   }
 
-  const solidBgHex = resolveSolidBackgroundHex();
+  const tabBgHex = resolveTabBackgroundHex();
+  const appleBgHex = resolveAppleBackgroundHex();
 
   const useOptionalGold = existsSync(optionalGoldPath);
   const sourcePath = useOptionalGold ? optionalGoldPath : defaultLogoPath;
@@ -279,22 +322,30 @@ async function main() {
     console.log('Raster: águia com filtro plano (sem drop-shadow); lockup com variante leve (Playwright).');
   }
 
-  if (solidBgHex !== null) {
-    const src =
-      process.env.FAVICON_BG_HEX !== undefined && String(process.env.FAVICON_BG_HEX).trim() !== ''
-        ? 'FAVICON_BG_HEX'
-        : 'defeito';
-    console.log(`Fundo sólido: ${solidBgHex} (${src}).`);
+  if (tabBgHex !== null) {
+    console.log(`Aba (16/32): fundo sólido ${tabBgHex} (FAVICON_TAB_BG_HEX).`);
   } else {
-    console.log('Fundo transparente (FAVICON_TRANSPARENT=1).');
+    console.log('Aba (16/32): fundo transparente (defeito ou FAVICON_TRANSPARENT=1).');
+  }
+  if (appleBgHex !== null) {
+    const src =
+      process.env.FAVICON_APPLE_BG_HEX !== undefined &&
+      String(process.env.FAVICON_APPLE_BG_HEX).trim() !== ''
+        ? 'FAVICON_APPLE_BG_HEX'
+        : process.env.FAVICON_BG_HEX !== undefined && String(process.env.FAVICON_BG_HEX).trim() !== ''
+          ? 'FAVICON_BG_HEX'
+          : 'defeito';
+    console.log(`Apple-touch (180): fundo sólido ${appleBgHex} (${src}).`);
+  } else {
+    console.log('Apple-touch (180): fundo transparente (FAVICON_APPLE_TRANSPARENT=1).');
   }
 
   console.log(
     `favicon-16/32: águia (recorte ${FAVICON_EAGLE_WIDTH_PCT}%×${FAVICON_EAGLE_HEIGHT_PCT}% + trim + cover ${RASTER_SIZE}); apple-touch: lockup completo.`,
   );
 
-  const rasterSmall = await rasterizeMarkPngFromBuffer(eagleBuf, applyCssFilter, solidBgHex, layoutEagle);
-  const rasterApple = await rasterizeMarkPngFromBuffer(sourceBuf, applyCssFilter, solidBgHex, layoutFull);
+  const rasterSmall = await rasterizeMarkPngFromBuffer(eagleBuf, applyCssFilter, tabBgHex, layoutEagle);
+  const rasterApple = await rasterizeMarkPngFromBuffer(sourceBuf, applyCssFilter, appleBgHex, layoutFull);
 
   await writeIconFromRaster(rasterSmall, 16, 'favicon-16.png');
   await writeIconFromRaster(rasterSmall, 32, 'favicon-32.png');
