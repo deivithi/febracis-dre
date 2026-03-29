@@ -1,0 +1,211 @@
+.admin-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.9fr);
+  gap: var(--space-6);
+  padding: var(--space-6);
+  position: relative;
+  overflow: hidden;
+}
+
+.admin-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at top left, rgba(240, 183, 62, 0.12), transparent 32%),
+    radial-gradient(circle at bottom right, rgba(46, 123, 246, 0.12), transparent 36%);
+  pointer-events: none;
+}
+
+.admin-hero__copy,
+.admin-hero__panel {
+  position: relative;
+  z-index: 1;
+}
+
+.admin-hero__subtitle {
+  max-width: 720px;
+}
+
+.admin-hero__panel {
+  padding: var(--space-5);
+  border-radius: var(--radius-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.admin-hero__panel-header {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--accent-gold);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.admin-hero__panel-text {
+  color: var(--text-secondary);
+  line-height: var(--leading-relaxed);
+}
+
+.admin-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.admin-feedback {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.admin-flow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.admin-flow__step {
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  background:
+    linear-gradient(180deg, rgba(36, 43, 61, 0.58), rgba(26, 31, 46, 0.92)),
+    var(--bg-surface);
+}
+
+.admin-flow__title {
+  font-size: var(--text-md);
+  margin-bottom: var(--space-2);
+}
+
+.admin-flow__description {
+  color: var(--text-secondary);
+  line-height: var(--leading-relaxed);
+}
+
+.admin-access__form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.admin-access__form-group--wide {
+  grid-column: 1 / -1;
+}
+
+.admin-access__toolbar,
+.admin-access__directory-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.admin-access__hint,
+.admin-access__count {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+}
+
+.admin-access__search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: min(100%, 340px);
+}
+
+.admin-access__search svg {
+  position: absolute;
+  left: 0.95rem;
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+.admin-access__search .form-input {
+  padding-left: 2.7rem;
+}
+
+.admin-access__summary {
+  margin-top: var(--space-5);
+  padding: var(--space-5);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(180deg, rgba(36, 43, 61, 0.46), rgba(19, 24, 36, 0.92)),
+    var(--bg-surface);
+}
+
+.admin-access__summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.admin-access__summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.admin-access__summary-label {
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.admin-access__summary-value {
+  color: var(--text-primary);
+  line-height: var(--leading-snug);
+}
+
+.admin-access__summary-text {
+  margin: var(--space-4) 0 0;
+  color: var(--text-secondary);
+  line-height: var(--leading-relaxed);
+}
+
+.admin-access__row {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--border-subtle);
+  background: transparent;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.admin-access__row:first-child {
+  padding-top: 0;
+}
+
+.admin-access__row:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+@media (max-width: 1100px) {
+  .admin-hero,
+  .admin-flow,
+  .admin-access__form-grid,
+  .admin-access__summary-grid {
+    grid-template-columns: 1fr;
+  }
+}

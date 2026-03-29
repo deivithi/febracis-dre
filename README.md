@@ -1,6 +1,15 @@
-# Febracis DRE
+# Febracis DRE (Brasil)
 
-Portal gerencial multi-franquias da Febracis para coleta padronizada de DRE, workflow de revisão e dashboards executivos conectados ao Supabase.
+Portal gerencial multi-franquias da Febracis para coleta padronizada da **DRE** no Brasil, workflow de revisão, dashboards executivos e **assistente guiado** na tela de submissões — conectado ao Supabase e à API serverless na Vercel.
+
+## Documentação do produto
+
+| Documento | Conteúdo |
+|-----------|-----------|
+| [`docs/visao-geral-do-sistema.md`](docs/visao-geral-do-sistema.md) | Visão geral, camadas e fluxo canônico |
+| [`references/project-context.md`](references/project-context.md) | URLs, stack, rotas, deploy e contexto operacional |
+| [`docs/logica-da-dre-e-do-workflow.md`](docs/logica-da-dre-e-do-workflow.md) | Lógica da DRE e estados da submissão |
+| Rota **Guia** no app (`/app/guide`) | Material para apresentação e matriz de perfis |
 
 ## Stack
 
@@ -8,8 +17,9 @@ Portal gerencial multi-franquias da Febracis para coleta padronizada de DRE, wor
 - React 19
 - TypeScript
 - Supabase
-- React Query
+- TanStack Query
 - React Router
+- Assistente DRE: função serverless `api/dre-agent.ts` (OpenRouter quando configurado; modo guiado local sem chave)
 
 ## Ambiente local
 
@@ -19,14 +29,16 @@ Portal gerencial multi-franquias da Febracis para coleta padronizada de DRE, wor
    npm ci
    ```
 
-2. Copie [`C:\Users\PC\Documents\VS CODE\febracis-dre\.env.example`](C:\Users\PC\Documents\VS CODE\febracis-dre\.env.example) para `.env.local`.
+2. Copie `.env.example` para `.env.local`.
 
-3. Preencha as variáveis:
+3. Preencha as variáveis (mínimo para o app):
 
    ```bash
    VITE_SUPABASE_URL=...
    VITE_SUPABASE_ANON_KEY=...
    ```
+
+   Para o assistente online na Vercel, configure também no painel do projeto: `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`, `OPENROUTER_APP_URL` (veja `.env.example`).
 
 4. Rode o app:
 
@@ -40,40 +52,52 @@ Portal gerencial multi-franquias da Febracis para coleta padronizada de DRE, wor
 npm run build
 ```
 
-## Validacao da fundacao DRE
+## Validação da fundação DRE
 
-Para a fase pesada de validacao da fundacao:
+Para a fase pesada de validação da fundação:
 
 ```bash
 npm run validate:phase1
 ```
 
-Para uma rodada apenas de prontidao local:
+Para uma rodada apenas de prontidão local:
 
 ```bash
 npm run validate:phase1:local
 ```
 
-O protocolo completo, as variaveis necessarias e os artefatos gerados estao em `docs/validacao-da-fundacao-dre-fase-01.md`.
+O protocolo completo, as variáveis necessárias e os artefatos gerados estão em `docs/validacao-da-fundacao-dre-fase-01.md`.
 
-## Validacao de configuracoes e coligada
+## Validação de configurações e coligada
 
-Para validar a liberacao de acessos por codigo da coligada:
+Para validar a liberação de acessos por código da coligada:
 
 ```bash
 npm run validate:settings
 ```
 
-O protocolo desta rodada esta em `docs/validacao-de-configuracoes-e-coligada.md`.
+O protocolo desta rodada está em `docs/validacao-de-configuracoes-e-coligada.md`.
 
-## Deploy no GitHub Pages
+## Deploy na Vercel (produção)
 
-O projeto está preparado para publicar no GitHub Pages por meio da branch `gh-pages`, sem commitar o arquivo `.env.local`.
+Fluxo usado para publicar o portal (SPA + API do assistente):
+
+```bash
+npm run build
+npx vercel deploy --prod -y
+```
+
+- Variáveis de ambiente de build e runtime devem estar configuradas no projeto Vercel (`VITE_*`, Supabase, OpenRouter).
+- URL de referência: ver `references/project-context.md`.
+
+## Deploy no GitHub Pages (alternativo)
+
+O projeto também pode publicar na branch `gh-pages`, sem commitar `.env.local`.
 
 ### Fluxo
 
 - O script local gera o build com o `base` correto para o repositório.
-- O script copia `dist/index.html` para `dist/404.html`, o que ajuda o SPA a sobreviver a recarregamentos em rotas internas no GitHub Pages.
+- O script copia `dist/index.html` para `dist/404.html`, o que ajuda o SPA em recarregamentos de rotas internas.
 - O conteúdo publicado vai para a branch `gh-pages`.
 
 ### Comando
@@ -84,13 +108,13 @@ npm run deploy:pages
 
 ### Pré-requisitos
 
-- O repositório precisa ter `origin` configurado no GitHub.
-- O GitHub Pages deve estar configurado para publicar a branch `gh-pages` na pasta `/` do repositório.
-- As variáveis `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` precisam existir em `.env.local`.
+- Repositório com `origin` no GitHub.
+- GitHub Pages publicando a branch `gh-pages` na pasta `/`.
+- `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` em `.env.local` no momento do build.
 
-### Importante sobre segurança
+### Segurança
 
-- A `VITE_SUPABASE_ANON_KEY` não deve ser commitada.
-- Mesmo assim, por se tratar de um app frontend estático, a chave `anon/publishable` continuará recuperável no bundle final do navegador. Isso é esperado no modelo oficial do Supabase para componentes públicos.
+- Não commite `VITE_SUPABASE_ANON_KEY`.
+- Em app estático, a chave `anon` continua visível no bundle — esperado no modelo Supabase para clientes públicos.
 - Nunca use `service_role` no frontend.
-- A proteção real dos dados depende de RLS, políticas corretas e escopos de acesso no Supabase.
+- A proteção dos dados depende de RLS, políticas e escopos no Supabase.

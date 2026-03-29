@@ -2,6 +2,7 @@ import { type ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { canAccessRoles } from '../features/auth/access';
 import type { RoleCode } from '../features/auth/auth.types';
+import type { AccessDeniedState } from '../features/auth/AccessDeniedPage';
 import { useAccessProfile } from '../features/auth/useAccessProfile';
 import { useAuth } from '../features/auth/useAuth';
 
@@ -25,7 +26,7 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
   }
 
   if (!session) {
-    return <Navigate to="/login" replace state={{ from: location }} />;
+    return <Navigate to="/" replace state={{ from: location }} />;
   }
 
   if (allowedRoles?.length) {
@@ -40,16 +41,30 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
 
     if (accessProfileQuery.error) {
       return (
-        <div className="page-loading">
+        <div className="page-loading page-loading--error">
           <p className="page-loading__text">
             Não foi possível validar as permissões do seu usuário.
           </p>
+          {accessProfileQuery.error instanceof Error ? (
+            <p className="page-loading__detail">{accessProfileQuery.error.message}</p>
+          ) : null}
+          <button
+            type="button"
+            className="btn btn--secondary"
+            onClick={() => void accessProfileQuery.refetch()}
+          >
+            Tentar novamente
+          </button>
         </div>
       );
     }
 
     if (!accessProfileQuery.data || !canAccessRoles(accessProfileQuery.data.roleCodes, allowedRoles)) {
-      return <Navigate to="/app/dashboard" replace />;
+      const deniedState: AccessDeniedState = {
+        attemptedPath: location.pathname,
+        allowedRoles,
+      };
+      return <Navigate to="/app/forbidden" replace state={deniedState} />;
     }
   }
 

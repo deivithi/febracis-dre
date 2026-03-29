@@ -25,6 +25,10 @@ const DashboardPage = lazy(async () => ({
   default: (await import('./features/dashboard/DashboardPage')).DashboardPage,
 }));
 
+const GuidePage = lazy(async () => ({
+  default: (await import('./features/guide/GuidePage')).GuidePage,
+}));
+
 const SubmissionsPage = lazy(async () => ({
   default: (await import('./features/submissions/SubmissionsPage')).SubmissionsPage,
 }));
@@ -45,6 +49,10 @@ const AdminPage = lazy(async () => ({
   default: (await import('./features/admin/AdminPage')).AdminPage,
 }));
 
+const AccessDeniedPage = lazy(async () => ({
+  default: (await import('./features/auth/AccessDeniedPage')).AccessDeniedPage,
+}));
+
 function RouteFallback() {
   return (
     <div className="page-loading">
@@ -61,6 +69,7 @@ function App() {
         <BrowserRouter basename={import.meta.env.BASE_URL}>
           <Suspense fallback={<RouteFallback />}>
             <Routes>
+              <Route path="/" element={<LoginPage />} />
               <Route path="/login" element={<LoginPage />} />
 
               <Route
@@ -73,7 +82,18 @@ function App() {
               >
                 <Route index element={<Navigate to="/app/dashboard" replace />} />
                 <Route path="dashboard" element={<DashboardPage />} />
-                <Route path="submissions" element={<SubmissionsPage />} />
+                <Route path="guide" element={<GuidePage />} />
+                <Route path="forbidden" element={<AccessDeniedPage />} />
+                <Route
+                  path="submissions"
+                  element={
+                    <ProtectedRoute
+                      allowedRoles={['franchise_user', 'regional_manager', 'finance_controller', 'executive', 'system_admin']}
+                    >
+                      <SubmissionsPage />
+                    </ProtectedRoute>
+                  }
+                />
                 <Route
                   path="workflow"
                   element={
@@ -110,8 +130,7 @@ function App() {
                 />
               </Route>
 
-              <Route path="/" element={<Navigate to="/app" replace />} />
-              <Route path="*" element={<Navigate to="/app" replace />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Suspense>
         </BrowserRouter>

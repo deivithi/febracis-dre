@@ -1,17 +1,31 @@
 import { supabase } from '../../lib/supabase';
 import type { AccessProfile, RegionalRecord, RoleRecord } from '../auth/auth.types';
 import type {
+  AgentMessageRow,
+  AgentSessionRow,
+  AdminActionResult,
   AdminSnapshot,
+  AdminUserAccessPayload,
+  AdminUserProvisionPayload,
+  AdminUserProvisionResult,
   AuditLogRow,
   CurrentSubmissionRow,
-  DashboardSnapshot,
+  DreInputCatalogLine,
   DreStatementRow,
+  EventOptionRow,
   FranchiseDashboardRow,
   FranchiseListRow,
   NetworkDashboardRow,
   PendingReviewRow,
   RegionalDashboardRow,
   ReportingPeriodRow,
+  SubmissionEditorRecord,
+  SubmissionHistoryRow,
+  SubmissionIssueRow,
+  SubmissionKpiRow,
+  SubmissionWorkspaceSnapshot,
+  UserAccessDirectoryRow,
+  ValidationResultRow,
 } from './portal.types';
 
 type QueryResult<T> = PromiseLike<{ data: T[] | null; error: { message: string } | null }>;
@@ -51,7 +65,11 @@ function applyScopedFilters<TQuery extends { in: (column: string, values: string
   return query;
 }
 
-export async function fetchDashboardSnapshot(access: AccessProfile): Promise<DashboardSnapshot> {
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
+export async function fetchDashboardSnapshot(access: AccessProfile) {
   let franchiseQuery = supabase
     .from('vw_franchise_dashboard')
     .select('*')
@@ -102,13 +120,14 @@ export async function fetchDashboardSnapshot(access: AccessProfile): Promise<Das
         .limit(20)
     : emptyRows<PendingReviewRow>();
 
-  const [franchiseRows, regionalRows, networkRows, currentSubmissions, pendingReviews] = await Promise.all([
-    readRows<FranchiseDashboardRow>(asQueryResult(franchiseQuery), 'os dados de franquia do dashboard'),
-    readRows<RegionalDashboardRow>(asQueryResult(regionalQuery), 'os dados regionais do dashboard'),
-    readRows<NetworkDashboardRow>(asQueryResult(networkQuery), 'o consolidado da holding'),
-    readRows<CurrentSubmissionRow>(asQueryResult(submissionsQuery), 'as submissões correntes'),
-    readRows<PendingReviewRow>(asQueryResult(pendingReviewsQuery), 'a fila de revisão'),
-  ]);
+  const [franchiseRows, regionalRows, networkRows, currentSubmissions, pendingReviews] =
+    await Promise.all([
+      readRows<FranchiseDashboardRow>(asQueryResult(franchiseQuery), 'os dados de franquia do dashboard'),
+      readRows<RegionalDashboardRow>(asQueryResult(regionalQuery), 'os dados regionais do dashboard'),
+      readRows<NetworkDashboardRow>(asQueryResult(networkQuery), 'o consolidado da holding'),
+      readRows<CurrentSubmissionRow>(asQueryResult(submissionsQuery), 'as submissões correntes'),
+      readRows<PendingReviewRow>(asQueryResult(pendingReviewsQuery), 'a fila de revisão'),
+    ]);
 
   const latestFranchise = franchiseRows[0] ?? null;
   const currentDre = latestFranchise
@@ -141,7 +160,7 @@ export async function fetchDashboardSnapshot(access: AccessProfile): Promise<Das
   };
 }
 
-export async function fetchCurrentSubmissions(access: AccessProfile): Promise<CurrentSubmissionRow[]> {
+export async function fetchCurrentSubmissions(access: AccessProfile) {
   let query = supabase
     .from('vw_current_submissions')
     .select('*')
@@ -153,7 +172,7 @@ export async function fetchCurrentSubmissions(access: AccessProfile): Promise<Cu
   return readRows<CurrentSubmissionRow>(asQueryResult(query), 'as submissões correntes');
 }
 
-export async function fetchPendingReviews(): Promise<PendingReviewRow[]> {
+export async function fetchPendingReviews() {
   return readRows<PendingReviewRow>(
     asQueryResult(
       supabase
@@ -166,11 +185,11 @@ export async function fetchPendingReviews(): Promise<PendingReviewRow[]> {
   );
 }
 
-export async function fetchAccessibleFranchises(access: AccessProfile): Promise<FranchiseListRow[]> {
+export async function fetchAccessibleFranchises(access: AccessProfile) {
   let query = supabase
     .from('franchises')
     .select('id, code, trade_name, regional_id, status, city, state')
-    .order('trade_name', { ascending: true });
+    .order('code', { ascending: true });
 
   if (access.franchiseIds.length) {
     query = query.in('id', access.franchiseIds);
@@ -181,7 +200,34 @@ export async function fetchAccessibleFranchises(access: AccessProfile): Promise<
   return readRows<FranchiseListRow>(asQueryResult(query), 'as franquias disponíveis');
 }
 
-export async function fetchAuditEntries(limit = 50): Promise<AuditLogRow[]> {
+export async function fetchReportingPeriods() {
+  return readRows<ReportingPeriodRow>(
+    asQueryResult(
+      supabase
+        .from('reporting_periods')
+        .select('id, label, status, year, month, submission_deadline_at, adjustment_deadline_at')
+        .order('year', { ascending: false })
+        .order('month', { ascending: false }),
+    ),
+    'as competências',
+  );
+}
+
+export async function fetchEventsForSelection(franchiseId: string, reportingPeriodId: string) {
+  return readRows<EventOptionRow>(
+    asQueryResult(
+      supabase
+        .from('events')
+        .select('id, name, status, event_date, franchise_id, reporting_period_id')
+        .eq('franchise_id', franchiseId)
+        .eq('reporting_period_id', reportingPeriodId)
+        .order('event_date', { ascending: false }),
+    ),
+    'os eventos da competência',
+  );
+}
+
+export async function fetchAuditEntries(limit = 50) {
   return readRows<AuditLogRow>(
     asQueryResult(
       supabase
@@ -195,55 +241,555 @@ export async function fetchAuditEntries(limit = 50): Promise<AuditLogRow[]> {
 }
 
 export async function fetchAdminSnapshot(): Promise<AdminSnapshot> {
-  const [franchises, regionals, roles, profiles, periods] = await Promise.all([
-    readRows<FranchiseListRow>(
-      asQueryResult(
-        supabase
-          .from('franchises')
-          .select('id, code, trade_name, regional_id, status, city, state')
-          .order('trade_name', { ascending: true }),
+  const [franchises, regionals, roles, profiles, periods, submissions, currentSubmissions, pendingReviews] =
+    await Promise.all([
+      readRows<FranchiseListRow>(
+        asQueryResult(
+          supabase
+            .from('franchises')
+            .select('id, code, trade_name, regional_id, status, city, state')
+            .order('code', { ascending: true }),
+        ),
+        'as franquias',
       ),
-      'as franquias',
-    ),
-    readRows<RegionalRecord>(
-      asQueryResult(
-        supabase
-          .from('regionals')
-          .select('id, code, name')
-          .order('name', { ascending: true }),
+      readRows<RegionalRecord>(
+        asQueryResult(
+          supabase
+            .from('regionals')
+            .select('id, code, name')
+            .order('name', { ascending: true }),
+        ),
+        'as regionais',
       ),
-      'as regionais',
-    ),
-    readRows<RoleRecord>(
-      asQueryResult(
-        supabase
-          .from('roles')
-          .select('id, code, name, description')
-          .order('name', { ascending: true }),
+      readRows<RoleRecord>(
+        asQueryResult(
+          supabase
+            .from('roles')
+            .select('id, code, name, description')
+            .order('name', { ascending: true }),
+        ),
+        'os papéis cadastrados',
       ),
-      'os papéis cadastrados',
-    ),
-    readRows<{ id: string }>(
-      asQueryResult(supabase.from('profiles').select('id')),
-      'os usuários cadastrados',
-    ),
-    readRows<ReportingPeriodRow>(
-      asQueryResult(
-        supabase
-          .from('reporting_periods')
-          .select('id, label, status, year, month, submission_deadline_at, adjustment_deadline_at')
-          .order('year', { ascending: false })
-          .order('month', { ascending: false }),
+      readRows<{ id: string }>(
+        asQueryResult(supabase.from('profiles').select('id')),
+        'os usuários cadastrados',
       ),
-      'as competências',
-    ),
-  ]);
+      readRows<ReportingPeriodRow>(
+        asQueryResult(
+          supabase
+            .from('reporting_periods')
+            .select('id, label, status, year, month, submission_deadline_at, adjustment_deadline_at')
+            .order('year', { ascending: false })
+            .order('month', { ascending: false }),
+        ),
+        'as competências',
+      ),
+      readRows<{ id: string }>(
+        asQueryResult(supabase.from('submissions').select('id')),
+        'as submissões cadastradas',
+      ),
+      readRows<{ submission_id: string }>(
+        asQueryResult(supabase.from('vw_current_submissions').select('submission_id')),
+        'as submissões correntes',
+      ),
+      readRows<{ submission_id: string }>(
+        asQueryResult(supabase.from('vw_pending_reviews').select('submission_id')),
+        'a fila de revisão',
+      ),
+    ]);
 
   return {
     franchises,
     regionals,
     roles,
     userCount: profiles.length,
+    periodCount: periods.length,
+    submissionsCount: submissions.length,
+    currentSubmissionCount: currentSubmissions.length,
+    pendingReviewsCount: pendingReviews.length,
     openPeriods: periods.filter((period) => period.status !== 'closed'),
   };
+}
+
+export async function fetchUserAccessDirectory() {
+  return readRows<UserAccessDirectoryRow>(
+    asQueryResult(
+      supabase
+        .from('vw_user_access_directory')
+        .select('*')
+        .order('full_name', { ascending: true }),
+    ),
+    'o diretório de acessos',
+  );
+}
+
+async function callAdminFunction(
+  functionName: 'fn_admin_seed_demo_environment' | 'fn_admin_reset_demo_environment',
+  label: string,
+) {
+  const { data, error } = await supabase.rpc(functionName);
+
+  if (error) {
+    throw new Error(`Não foi possível ${label}. ${error.message}`);
+  }
+
+  return (data ?? { message: 'Operação concluída.' }) as AdminActionResult;
+}
+
+export function seedDemoEnvironment() {
+  return callAdminFunction(
+    'fn_admin_seed_demo_environment',
+    'preparar o ambiente de demonstração',
+  );
+}
+
+export function resetDemoEnvironment() {
+  return callAdminFunction(
+    'fn_admin_reset_demo_environment',
+    'zerar o ambiente de demonstração',
+  );
+}
+
+export async function upsertExistingUserAccess(payload: AdminUserAccessPayload) {
+  const { data, error } = await supabase.rpc('fn_admin_upsert_user_access', {
+    p_profile_id: payload.profileId,
+    p_full_name: payload.fullName,
+    p_status: payload.status,
+    p_role_code: payload.roleCode,
+    p_scope_type: payload.scopeType,
+    p_franchise_id: payload.franchiseId ?? null,
+    p_regional_id: payload.regionalId ?? null,
+  });
+
+  if (error) {
+    throw new Error(`Não foi possível atualizar o acesso. ${error.message}`);
+  }
+
+  return data as { message: string };
+}
+
+export async function provisionUserAccess(payload: AdminUserProvisionPayload) {
+  const { data, error } = await supabase.functions.invoke('admin-provision-user', {
+    body: {
+      email: payload.email,
+      fullName: payload.fullName,
+      password: payload.password ?? null,
+      status: payload.status,
+      roleCode: payload.roleCode,
+      scopeType: payload.scopeType,
+      franchiseId: payload.franchiseId ?? null,
+      regionalId: payload.regionalId ?? null,
+    },
+  });
+
+  if (error) {
+    throw new Error(`Não foi possível provisionar o usuário. ${error.message}`);
+  }
+
+  const result = data as AdminUserProvisionResult | { error?: string };
+
+  if ('error' in result && result.error) {
+    throw new Error(result.error);
+  }
+
+  return result as AdminUserProvisionResult;
+}
+
+export async function ensureSubmissionVersion(
+  franchiseId: string,
+  reportingPeriodId: string,
+  eventId?: string | null,
+) {
+  const { data, error } = await supabase.rpc('fn_create_submission_version', {
+    p_franchise_id: franchiseId,
+    p_reporting_period_id: reportingPeriodId,
+    p_event_id: eventId ?? null,
+  });
+
+  if (error) {
+    throw new Error(`Não foi possível preparar a submissão. ${error.message}`);
+  }
+
+  return data as {
+    submission_id: string;
+    version_number: number;
+    status: string;
+    reused: boolean;
+  };
+}
+
+export async function fetchSubmissionWorkspace(submissionId: string): Promise<SubmissionWorkspaceSnapshot> {
+  const submissionResult = await supabase
+    .from('submissions')
+    .select('id, franchise_id, reporting_period_id, event_id, version_number, status, notes, submitted_at, created_at')
+    .eq('id', submissionId)
+    .maybeSingle();
+
+  if (submissionResult.error) {
+    throw new Error(`Não foi possível carregar a submissão. ${submissionResult.error.message}`);
+  }
+
+  const submission = (submissionResult.data ?? null) as SubmissionEditorRecord | null;
+
+  if (!submission) {
+    return {
+      submission: null,
+      inputLines: [],
+      kpis: null,
+      dreStatement: [],
+      validationResults: [],
+      issues: [],
+      history: [],
+    };
+  }
+
+  const [
+    sections,
+    lines,
+    inputValues,
+    kpiResult,
+    dreStatement,
+    validationRows,
+    issues,
+    history,
+  ] = await Promise.all([
+    readRows<{ id: string; code: string; name: string; display_order: number }>(
+      asQueryResult(
+        supabase
+          .from('dre_sections')
+          .select('id, code, name, display_order')
+          .order('display_order', { ascending: true }),
+      ),
+      'as seções da DRE',
+    ),
+    readRows<{
+      id: string;
+      section_id: string;
+      code: string;
+      name: string;
+      description: string | null;
+      display_order: number;
+      input_mode: string | null;
+    }>(
+      asQueryResult(
+        supabase
+          .from('dre_lines')
+          .select('id, section_id, code, name, description, display_order, input_mode')
+          .eq('line_type', 'input')
+          .eq('is_active', true)
+          .order('display_order', { ascending: true }),
+      ),
+      'as linhas editáveis da DRE',
+    ),
+    readRows<{ dre_line_id: string; value_currency: number | null; notes: string | null }>(
+      asQueryResult(
+        supabase
+          .from('submission_input_values')
+          .select('dre_line_id, value_currency, notes')
+          .eq('submission_id', submissionId),
+      ),
+      'os inputs salvos da submissão',
+    ),
+    supabase
+      .from('submission_kpis')
+      .select('submission_id, gross_revenue, mc1, mc2, ebitda_1, ebitda_2, marketing_pct, default_pct, tax_pct, updated_at')
+      .eq('submission_id', submissionId)
+      .maybeSingle(),
+    readRows<DreStatementRow>(
+      asQueryResult(
+        supabase
+          .from('vw_submission_dre_statement')
+          .select('*')
+          .eq('submission_id', submissionId)
+          .order('section_order', { ascending: true })
+          .order('line_order', { ascending: true }),
+      ),
+      'a DRE oficial da submissão',
+    ),
+    readRows<{
+      id: string;
+      submission_id: string;
+      validation_rule_id: string;
+      status: string;
+      message: string | null;
+      detected_at: string;
+      validation_rules: {
+        code: string;
+        name: string;
+        severity: string;
+      } | null;
+    }>(
+      asQueryResult(
+        supabase
+          .from('submission_validation_results')
+          .select(`
+            id,
+            submission_id,
+            validation_rule_id,
+            status,
+            message,
+            detected_at,
+            validation_rules!inner (
+              code,
+              name,
+              severity
+            )
+          `)
+          .eq('submission_id', submissionId)
+          .order('detected_at', { ascending: false }),
+      ),
+      'as validações da submissão',
+    ),
+    readRows<SubmissionIssueRow>(
+      asQueryResult(
+        supabase
+          .from('submission_issues')
+          .select('id, submission_id, issue_type, severity, description, status, opened_at, resolved_at')
+          .eq('submission_id', submissionId)
+          .order('opened_at', { ascending: false }),
+      ),
+      'as pendências da submissão',
+    ),
+    readRows<SubmissionHistoryRow>(
+      asQueryResult(
+        supabase
+          .from('submission_status_history')
+          .select('id, submission_id, from_status, to_status, reason, changed_at')
+          .eq('submission_id', submissionId)
+          .order('changed_at', { ascending: false }),
+      ),
+      'o histórico da submissão',
+    ),
+  ]);
+
+  if (kpiResult.error) {
+    throw new Error(`Não foi possível carregar os KPIs da submissão. ${kpiResult.error.message}`);
+  }
+
+  const sectionMap = new Map(sections.map((section) => [section.id, section]));
+  const inputMap = new Map(inputValues.map((value) => [value.dre_line_id, value]));
+
+  const inputLines: DreInputCatalogLine[] = lines
+    .map((line) => {
+      const section = sectionMap.get(line.section_id);
+      const value = inputMap.get(line.id);
+
+      return {
+        id: line.id,
+        section_code: section?.code ?? 'section',
+        section_name: section?.name ?? 'Seção',
+        section_order: section?.display_order ?? 999,
+        line_code: line.code,
+        line_name: line.name,
+        description: line.description,
+        line_order: line.display_order,
+        input_mode: line.input_mode,
+        value_currency: value?.value_currency ?? null,
+        notes: value?.notes ?? null,
+      };
+    })
+    .sort((left, right) => {
+      if (left.section_order !== right.section_order) {
+        return left.section_order - right.section_order;
+      }
+
+      return left.line_order - right.line_order;
+    });
+
+  const normalizedValidationResults: ValidationResultRow[] = validationRows.map((row) => ({
+    id: row.id,
+    submission_id: row.submission_id,
+    validation_rule_id: row.validation_rule_id,
+    status: row.status,
+    message: row.message,
+    detected_at: row.detected_at,
+    rule_code: row.validation_rules?.code ?? 'rule',
+    rule_name: row.validation_rules?.name ?? 'Regra',
+    severity: row.validation_rules?.severity ?? 'info',
+  }));
+
+  return {
+    submission,
+    inputLines,
+    kpis: (kpiResult.data ?? null) as SubmissionKpiRow | null,
+    dreStatement,
+    validationResults: normalizedValidationResults,
+    issues,
+    history,
+  };
+}
+
+export async function saveSubmissionInputs(
+  submissionId: string,
+  inputs: Array<{ line_code: string; value_currency: number | null; notes?: string | null }>,
+  notes?: string | null,
+) {
+  const { data, error } = await supabase.rpc('fn_save_submission_inputs', {
+    p_submission_id: submissionId,
+    p_inputs: inputs,
+    p_notes: notes ?? null,
+  });
+
+  if (error) {
+    throw new Error(`Não foi possível salvar o rascunho. ${error.message}`);
+  }
+
+  return data as {
+    message: string;
+    validation_count: number;
+  };
+}
+
+export async function submitSubmission(submissionId: string, notes?: string | null) {
+  const { data, error } = await supabase.rpc('fn_submit_submission', {
+    p_submission_id: submissionId,
+    p_notes: notes ?? null,
+  });
+
+  if (error) {
+    throw new Error(`Não foi possível enviar a submissão. ${error.message}`);
+  }
+
+  return data as {
+    ok: boolean;
+    status: string;
+    blocking_errors?: number;
+    message: string;
+  };
+}
+
+export async function reviewSubmission(
+  submissionId: string,
+  action: 'start_review' | 'approve' | 'request_adjustment',
+  reason?: string | null,
+) {
+  const { data, error } = await supabase.rpc('fn_review_submission', {
+    p_submission_id: submissionId,
+    p_action: action,
+    p_reason: reason ?? null,
+  });
+
+  if (error) {
+    throw new Error(`Não foi possível concluir a ação da controladoria. ${error.message}`);
+  }
+
+  return data as {
+    status: string;
+    message: string;
+  };
+}
+
+export async function getOrCreateAgentSession(
+  submissionId: string,
+  franchiseId: string,
+  reportingPeriodId: string,
+  assistantMode = 'guided_dre',
+) {
+  const { data, error } = await supabase.rpc('fn_agent_get_or_create_session', {
+    p_submission_id: submissionId,
+    p_franchise_id: franchiseId,
+    p_reporting_period_id: reportingPeriodId,
+    p_assistant_mode: assistantMode,
+  });
+
+  if (error) {
+    throw new Error(`Nao foi possivel abrir o assistente. ${error.message}`);
+  }
+
+  const result = data as {
+    session_id: string;
+    assistant_mode: string;
+    status: string;
+  };
+
+  const sessionResult = await supabase
+    .from('agent_sessions')
+    .select('*')
+    .eq('id', result.session_id)
+    .maybeSingle();
+
+  if (sessionResult.error || !sessionResult.data) {
+    throw new Error(
+      `Nao foi possivel carregar a sessao do assistente. ${
+        sessionResult.error?.message ?? 'Sessao nao encontrada.'
+      }`,
+    );
+  }
+
+  return sessionResult.data as AgentSessionRow;
+}
+
+export async function fetchAgentMessages(sessionId: string) {
+  return readRows<AgentMessageRow>(
+    asQueryResult(
+      supabase
+        .from('agent_messages')
+        .select('id, session_id, role, content, citations, payload, created_at')
+        .eq('session_id', sessionId)
+        .order('created_at', { ascending: true }),
+    ),
+    'as mensagens do assistente',
+  );
+}
+
+export async function appendAgentMessage(
+  sessionId: string,
+  role: AgentMessageRow['role'],
+  content: string,
+  options?: {
+    citations?: AgentMessageRow['citations'];
+    payload?: AgentMessageRow['payload'];
+  },
+) {
+  const { data, error } = await supabase
+    .from('agent_messages')
+    .insert({
+      session_id: sessionId,
+      role,
+      content,
+      citations: options?.citations ?? [],
+      payload: options?.payload ?? {},
+    })
+    .select('id, session_id, role, content, citations, payload, created_at')
+    .single();
+
+  if (error) {
+    throw new Error(`Nao foi possivel registrar a mensagem do assistente. ${error.message}`);
+  }
+
+  await supabase
+    .from('agent_sessions')
+    .update({
+      last_message_at: new Date().toISOString(),
+    })
+    .eq('id', sessionId);
+
+  return data as AgentMessageRow;
+}
+
+export async function updateAgentSessionState(
+  sessionId: string,
+  stateJson: Record<string, unknown>,
+  summary?: string | null,
+) {
+  const { data, error } = await supabase
+    .from('agent_sessions')
+    .update({
+      state_json: stateJson,
+      summary: summary ?? null,
+      last_message_at: new Date().toISOString(),
+    })
+    .eq('id', sessionId)
+    .select('*')
+    .single();
+
+  if (error) {
+    throw new Error(`Nao foi possivel atualizar o estado do assistente. ${error.message}`);
+  }
+
+  return data as AgentSessionRow;
+}
+
+export function formatApiError(error: unknown, fallback: string) {
+  return getErrorMessage(error, fallback);
 }

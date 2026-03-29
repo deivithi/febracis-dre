@@ -161,4 +161,187 @@ export interface AdminSnapshot {
   roles: RoleRecord[];
   openPeriods: ReportingPeriodRow[];
   userCount: number;
+  periodCount: number;
+  submissionsCount: number;
+  currentSubmissionCount: number;
+  pendingReviewsCount: number;
+}
+
+export interface AdminActionResult {
+  message: string;
+  deleted_submissions?: number;
+  deleted_franchises?: number;
+  deleted_regionals?: number;
+  regionals?: number;
+  franchises?: number;
+  periods?: number;
+  current_submissions?: number;
+  previous_submissions?: number;
+}
+
+export interface UserAccessDirectoryRow {
+  profile_id: string;
+  full_name: string;
+  email: string;
+  profile_status: string;
+  created_at: string;
+  updated_at: string;
+  role_code: string | null;
+  role_name: string | null;
+  scope_type: 'franchise' | 'regional' | 'network' | null;
+  franchise_id: string | null;
+  regional_id: string | null;
+  franchise_name: string | null;
+  franchise_code: string | null;
+  regional_name: string | null;
+  regional_code: string | null;
+}
+
+export interface AdminUserAccessPayload {
+  profileId: string;
+  fullName: string;
+  status: 'active' | 'inactive' | 'invited';
+  roleCode: string;
+  scopeType: 'franchise' | 'regional' | 'network';
+  franchiseId?: string | null;
+  regionalId?: string | null;
+}
+
+export interface AdminUserProvisionPayload {
+  email: string;
+  fullName: string;
+  password?: string | null;
+  status: 'active' | 'inactive' | 'invited';
+  roleCode: string;
+  scopeType: 'franchise' | 'regional' | 'network';
+  franchiseId?: string | null;
+  regionalId?: string | null;
+}
+
+export interface AdminUserProvisionResult {
+  ok: boolean;
+  created: boolean;
+  invited: boolean;
+  profileId: string;
+  message: string;
+}
+
+export interface EventOptionRow {
+  id: string;
+  name: string;
+  status: string;
+  event_date: string | null;
+  franchise_id: string;
+  reporting_period_id: string;
+}
+
+export interface SubmissionEditorRecord {
+  id: string;
+  franchise_id: string;
+  reporting_period_id: string;
+  event_id: string | null;
+  version_number: number;
+  status: string;
+  notes: string | null;
+  submitted_at: string | null;
+  created_at: string;
+}
+
+export interface DreInputCatalogLine {
+  id: string;
+  section_code: string;
+  section_name: string;
+  section_order: number;
+  line_code: string;
+  line_name: string;
+  description: string | null;
+  line_order: number;
+  input_mode: string | null;
+  value_currency: NumericValue;
+  notes: string | null;
+}
+
+export interface SubmissionKpiRow {
+  submission_id: string;
+  gross_revenue: NumericValue;
+  mc1: NumericValue;
+  mc2: NumericValue;
+  ebitda_1: NumericValue;
+  ebitda_2: NumericValue;
+  marketing_pct: NumericValue;
+  default_pct: NumericValue;
+  tax_pct: NumericValue;
+  updated_at: string;
+}
+
+export interface ValidationResultRow {
+  id: string;
+  submission_id: string;
+  validation_rule_id: string;
+  status: string;
+  message: string | null;
+  detected_at: string;
+  rule_code: string;
+  rule_name: string;
+  severity: string;
+}
+
+export interface SubmissionIssueRow {
+  id: string;
+  submission_id: string;
+  issue_type: string;
+  severity: string;
+  description: string;
+  status: string;
+  opened_at: string;
+  resolved_at: string | null;
+}
+
+export interface SubmissionHistoryRow {
+  id: string;
+  submission_id: string;
+  from_status: string | null;
+  to_status: string;
+  reason: string | null;
+  changed_at: string;
+}
+
+export interface SubmissionWorkspaceSnapshot {
+  submission: SubmissionEditorRecord | null;
+  inputLines: DreInputCatalogLine[];
+  kpis: SubmissionKpiRow | null;
+  dreStatement: DreStatementRow[];
+  validationResults: ValidationResultRow[];
+  issues: SubmissionIssueRow[];
+  history: SubmissionHistoryRow[];
+}
+
+export interface AgentSessionRow {
+  id: string;
+  profile_id: string;
+  submission_id: string | null;
+  franchise_id: string;
+  reporting_period_id: string;
+  assistant_mode: string;
+  title: string | null;
+  status: 'active' | 'archived';
+  summary: string | null;
+  state_json: Record<string, unknown>;
+  last_message_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AgentMessageRow {
+  id: string;
+  session_id: string;
+  role: 'user' | 'assistant' | 'system' | 'tool';
+  content: string;
+  citations: Array<{
+    title: string;
+    source: string;
+    excerpt?: string;
+  }>;
+  payload: Record<string, unknown>;
+  created_at: string;
 }

@@ -6,9 +6,11 @@ const ROLE_PRIORITY: RoleCode[] = [
   'executive',
   'regional_manager',
   'franchise_user',
+  'viewer',
 ];
 
 const REVIEW_ROLE_CODES: RoleCode[] = ['finance_controller', 'executive', 'system_admin'];
+const SUBMISSION_OPERATOR_ROLE_CODES: RoleCode[] = ['franchise_user', 'system_admin'];
 
 export function sortRolesByPriority(roles: RoleRecord[]) {
   return [...roles].sort(
@@ -55,6 +57,10 @@ export function hasReviewAccess(roleCodes: RoleCode[]) {
   return REVIEW_ROLE_CODES.some((role) => roleCodes.includes(role));
 }
 
+export function hasSubmissionOperationAccess(roleCodes: RoleCode[]) {
+  return SUBMISSION_OPERATOR_ROLE_CODES.some((role) => roleCodes.includes(role));
+}
+
 export function getDashboardScopeLabel(scope: DashboardScope) {
   switch (scope) {
     case 'controladoria':
@@ -69,6 +75,10 @@ export function getDashboardScopeLabel(scope: DashboardScope) {
 }
 
 export function getScopeSummary(accessProfile: AccessProfile) {
+  if (accessProfile.isAdmin) {
+    return 'Rede completa';
+  }
+
   if (accessProfile.hasNetworkScope) {
     return 'Rede completa';
   }
@@ -80,11 +90,11 @@ export function getScopeSummary(accessProfile: AccessProfile) {
   return accessProfile.scopes
     .map((scope) => {
       if (scope.scope_type === 'franchise' && scope.franchise) {
-        return scope.franchise.trade_name;
+        return `${scope.franchise.code} • ${scope.franchise.trade_name}`;
       }
 
       if (scope.scope_type === 'regional' && scope.regional) {
-        return scope.regional.name;
+        return `${scope.regional.code} • ${scope.regional.name}`;
       }
 
       return 'Rede completa';

@@ -1,6 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
-import { hasReviewAccess, resolveDashboardScope, resolvePrimaryRole, sortRolesByPriority } from './access';
+import {
+  hasReviewAccess,
+  hasSubmissionOperationAccess,
+  resolveDashboardScope,
+  resolvePrimaryRole,
+  sortRolesByPriority,
+} from './access';
 import type {
   AccessProfile,
   FranchiseRecord,
@@ -141,6 +147,7 @@ async function fetchAccessProfile(userId: string): Promise<AccessProfile> {
     dashboardScope: resolveDashboardScope(roleCodes, scopes),
     isAdmin: roleCodes.includes('system_admin'),
     canManageReview: hasReviewAccess(roleCodes),
+    canOperateSubmission: hasSubmissionOperationAccess(roleCodes),
     hasNetworkScope: scopes.some((scope) => scope.scope_type === 'network'),
     franchiseIds,
     regionalIds,

@@ -1,0 +1,37 @@
+.workflow-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.workflow-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.workflow-sidebar__notes {
+  margin-top: var(--space-5);
+}
+
+.workflow-sidebar__textarea {
+  min-height: 140px;
+  resize: vertical;
+}
+
+.workflow-sidebar__actions {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+}
+
+.workflow-sidebar__stack {
+  margin-top: var(--space-5);
+}
+
+@media (max-width: 1280px) {
+  .workflow-layout {
+    grid-template-columns: 1fr;
+  }
+}

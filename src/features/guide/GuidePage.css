@@ -1,0 +1,121 @@
+.guide-page {
+  gap: var(--space-6);
+}
+
+.guide-page__viewer-banner {
+  margin-bottom: 0;
+  text-align: left;
+  line-height: 1.65;
+}
+
+.guide-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+  gap: var(--space-6);
+  padding: var(--space-6);
+  position: relative;
+  overflow: hidden;
+}
+
+.guide-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at top left, rgba(240, 183, 62, 0.12), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(46, 123, 246, 0.16), transparent 34%);
+  pointer-events: none;
+}
+
+.guide-hero__copy,
+.guide-hero__panel {
+  position: relative;
+  z-index: 1;
+}
+
+.guide-hero__subtitle {
+  max-width: 760px;
+}
+
+.guide-hero__panel {
+  padding: var(--space-5);
+  border-radius: var(--radius-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.guide-hero__panel-header {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--accent-gold);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.guide-hero__panel-text {
+  color: var(--text-secondary);
+  line-height: 1.8;
+}
+
+.guide-card__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-4);
+  background: rgba(46, 123, 246, 0.14);
+  color: var(--accent-secondary);
+}
+
+.guide-card__title {
+  margin: 0 0 var(--space-2);
+}
+
+.guide-card__text {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.75;
+}
+
+.guide-list {
+  margin: 0;
+  padding-left: 1.2rem;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  line-height: 1.75;
+}
+
+.guide-formulas {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.guide-formulas__item {
+  padding: var(--space-4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg);
+  background: rgba(10, 14, 26, 0.42);
+}
+
+.guide-formulas__item code {
+  white-space: pre-wrap;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+@media (max-width: 1180px) {
+  .guide-hero,
+  .guide-formulas {
+    grid-template-columns: 1fr;
+  }
+}

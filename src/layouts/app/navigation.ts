@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import {
+  BookOpenText,
   Building2,
   ClipboardCheck,
   FileSpreadsheet,
@@ -27,7 +28,13 @@ export const navigationSections: NavigationSection[] = [
     label: 'Operação',
     items: [
       { to: '/app/dashboard', icon: LayoutDashboard, label: 'Dashboard', exact: true },
-      { to: '/app/submissions', icon: FileSpreadsheet, label: 'Submissões' },
+      { to: '/app/guide', icon: BookOpenText, label: 'Guia' },
+      {
+        to: '/app/submissions',
+        icon: FileSpreadsheet,
+        label: 'Submissões',
+        allowedRoles: ['franchise_user', 'regional_manager', 'finance_controller', 'executive', 'system_admin'],
+      },
       {
         to: '/app/workflow',
         icon: ClipboardCheck,

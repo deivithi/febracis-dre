@@ -29,6 +29,39 @@
   --accent-gold-hover:   #F5C862;
   --accent-gold-soft:    rgba(240, 183, 62, 0.12);
   --accent-gold-border:  rgba(240, 183, 62, 0.25);
+  /* Destaque amarelo âmbar (CTAs secundários, chips de período) */
+  --accent-amber:        #EAB308;
+  --accent-amber-soft:   rgba(234, 179, 8, 0.14);
+  --text-amber:          #FDE047;
+
+  /* Variação / métrica (evitar competir com ouro da marca) */
+  --metric-positive:     #34D399;
+  --metric-positive-soft: rgba(52, 211, 153, 0.12);
+  --metric-negative:     #F87171;
+  --metric-negative-soft: rgba(248, 113, 113, 0.12);
+
+  /* Income statement / tabela DRE */
+  --statement-surface:       rgba(26, 31, 46, 0.65);
+  --statement-border:        rgba(46, 123, 246, 0.12);
+  --statement-section-bg:    rgba(46, 123, 246, 0.08);
+  --statement-subtotal-bg:   rgba(240, 183, 62, 0.06);
+  --statement-total-bg:      rgba(240, 183, 62, 0.1);
+  --statement-indicator-fg:  var(--text-amber);
+
+  /* Assistente / thread (paleta Febracis, UX tipo produto de chat) */
+  --chat-canvas:                 rgba(10, 14, 26, 0.72);
+  --chat-canvas-mesh:            radial-gradient(ellipse 85% 55% at 50% -15%, rgba(46, 123, 246, 0.14), transparent 55%),
+                                 radial-gradient(ellipse 50% 45% at 100% 40%, rgba(240, 183, 62, 0.1), transparent 50%),
+                                 radial-gradient(ellipse 40% 35% at 0% 80%, rgba(234, 179, 8, 0.06), transparent 45%);
+  --chat-thread-border:          rgba(46, 123, 246, 0.14);
+  --chat-bubble-user-bg:         rgba(46, 123, 246, 0.18);
+  --chat-bubble-user-border:     rgba(46, 123, 246, 0.35);
+  --chat-bubble-assistant-bg:    rgba(240, 183, 62, 0.1);
+  --chat-bubble-assistant-border: rgba(240, 183, 62, 0.28);
+  --chat-composer-bg:            rgba(17, 24, 39, 0.92);
+  --chat-composer-border:        rgba(46, 123, 246, 0.18);
+  --chat-focus-ring:             0 0 0 2px var(--bg-primary), 0 0 0 4px rgba(240, 183, 62, 0.45);
+  --chat-placeholder:            var(--text-muted);
 
   /* ================================================
      COLORS — Status

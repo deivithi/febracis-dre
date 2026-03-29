@@ -1,4 +1,5 @@
 export type RoleCode =
+  | 'viewer'
   | 'franchise_user'
   | 'regional_manager'
   | 'finance_controller'
@@ -55,6 +56,7 @@ export interface AccessProfile {
   dashboardScope: DashboardScope;
   isAdmin: boolean;
   canManageReview: boolean;
+  canOperateSubmission: boolean;
   hasNetworkScope: boolean;
   franchiseIds: string[];
   regionalIds: string[];

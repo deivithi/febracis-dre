@@ -2,17 +2,22 @@ import { useQuery } from '@tanstack/react-query';
 import {
   AlertTriangle,
   ArrowDownRight,
+  ArrowRight,
   ArrowUpRight,
   BarChart3,
   Building2,
   CheckCircle2,
   ClipboardList,
+  DatabaseZap,
   DollarSign,
   ShieldCheck,
+  Sparkles,
   Target,
   TrendingUp,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { getDashboardScopeLabel } from '../auth/access';
+import type { AccessProfile } from '../auth/auth.types';
 import { useAccessProfile } from '../auth/useAccessProfile';
 import { fetchDashboardSnapshot } from '../shared/portal.api';
 import type {
@@ -34,6 +39,7 @@ import {
   isPositiveDelta,
   toNumber,
 } from '../../utils/formatters';
+import { HoldingCockpitView } from './HoldingCockpitView';
 import './DashboardPage.css';
 
 interface KpiCardModel {
@@ -155,7 +161,7 @@ function buildNetworkKpis(snapshot: DashboardSnapshot): KpiCardModel[] {
     return [];
   }
 
-  const current = snapshot.latestNetwork;
+  const current = snapshot.latestNetwork!;
   const previous = snapshot.previousNetwork;
 
   return [
@@ -282,6 +288,122 @@ function KpiCards({ items }: { items: KpiCardModel[] }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function getScopeNarrative(scope: string) {
+  switch (scope) {
+    case 'controladoria':
+      return 'Priorize a fila, valide pendências e sustente a governança do fechamento.';
+    case 'holding':
+      return 'Acompanhe o consolidado da rede, o ranking de margem e os pontos críticos.';
+    case 'regional':
+      return 'Compare franquias da carteira, identifique desvios e cobre aderência de envio.';
+    default:
+      return 'Leia a DRE oficial da unidade, acompanhe o status do período e prepare ajustes.';
+  }
+}
+
+function DashboardHero({
+  accessProfile,
+  snapshot,
+}: {
+  accessProfile: AccessProfile | undefined;
+  snapshot: DashboardSnapshot;
+}) {
+  if (!accessProfile) {
+    return null;
+  }
+
+  const hasOperationalData =
+    snapshot.currentSubmissions.length > 0 ||
+    snapshot.pendingReviews.length > 0 ||
+    snapshot.currentDre.length > 0;
+
+  const currentPeriod = formatPeriodLabel(getCurrentPeriodLabel(snapshot));
+  const primaryAction = accessProfile.isAdmin
+    ? {
+        to: '/app/admin',
+        label: hasOperationalData ? 'Gerenciar ambiente demo' : 'Preparar ambiente demo',
+      }
+    : {
+        to: '/app/submissions',
+        label: 'Ir para submissões',
+      };
+
+  const secondaryAction = accessProfile.canManageReview
+    ? { to: '/app/workflow', label: 'Abrir fila de revisão' }
+    : { to: '/app/dashboard', label: 'Atualizar leitura' };
+
+  const flow = [
+    'Input oficial da franquia',
+    'Revisão da controladoria',
+    'Consolidação executiva',
+  ];
+
+  return (
+    <div className="page-stack">
+      <section className="dashboard-hero card card--gold">
+        <div className="dashboard-hero__copy">
+          <span className="badge badge--gold">{getDashboardScopeLabel(accessProfile.dashboardScope)}</span>
+          <h1 className="page-container__title dashboard-hero__title">
+            Resultado por franquia com trilha de governança visível.
+          </h1>
+          <p className="page-container__subtitle dashboard-hero__subtitle">
+            {getScopeNarrative(accessProfile.dashboardScope)} Período atual: {currentPeriod}.
+          </p>
+
+          <div className="dashboard-hero__flow">
+            {flow.map((step, index) => (
+              <div key={step} className="dashboard-hero__flow-step">
+                <span className="dashboard-hero__flow-index">0{index + 1}</span>
+                <span>{step}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="dashboard-hero__panel glass">
+          <div className="dashboard-hero__panel-header">
+            <Sparkles size={16} />
+            <span>Estado atual do portal</span>
+          </div>
+
+          <div className="dashboard-hero__metrics">
+            <div>
+              <strong>{formatInteger(snapshot.currentSubmissions.length)}</strong>
+              <span>submissões correntes</span>
+            </div>
+            <div>
+              <strong>{formatInteger(snapshot.pendingReviews.length)}</strong>
+              <span>itens na fila de revisão</span>
+            </div>
+            <div>
+              <strong>{currentPeriod}</strong>
+              <span>competência em foco</span>
+            </div>
+          </div>
+
+          <div className="dashboard-hero__actions">
+            <Link to={primaryAction.to} className="btn btn--gold">
+              <DatabaseZap size={18} />
+              {primaryAction.label}
+            </Link>
+            <Link to={secondaryAction.to} className="btn btn--secondary">
+              {secondaryAction.label}
+              <ArrowRight size={16} />
+            </Link>
+          </div>
+
+          {!hasOperationalData && (
+            <div className="inline-message">
+              O dashboard já está ligado ao Supabase. O próximo passo é popular o ambiente demo
+              para ativar a leitura executiva.
+            </div>
+          )}
+        </div>
+      </section>
     </div>
   );
 }
@@ -618,111 +740,7 @@ function RegionalDashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
 }
 
 function HoldingDashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
-  const current = snapshot.latestNetwork;
-
-  if (!current) {
-    return (
-      <div className="empty-state">
-        <div className="empty-state__icon">
-          <ShieldCheck />
-        </div>
-        <h3 className="empty-state__title">Sem consolidado da rede disponível</h3>
-        <p className="empty-state__description">
-          O consolidado da holding aparecerá assim que houver submissões registradas nas franquias.
-        </p>
-      </div>
-    );
-  }
-
-  const currentRows = getCurrentPeriodFranchiseRows(snapshot);
-
-  return (
-    <div className="dashboard__content">
-      <div className="content-grid content-grid--sidebar">
-        <div className="card card--accent">
-          <div className="card__header">
-            <div>
-              <h3 className="card__title">Ranking da rede</h3>
-              <p className="card__subtitle">
-                Melhor e pior desempenho por EBITDA 2 na competência atual
-              </p>
-            </div>
-            <span className="badge badge--gold">{formatPeriodLabel(current.period_label)}</span>
-          </div>
-          <div className="card__body page-stack">
-            <div>
-              <h4 className="dashboard-section-title">Franquias destaque</h4>
-              <div className="list-stack">
-                {getTopFranchises(currentRows).map((row) => (
-                  <div key={row.submission_id} className="list-row">
-                    <div>
-                      <div className="list-row__title">{row.franchise_name}</div>
-                      <div className="list-row__meta">
-                        {row.regional_name} • {formatPercent(row.ebitda2_pct)} de margem
-                      </div>
-                    </div>
-                    <div className="list-row__value font-mono">{formatCurrency(row.ebitda_2)}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <h4 className="dashboard-section-title">Franquias críticas</h4>
-              <div className="list-stack">
-                {getCriticalFranchises(currentRows).map((row) => (
-                  <div key={`${row.submission_id}-critical`} className="list-row">
-                    <div>
-                      <div className="list-row__title">{row.franchise_name}</div>
-                      <div className="list-row__meta">{row.regional_name}</div>
-                    </div>
-                    <div className="list-row__value">
-                      <div className="font-mono">{formatPercent(row.ebitda2_pct)}</div>
-                      <div className="list-row__meta">{formatCurrency(row.ebitda_2)}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="dashboard__side">
-          <div className="card">
-            <div className="card__header">
-              <h3 className="card__title">Status da rede</h3>
-            </div>
-            <div className="card__body">
-              <div className="detail-list">
-                <div className="detail-list__item">
-                  <span className="detail-list__label">Franquias</span>
-                  <span className="detail-list__value">{formatInteger(current.total_franchises)}</span>
-                </div>
-                <div className="detail-list__item">
-                  <span className="detail-list__label">Regionais</span>
-                  <span className="detail-list__value">{formatInteger(current.total_regionals)}</span>
-                </div>
-                <div className="detail-list__item">
-                  <span className="detail-list__label">Aprovadas</span>
-                  <span className="detail-list__value">{formatInteger(current.approved_count)}</span>
-                </div>
-                <div className="detail-list__item">
-                  <span className="detail-list__label">Pendentes</span>
-                  <span className="detail-list__value">{formatInteger(current.pending_count)}</span>
-                </div>
-                <div className="detail-list__item">
-                  <span className="detail-list__label">Melhor margem</span>
-                  <span className="detail-list__value">{formatPercent(current.max_ebitda2_pct)}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <PendingReviewsCard rows={snapshot.pendingReviews.slice(0, 5)} />
-        </div>
-      </div>
-    </div>
-  );
+  return <HoldingCockpitView snapshot={snapshot} />;
 }
 
 function ControladoriaDashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
@@ -881,6 +899,8 @@ export function DashboardPage() {
           <span className="badge badge--primary">{currentPeriodLabel}</span>
         </div>
       </div>
+
+      <DashboardHero accessProfile={accessProfile} snapshot={snapshot} />
 
       <KpiCards items={kpis} />
 
