@@ -56,21 +56,18 @@ npm run build
 
 Os ícones em `public/` (`favicon-16.png`, `favicon-32.png`, `apple-touch-icon.png`) são gerados por `scripts/generate-favicons.mjs`.
 
-**Por quê não basta copiar o PNG?** Na sidebar, o ficheiro `public/images/logo-febracis.png` é recolorido com **filtros CSS** (`.sidebar__logo-image` em `src/styles/components/layout.css`). O ícone da aba é estático — não recebe CSS — por isso o script rasteriza o **mesmo filtro** com Playwright + Chromium e redimensiona com `sharp`.
+**Por quê não basta copiar o PNG?** Na sidebar, o ficheiro `public/images/logo-febracis.png` é recolorido com **filtros CSS** (`.sidebar__logo-image` em `src/styles/components/layout.css`). O ícone da aba é estático — não recebe CSS — por isso o script rasteriza uma **variante leve** do filtro (sem a segunda sombra escura, para menos halo em fundo transparente) com Playwright + Chromium e redimensiona com `sharp`.
 
-**Tamanho na aba:** o lockup é horizontal (ex. 300×170). Para **favicon-16** e **favicon-32** o script usa um **recorte quadrado** (canto superior esquerdo, lado = menor dimensão do PNG) para o símbolo ocupar mais pixels no quadrado final. O **apple-touch-icon** (180×180) usa o **lockup completo** para o nome “Febracis” ficar legível em iOS.
+**Tamanho na aba:** o lockup é horizontal (ex. 300×170). Para **favicon-16** e **favicon-32** o script **recorta a zona esquerda** (águia) em percentagem da largura, aplica **`trim()`** no canal alpha e preenche o canvas — só a **águia**, sem o wordmark. O **apple-touch-icon** (180×180) usa o **lockup completo** (águia + “Febracis”) para o nome ficar legível em iOS.
 
-**Fundo:** por defeito o raster usa fundo **sólido claro** `#FBF6EC` (bom contraste com o dourado em **abas escuras** do Chrome). Não replica o painel escuro da sidebar.
-
-- Fundo **transparente** (opt-in): `FAVICON_TRANSPARENT=1` antes de `npm run favicons`.
-- Cor **custom** (hex `#RRGGBB`): `FAVICON_BG_HEX` (ex.: `#F5ECD8`). Hex inválido volta ao `#FBF6EC` com aviso no terminal.
+**Fundo:** por defeito o raster usa fundo **transparente** (evita o “quadrado claro” na aba quando o símbolo é pequeno no meio do PNG). Fundo **sólido** (opcional, p.ex. CI que precise de contraste fixo): `FAVICON_BG_HEX=#RRGGBB`. Hex inválido ou vazio → transparente, com aviso no terminal se o valor for inválido.
 
 ```powershell
-# Windows PowerShell — exemplo fundo transparente
-$env:FAVICON_TRANSPARENT="1"; npm run favicons
+# Windows PowerShell — exemplo fundo sólido claro (opcional)
+$env:FAVICON_BG_HEX="#FBF6EC"; npm run favicons
 ```
 
-**Limitação honesta:** em **16×16** o wordmark completo continua ilegível; o recorte favorece o **símbolo**. O **180×180** é onde o nome aparece com clareza.
+**Limitação honesta:** em **16×16** o wordmark completo continua ilegível; os **16/32** mostram só a **águia**. O **180×180** é onde o nome aparece com clareza.
 
 **Requisito:** navegador Chromium do Playwright instalado (uma vez por máquina/CI):
 

@@ -1,16 +1,16 @@
 /**
- * Gera favicons PNG (16 / 32 / apple-touch 180) com o lockup Febracis (águia + texto).
+ * Gera favicons PNG (16 / 32 / apple-touch 180).
  *
- * O filtro de cor dourada replica `.sidebar__logo-image` em layout.css.
- * - favicon-16 / favicon-32: recorte quadrado à esquerda do PNG (mais área útil num ícone pequeno).
- * - apple-touch-icon: lockup completo (melhor leitura do nome em 180×180).
+ * - favicon-16 / favicon-32: só a **águia** — recorte horizontal à esquerda de `logo-febracis.png` + `trim` alpha.
+ * - apple-touch-icon: **lockup completo** (águia + “Febracis”).
  *
- * Fundo: por defeito **sólido claro** `#FBF6EC` (bom contraste com dourado em abas escuras).
- * Transparente: `FAVICON_TRANSPARENT=1`. Cor custom: `FAVICON_BG_HEX=#RRGGBB`.
+ * **Fundo por defeito: transparente** (sem quadrado claro na aba). Fundo sólido opcional: `FAVICON_BG_HEX=#RRGGBB`.
  *
- * Fallback: se existir `public/images/logo-febracis-favicon.png`, usa-se sem filtro CSS.
+ * Filtro dourado alinhado à sidebar (variante leve no raster para menos halo em fundo transparente).
  *
- * Manter em sync com .sidebar__logo-image em src/styles/components/layout.css
+ * Fallback: `public/images/logo-febracis-favicon.png` (sem filtro CSS).
+ *
+ * Manter em sync com `.sidebar__logo-image` em `src/styles/components/layout.css`
  *
  * Uso: npm run favicons
  * Requer: sharp, playwright (Chromium: npx playwright install chromium)
@@ -27,38 +27,54 @@ const outDir = join(root, 'public');
 const defaultLogoPath = join(root, 'public', 'images', 'logo-febracis.png');
 const optionalGoldPath = join(root, 'public', 'images', 'logo-febracis-favicon.png');
 
-/** Mesmo filtro que `.sidebar__logo-image` (layout.css) — não alterar sem atualizar o CSS. */
-const SIDEBAR_LOGO_FILTER = [
+/** Ver `.sidebar__logo-image` em `layout.css` — o raster usa variante leve (`FAVICON_LOGO_FILTER_LIGHT`). */
+
+/** Variante leve do filtro da sidebar: sem sombra escura (menos halo em fundo transparente). */
+const FAVICON_LOGO_FILTER_LIGHT = [
   'brightness(0) saturate(100%)',
   'invert(79%) sepia(49%) saturate(624%) hue-rotate(354deg)',
   'brightness(104%) contrast(99%)',
   'drop-shadow(0 0 12px rgba(240, 183, 62, 0.24))',
-  'drop-shadow(0 8px 18px rgba(0, 0, 0, 0.2))',
 ].join(' ');
 
 const RASTER_SIZE = 512;
 
-/** Fundo claro por defeito (contraste com dourado em abas escuras); transparente só com FAVICON_TRANSPARENT=1. */
-const DEFAULT_FAVICON_BG_HEX = '#FBF6EC';
+/** Recorte horizontal da águia (percentagem da largura do PNG original). Afinar se a marca mudar. */
+const FAVICON_EAGLE_LEFT_PCT = 0;
+const FAVICON_EAGLE_WIDTH_PCT = 46;
 
-/** Área útil do lockup em `#mark img`; margem mínima para `drop-shadow` do filtro (evitar clipping). */
-const FAVICON_IMG_MAX_WIDTH_PCT = 98;
-const FAVICON_IMG_MAX_HEIGHT_PCT = 90;
+/** Lockup completo no #mark (apple-touch). */
+const FAVICON_FULL_IMG_MAX_WIDTH_PCT = 98;
+const FAVICON_FULL_IMG_MAX_HEIGHT_PCT = 92;
+
+/** Só águia: preencher o canvas após trim. */
+const FAVICON_EAGLE_IMG_MAX_WIDTH_PCT = 100;
+const FAVICON_EAGLE_IMG_MAX_HEIGHT_PCT = 100;
 
 /**
- * Recorte quadrado a partir do canto superior esquerdo (lado = min(largura, altura)).
- * Maximiza o símbolo na aba para PNGs horizontais (ex. 300×170).
+ * Zona esquerda do lockup (águia) + trim ao contorno do desenho.
  *
  * @param {Buffer} inputBuf
  * @returns {Promise<Buffer>}
  */
-async function extractSmallIconSquarePng(inputBuf) {
+async function extractEagleMarkPng(inputBuf) {
   const meta = await sharp(inputBuf).metadata();
   if (meta.width === undefined || meta.height === undefined) {
     throw new Error('Metadados de imagem em falta (largura/altura).');
   }
-  const side = Math.min(meta.width, meta.height);
-  return sharp(inputBuf).extract({ left: 0, top: 0, width: side, height: side }).png().toBuffer();
+  const w = meta.width;
+  const h = meta.height;
+  const left = Math.round((FAVICON_EAGLE_LEFT_PCT / 100) * w);
+  const extractWidth = Math.min(
+    Math.round((FAVICON_EAGLE_WIDTH_PCT / 100) * w),
+    w - left,
+  );
+  /** Dois passos: `extract`+`trim` na mesma chain falha neste sharp/libvips (“bad extract area”). */
+  const cropped = await sharp(inputBuf)
+    .extract({ left, top: 0, width: extractWidth, height: h })
+    .png()
+    .toBuffer();
+  return sharp(cropped).trim().png().toBuffer();
 }
 
 /**
@@ -77,40 +93,33 @@ function parseSolidBgHex(raw) {
 }
 
 /**
- * Transparente com opt-in; senão DEFAULT ou FAVICON_BG_HEX válido.
- * @returns {string | null} hex ou null = transparente
+ * Fundo sólido só com `FAVICON_BG_HEX` válido; caso contrário transparente.
+ * @returns {string | null} hex ou null
  */
 function resolveSolidBackgroundHex() {
-  if (process.env.FAVICON_TRANSPARENT === '1') {
-    if (process.env.FAVICON_BG_HEX !== undefined && String(process.env.FAVICON_BG_HEX).trim() !== '') {
-      console.warn('FAVICON_TRANSPARENT=1: FAVICON_BG_HEX ignorado (fundo transparente).');
-    }
+  const raw = process.env.FAVICON_BG_HEX;
+  if (raw === undefined || String(raw).trim() === '') {
     return null;
   }
-
-  const raw = process.env.FAVICON_BG_HEX;
-  if (raw !== undefined && String(raw).trim() !== '') {
-    const parsed = parseSolidBgHex(raw);
-    if (parsed !== null) {
-      return parsed;
-    }
-    console.warn(
-      `FAVICON_BG_HEX inválido (use #RRGGBB). A usar fundo por defeito ${DEFAULT_FAVICON_BG_HEX}.`,
-    );
-    return DEFAULT_FAVICON_BG_HEX;
+  const parsed = parseSolidBgHex(raw);
+  if (parsed !== null) {
+    return parsed;
   }
-
-  return DEFAULT_FAVICON_BG_HEX;
+  console.warn('FAVICON_BG_HEX inválido (use #RRGGBB). A usar fundo transparente.');
+  return null;
 }
 
 /**
  * @param {string} imageDataUrl
  * @param {boolean} applyCssFilter
  * @param {string | null} solidBgHex
+ * @param {{ imgMaxWidthPct: number; imgMaxHeightPct: number; filterCss: string }} layout
  */
-function buildMarkupPage(imageDataUrl, applyCssFilter, solidBgHex) {
-  const imgFilter = applyCssFilter ? SIDEBAR_LOGO_FILTER : 'none';
+function buildMarkupPage(imageDataUrl, applyCssFilter, solidBgHex, layout) {
+  const imgFilter = applyCssFilter ? layout.filterCss : 'none';
   const bg = solidBgHex === null ? 'transparent' : solidBgHex;
+  const mw = layout.imgMaxWidthPct;
+  const mh = layout.imgMaxHeightPct;
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -133,8 +142,8 @@ function buildMarkupPage(imageDataUrl, applyCssFilter, solidBgHex) {
       background: ${bg};
     }
     #mark img {
-      max-width: ${FAVICON_IMG_MAX_WIDTH_PCT}%;
-      max-height: ${FAVICON_IMG_MAX_HEIGHT_PCT}%;
+      max-width: ${mw}%;
+      max-height: ${mh}%;
       width: auto;
       height: auto;
       object-fit: contain;
@@ -153,12 +162,13 @@ function buildMarkupPage(imageDataUrl, applyCssFilter, solidBgHex) {
  * @param {Buffer} buf
  * @param {boolean} applyCssFilter
  * @param {string | null} solidBgHex
+ * @param {{ imgMaxWidthPct: number; imgMaxHeightPct: number; filterCss: string }} layout
  * @returns {Promise<Buffer>}
  */
-async function rasterizeMarkPngFromBuffer(buf, applyCssFilter, solidBgHex) {
+async function rasterizeMarkPngFromBuffer(buf, applyCssFilter, solidBgHex, layout) {
   const b64 = buf.toString('base64');
   const dataUrl = `data:image/png;base64,${b64}`;
-  const html = buildMarkupPage(dataUrl, applyCssFilter, solidBgHex);
+  const html = buildMarkupPage(dataUrl, applyCssFilter, solidBgHex, layout);
 
   const omitBackground = solidBgHex === null;
 
@@ -203,24 +213,40 @@ async function main() {
   const applyCssFilter = !useOptionalGold;
 
   const sourceBuf = readFileSync(sourcePath);
-  const smallSquareBuf = await extractSmallIconSquarePng(sourceBuf);
+  const eagleBuf = await extractEagleMarkPng(sourceBuf);
+
+  const filterCssRaster = applyCssFilter ? FAVICON_LOGO_FILTER_LIGHT : 'none';
+
+  const layoutEagle = {
+    imgMaxWidthPct: FAVICON_EAGLE_IMG_MAX_WIDTH_PCT,
+    imgMaxHeightPct: FAVICON_EAGLE_IMG_MAX_HEIGHT_PCT,
+    filterCss: filterCssRaster,
+  };
+
+  const layoutFull = {
+    imgMaxWidthPct: FAVICON_FULL_IMG_MAX_WIDTH_PCT,
+    imgMaxHeightPct: FAVICON_FULL_IMG_MAX_HEIGHT_PCT,
+    filterCss: filterCssRaster,
+  };
 
   if (useOptionalGold) {
     console.log('Usando logo-febracis-favicon.png (marca dourada, sem filtro CSS).');
   } else {
-    console.log('Raster com filtro da sidebar (Playwright + Chromium).');
+    console.log('Raster com filtro da sidebar (variante leve; Playwright + Chromium).');
   }
 
   if (solidBgHex !== null) {
-    console.log(`Fundo do favicon: ${solidBgHex}${process.env.FAVICON_BG_HEX ? ' (FAVICON_BG_HEX)' : ' (por defeito)'}.`);
+    console.log(`Fundo sólido: ${solidBgHex} (FAVICON_BG_HEX).`);
   } else {
-    console.log('Fundo transparente (FAVICON_TRANSPARENT=1).');
+    console.log('Fundo transparente (ícone assenta na aba do browser).');
   }
 
-  console.log('favicon-16/32: recorte quadrado (canto superior esquerdo); apple-touch: lockup completo.');
+  console.log(
+    `favicon-16/32: águia (recorte ${FAVICON_EAGLE_WIDTH_PCT}% largura + trim); apple-touch: lockup completo.`,
+  );
 
-  const rasterSmall = await rasterizeMarkPngFromBuffer(smallSquareBuf, applyCssFilter, solidBgHex);
-  const rasterApple = await rasterizeMarkPngFromBuffer(sourceBuf, applyCssFilter, solidBgHex);
+  const rasterSmall = await rasterizeMarkPngFromBuffer(eagleBuf, applyCssFilter, solidBgHex, layoutEagle);
+  const rasterApple = await rasterizeMarkPngFromBuffer(sourceBuf, applyCssFilter, solidBgHex, layoutFull);
 
   await writeIconFromRaster(rasterSmall, 16, 'favicon-16.png');
   await writeIconFromRaster(rasterSmall, 32, 'favicon-32.png');
