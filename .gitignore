@@ -27,3 +27,8 @@ supabase/.temp/
 *.sw?
 
 .vercel
+
+# Artefactos locais / CI
+test-results/
+output/
+.cursor/

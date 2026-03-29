@@ -45,3 +45,7 @@ O dado nasce na franquia, passa pela controladoria e só depois sobe para as vis
 - Governança por perfil e escopo
 - KPI oficial calculado no sistema
 - Trilha de histórico e auditoria
+
+## Identidade na web (favicon)
+
+O ícone da **aba do browser** e o **apple-touch-icon** (iOS) são ficheiros estáticos em `public/` (`favicon-16.png`, `favicon-32.png`, `apple-touch-icon.png`). O aspeto dourado alinha-se ao painel da marca na sidebar (filtros CSS rasterizados em build de assets). Para regenerar após mudar o logo ou o filtro em `src/styles/components/layout.css`, ver a secção **Favicons** no `README.md` e o script `npm run favicons` (requer Chromium do Playwright).

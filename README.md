@@ -54,11 +54,23 @@ npm run build
 
 ## Favicons (aba do navegador / iOS)
 
-Os ícones em `public/` (`favicon-16.png`, `favicon-32.png`, `apple-touch-icon.png`) são gerados a partir de `public/images/logo-febracis.png` (mesmo asset da sidebar). Depois de alterar o logo oficial, regenere:
+Os ícones em `public/` (`favicon-16.png`, `favicon-32.png`, `apple-touch-icon.png`) são gerados por `scripts/generate-favicons.mjs`.
+
+**Por quê não basta copiar o PNG?** Na sidebar, o ficheiro `public/images/logo-febracis.png` é recolorido com **filtros CSS** (`.sidebar__logo-image` em `src/styles/components/layout.css`). O ícone da aba é um ficheiro estático — não recebe CSS — por isso o script rasteriza o mesmo filtro e o mesmo tipo de fundo do “painel” da marca (Playwright + Chromium) e depois redimensiona com `sharp`.
+
+**Requisito:** navegador Chromium do Playwright instalado (uma vez por máquina/CI):
+
+```bash
+npx playwright install chromium
+```
+
+Depois de alterar o logo base ou o filtro na sidebar, regenere os favicons e faça commit dos PNGs:
 
 ```bash
 npm run favicons
 ```
+
+**Fallback opcional:** se existir `public/images/logo-febracis-favicon.png` (export oficial já em dourado, sem depender do filtro CSS), esse ficheiro passa a ser a fonte e o filtro da sidebar **não** é aplicado. Use quando a equipa de marca preferir controlar o aspeto do ícone diretamente.
 
 ## Validação da fundação DRE
 
