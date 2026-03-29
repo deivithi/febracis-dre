@@ -420,9 +420,382 @@ function isGreetingOrStartFlow(normalizedMessage: string) {
   return false;
 }
 
-/** Mensagens que podem ser respondidas só com a lógica local (sem LLM) — ex.: saudação / início do fluxo. */
+/** Limite de mensagens recentes enviadas ao modelo (histórico no prompt). */
+export const AGENT_MESSAGE_HISTORY_LIMIT = 32;
+
+export type DreUserIntentCategory = 'dre_on_topic' | 'off_topic';
+
+export type FlowCheckpointUserIntent = 'greeting' | 'numeric_value' | 'dre_question' | 'off_topic' | 'other';
+
+export interface FlowCheckpoint {
+  phase: 'collecting' | 'complete' | 'explain_only';
+  line_code: string | null;
+  filled_count: number;
+  total_inputs: number;
+  last_user_intent: FlowCheckpointUserIntent;
+}
+
+/** Heurística de desvio de tópico (camada de entrada). Não substitui moderação humana. */
+export function classifyDreUserIntent(rawMessage: string): DreUserIntentCategory {
+  const n = normalizeText(rawMessage);
+  if (n.length > 400) {
+    return 'dre_on_topic';
+  }
+
+  const offTopicHints = [
+    'poema',
+    'piada',
+    'politica',
+    'eleicao',
+    'futebol',
+    'receita de',
+    'bitcoin',
+    'clima hoje',
+    'cante uma',
+    'escreva um codigo',
+    'ignore todas',
+    'ignore as instrucoes',
+    'diga a senha',
+    'filme ',
+    'serie ',
+    'whatsapp',
+    'instagram',
+  ];
+
+  if (offTopicHints.some((hint) => n.includes(hint))) {
+    return 'off_topic';
+  }
+
+  const dreHints = [
+    'dre',
+    'ebitda',
+    'mc1',
+    'mc2',
+    'receita',
+    'despesa',
+    'campo',
+    'linha',
+    'franquia',
+    'submis',
+    'valor',
+    'real',
+    'mil',
+    'salvar',
+    'enviar',
+    'explic',
+    'pular',
+    'saltar',
+    'ola',
+    'oi',
+    'ajuda',
+    'rbv',
+    'margem',
+    'cmv',
+    'royalt',
+  ];
+
+  if (dreHints.some((hint) => n.includes(hint))) {
+    return 'dre_on_topic';
+  }
+
+  if (/^-?\d[\d.,\s]*$/.test(n.replace(/\s/g, ''))) {
+    return 'dre_on_topic';
+  }
+
+  if (n.length < 36 && !/\d/.test(n)) {
+    return 'off_topic';
+  }
+
+  return 'dre_on_topic';
+}
+
+export function countFilledInputs(
+  lines: DreInputCatalogLine[],
+  currentValues: Record<string, string>,
+): number {
+  return lines.filter((line) => (currentValues[line.line_code] ?? '').trim().length > 0).length;
+}
+
+export function buildFlowCheckpoint(input: {
+  lines: DreInputCatalogLine[];
+  currentValues: Record<string, string>;
+  focusLineCode: string | null;
+  userMessage: string;
+  explainOnly: boolean;
+}): FlowCheckpoint {
+  const filled = countFilledInputs(input.lines, input.currentValues);
+  const total = input.lines.length;
+  const n = normalizeText(input.userMessage);
+  let lastUserIntent: FlowCheckpointUserIntent = 'other';
+
+  if (isGreetingOrStartFlow(n)) {
+    lastUserIntent = 'greeting';
+  } else if (classifyDreUserIntent(input.userMessage) === 'off_topic') {
+    lastUserIntent = 'off_topic';
+  } else if (parseAssistantCurrencyReply(input.userMessage) !== null) {
+    lastUserIntent = 'numeric_value';
+  } else if (
+    n.includes('explic') ||
+    n.includes('o que e') ||
+    n.includes('para que') ||
+    n.includes('duvida')
+  ) {
+    lastUserIntent = 'dre_question';
+  }
+
+  const phase = input.explainOnly
+    ? 'explain_only'
+    : filled >= total && total > 0
+      ? 'complete'
+      : 'collecting';
+
+  return {
+    phase,
+    line_code: input.focusLineCode,
+    filled_count: filled,
+    total_inputs: total,
+    last_user_intent: lastUserIntent,
+  };
+}
+
+const FLOW_CHECKPOINT_PHASES: FlowCheckpoint['phase'][] = ['collecting', 'complete', 'explain_only'];
+const FLOW_CHECKPOINT_INTENTS: FlowCheckpointUserIntent[] = [
+  'greeting',
+  'numeric_value',
+  'dre_question',
+  'off_topic',
+  'other',
+];
+
+/** Lê `flow_checkpoint` persistido em `state_json` da sessão do agente (validação defensiva). */
+export function parseFlowCheckpointFromState(state: unknown): FlowCheckpoint | null {
+  if (!state || typeof state !== 'object') {
+    return null;
+  }
+  const raw = (state as Record<string, unknown>).flow_checkpoint;
+  if (!raw || typeof raw !== 'object') {
+    return null;
+  }
+  const o = raw as Record<string, unknown>;
+  const phase = o.phase;
+  const lastUserIntent = o.last_user_intent;
+  if (typeof phase !== 'string' || !FLOW_CHECKPOINT_PHASES.includes(phase as FlowCheckpoint['phase'])) {
+    return null;
+  }
+  if (
+    typeof lastUserIntent !== 'string' ||
+    !FLOW_CHECKPOINT_INTENTS.includes(lastUserIntent as FlowCheckpointUserIntent)
+  ) {
+    return null;
+  }
+  const lineCode: string | null =
+    o.line_code === null ? null : typeof o.line_code === 'string' ? o.line_code : null;
+  const filledCount = typeof o.filled_count === 'number' && Number.isFinite(o.filled_count) ? o.filled_count : 0;
+  const totalInputs = typeof o.total_inputs === 'number' && Number.isFinite(o.total_inputs) ? o.total_inputs : 0;
+
+  return {
+    phase: phase as FlowCheckpoint['phase'],
+    line_code: lineCode,
+    filled_count: filledCount,
+    total_inputs: totalInputs,
+    last_user_intent: lastUserIntent as FlowCheckpointUserIntent,
+  };
+}
+
+export function validateAssistantFieldUpdates(
+  updates: DreAssistantFieldUpdate[],
+  knownLineCodes: Set<string>,
+): DreAssistantFieldUpdate[] {
+  return updates.filter((u) => {
+    if (!knownLineCodes.has(u.lineCode)) {
+      return false;
+    }
+    if (!Number.isFinite(u.valueCurrency)) {
+      return false;
+    }
+    if (Math.abs(u.valueCurrency) > 1e16) {
+      return false;
+    }
+    return true;
+  });
+}
+
+/**
+ * Remove afirmações com valores numéricos para MC/EBITDA na resposta (o motor oficial calcula).
+ */
+export function stripCalculatedMetricClaimsFromAnswer(answer: string): string {
+  const blocks = answer.split(/\n\n+/);
+  const metricStart = /^\s*(MC1|MC2|EBITDA\s*1|EBITDA\s*2|EBITDA)\b/i;
+  const hasMoney = /R\$\s*[\d.\s]+|[\d]{1,3}(\.[\d]{3})+(,\d{2})?\b|\d+,\d{2}\b/;
+
+  const kept = blocks.filter((block) => {
+    const lines = block.split('\n');
+    return !lines.some((line) => metricStart.test(line) && hasMoney.test(line));
+  });
+
+  let out = kept.join('\n\n').trim();
+  if (out.length < 24 && answer.trim().length > 24) {
+    out = `${answer.split('\n')[0]}\n\nOs totais MC1, MC2 e EBITDA são sempre recalculados pelo sistema no painel lateral — aqui não exibimos números calculados.`;
+  }
+  return out.length > 0 ? out : answer;
+}
+
+export function buildConversationSummaryFromMessages(
+  messages: Array<{ role: string; content: string }>,
+): string | null {
+  const assistantBodies = messages
+    .filter((m) => m.role === 'assistant')
+    .slice(-3)
+    .map((m) => m.content.replace(/\s+/g, ' ').trim().slice(0, 180));
+
+  if (assistantBodies.length === 0) {
+    return null;
+  }
+
+  return `Resumo do que o assistente disse recentemente: ${assistantBodies.join(' | ')}`;
+}
+
+/** Mensagens que podem ser respondidas só com a lógica local (sem LLM) — ex.: saudação, off-topic curto. */
 export function shouldUseDeterministicAssistantTurn(message: string): boolean {
-  return isGreetingOrStartFlow(normalizeText(message.trim()));
+  const trimmed = message.trim();
+  const n = normalizeText(trimmed);
+  if (isGreetingOrStartFlow(n)) {
+    return true;
+  }
+  if (classifyDreUserIntent(trimmed) === 'off_topic') {
+    return true;
+  }
+  return false;
+}
+
+function runLocalAssistantTurnExplainOnly(input: {
+  message: string;
+  lines: DreInputCatalogLine[];
+  currentValues: Record<string, string>;
+  currentLineCode?: string | null;
+}): DreAssistantTurnResult {
+  const normalizedMessage = normalizeText(input.message);
+  const focusLine = input.currentLineCode
+    ? input.lines.find((line) => line.line_code === input.currentLineCode) ?? null
+    : null;
+  const nextLine =
+    findNextGuidedLine(input.lines, input.currentValues, input.currentLineCode ?? undefined) ??
+    input.lines[0] ??
+    null;
+
+  if (classifyDreUserIntent(input.message) === 'off_topic') {
+    const anchor = focusLine ?? nextLine;
+    return {
+      answer: `Posso ajudar só com a DRE deste período: campos, ordem de preenchimento e regras da Febracis. ${anchor ? `Voltando ao contexto: ${anchor.line_name} — posso explicar o que esse campo representa.` : 'Pergunte sobre um campo da DRE ou sobre o fluxo de submissão.'}`,
+      citations: STATIC_KNOWLEDGE.slice(0, 1),
+      fieldUpdates: [],
+      focusLineCode: anchor?.line_code ?? null,
+      nextPrompt: anchor ? `Quer uma explicação sobre “${anchor.line_name}”?` : null,
+      requestSave: false,
+      requestSubmit: false,
+      mode: 'fallback',
+    };
+  }
+
+  if (isGreetingOrStartFlow(normalizedMessage)) {
+    return {
+      answer:
+        'Olá! Você está no modo orientação: posso explicar campos da DRE, a ordem da planilha e as regras de envio. Quem digita os valores na submissão é o franqueado (ou administrador da unidade) com permissão de operação — daqui não altero números nem salvo rascunho.',
+      citations: STATIC_KNOWLEDGE.slice(0, 2),
+      fieldUpdates: [],
+      focusLineCode: nextLine?.line_code ?? null,
+      nextPrompt: nextLine
+        ? `Quer que eu explique o campo “${nextLine.line_name}” ou outro da lista?`
+        : null,
+      requestSave: false,
+      requestSubmit: false,
+      mode: 'fallback',
+    };
+  }
+
+  if (normalizedMessage.includes('salvar') || normalizedMessage.includes('enviar')) {
+    return {
+      answer:
+        'No modo leitura eu não disparei gravação nem envio. Quem pode editar deve usar os botões “Salvar rascunho” e “Enviar para revisão” no painel lateral.',
+      citations: STATIC_KNOWLEDGE.slice(1, 2),
+      fieldUpdates: [],
+      focusLineCode: focusLine?.line_code ?? null,
+      nextPrompt: null,
+      requestSave: false,
+      requestSubmit: false,
+      mode: 'fallback',
+    };
+  }
+
+  if (normalizedMessage.includes('pular') || normalizedMessage.includes('saltar')) {
+    return {
+      answer:
+        'Pular ou alterar campos na conversa só está disponível para quem opera a submissão. Aqui posso só orientar sobre o que cada linha significa.',
+      citations: STATIC_KNOWLEDGE.slice(0, 1),
+      fieldUpdates: [],
+      focusLineCode: focusLine?.line_code ?? null,
+      nextPrompt: focusLine ? `Quer explicação sobre “${focusLine.line_name}”?` : null,
+      requestSave: false,
+      requestSubmit: false,
+      mode: 'fallback',
+    };
+  }
+
+  const mentionedLine = findLineByPrompt(input.lines, input.message);
+  if (
+    normalizedMessage.includes('serve') ||
+    normalizedMessage.includes('o que e') ||
+    normalizedMessage.includes('para que') ||
+    normalizedMessage.includes('duvida') ||
+    normalizedMessage.includes('explicar') ||
+    mentionedLine
+  ) {
+    const helpLine = mentionedLine ?? focusLine ?? nextLine;
+    if (helpLine) {
+      const guide = getFieldGuide(helpLine);
+      return {
+        answer: `${guide.help} ${guide.example} No seu perfil, os valores são preenchidos pelo responsável da unidade na mesma tela — o painel ao lado mostra MC1, MC2 e EBITDA recalculados pelo sistema após cada gravação.`,
+        citations: [
+          {
+            title: guide.label,
+            source: `${helpLine.section_name} • ${helpLine.line_code}`,
+            excerpt: guide.help,
+          },
+        ],
+        fieldUpdates: [],
+        focusLineCode: helpLine.line_code,
+        nextPrompt: `Quer detalhes sobre outro campo da DRE?`,
+        requestSave: false,
+        requestSubmit: false,
+        mode: 'fallback',
+      };
+    }
+  }
+
+  if (parseAssistantCurrencyReply(input.message) !== null) {
+    return {
+      answer:
+        'Recebi um valor em reais, mas no modo orientação eu não aplico números na submissão. Peça ao franqueado (perfil com operação na submissão) para informar esse valor na conversa ou na planilha, ou use “Explicar campo” se quiser só entender a linha.',
+      citations: STATIC_KNOWLEDGE.slice(0, 1),
+      fieldUpdates: [],
+      focusLineCode: focusLine?.line_code ?? nextLine?.line_code ?? null,
+      nextPrompt: focusLine ? `Quer explicação sobre “${focusLine.line_name}”?` : null,
+      requestSave: false,
+      requestSubmit: false,
+      mode: 'fallback',
+    };
+  }
+
+  return {
+    answer: `Modo orientação: falo só sobre a DRE, campos e fluxo. ${ASSISTANT_REPLY_FORMAT_HINT} Não altero dados nem calculo MC1, MC2 ou EBITDA — isso aparece no painel depois que a unidade salva.`,
+    citations: STATIC_KNOWLEDGE.slice(0, 2),
+    fieldUpdates: [],
+    focusLineCode: nextLine?.line_code ?? null,
+    nextPrompt: nextLine ? `Quer explicação sobre “${nextLine.line_name}”?` : null,
+    requestSave: false,
+    requestSubmit: false,
+    mode: 'fallback',
+  };
 }
 
 export function runLocalAssistantTurn(input: {
@@ -430,7 +803,26 @@ export function runLocalAssistantTurn(input: {
   lines: DreInputCatalogLine[];
   currentValues: Record<string, string>;
   currentLineCode?: string | null;
+  /** Só explicação: sem fieldUpdates nem pedidos de gravação. */
+  explainOnly?: boolean;
 }): DreAssistantTurnResult {
+  if (input.explainOnly) {
+    if (!input.lines.length) {
+      return {
+        answer:
+          'Abra uma submissão neste recorte para eu explicar os campos da DRE e o fluxo. No modo orientação não altero valores.',
+        citations: STATIC_KNOWLEDGE.slice(0, 1),
+        fieldUpdates: [],
+        focusLineCode: null,
+        nextPrompt: null,
+        requestSave: false,
+        requestSubmit: false,
+        mode: 'fallback',
+      };
+    }
+    return runLocalAssistantTurnExplainOnly(input);
+  }
+
   const normalizedMessage = normalizeText(input.message);
   const focusLine = input.currentLineCode
     ? input.lines.find((line) => line.line_code === input.currentLineCode) ?? null
@@ -444,6 +836,20 @@ export function runLocalAssistantTurn(input: {
       fieldUpdates: [],
       focusLineCode: null,
       nextPrompt: null,
+      requestSave: false,
+      requestSubmit: false,
+      mode: 'fallback',
+    };
+  }
+
+  if (classifyDreUserIntent(input.message) === 'off_topic') {
+    const anchor = focusLine ?? findNextGuidedLine(input.lines, input.currentValues, input.currentLineCode ?? undefined);
+    return {
+      answer: `Foco na DRE deste período. ${anchor ? `Seguimos com “${anchor.line_name}”: ${buildQuestionForLine(anchor)}` : 'Envie o próximo valor em reais ou peça “Explicar campo”.'}`,
+      citations: STATIC_KNOWLEDGE.slice(0, 1),
+      fieldUpdates: [],
+      focusLineCode: anchor?.line_code ?? null,
+      nextPrompt: anchor ? buildQuestionForLine(anchor) : null,
       requestSave: false,
       requestSubmit: false,
       mode: 'fallback',
