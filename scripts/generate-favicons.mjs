@@ -37,6 +37,10 @@ const SIDEBAR_LOGO_FILTER = [
 
 const RASTER_SIZE = 512;
 
+/** Área útil do lockup em `#mark img`; margem mínima para `drop-shadow` do filtro (evitar clipping). */
+const FAVICON_IMG_MAX_WIDTH_PCT = 98;
+const FAVICON_IMG_MAX_HEIGHT_PCT = 90;
+
 /**
  * @param {string | undefined} raw
  * @returns {string | null} hex #RRGGBB ou null
@@ -82,8 +86,8 @@ function buildMarkupPage(imageDataUrl, applyCssFilter, solidBgHex) {
       background: ${bg};
     }
     #mark img {
-      max-width: 92%;
-      max-height: 76%;
+      max-width: ${FAVICON_IMG_MAX_WIDTH_PCT}%;
+      max-height: ${FAVICON_IMG_MAX_HEIGHT_PCT}%;
       width: auto;
       height: auto;
       object-fit: contain;
