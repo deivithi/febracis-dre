@@ -79,6 +79,38 @@ function jsonResponse(res: AgentApiResponse, status: number, body: unknown) {
   return res.status(status).json(body);
 }
 
+interface SafeError {
+  status: number;
+  code: string;
+  message: string;
+}
+
+function classifyAgentError(error: unknown): SafeError {
+  const raw = error instanceof Error ? error.message : String(error);
+  const lower = raw.toLowerCase();
+
+  if (lower.includes('sessao do assistente nao encontrada') || lower.includes('sessao nao encontrada')) {
+    return { status: 404, code: 'SESSION_NOT_FOUND', message: 'Sessao do assistente nao encontrada.' };
+  }
+  if (lower.includes('nao corresponde a esta submissao') || lower.includes('nao corresponde ao recorte')) {
+    return { status: 400, code: 'SUBMISSION_MISMATCH', message: 'Parametros da sessao invalidos.' };
+  }
+  if (lower.includes('usuario autenticado nao encontrado')) {
+    return { status: 401, code: 'UNAUTHENTICATED', message: 'Nao autenticado.' };
+  }
+  if (lower.includes('acesso negado')) {
+    return { status: 403, code: 'FORBIDDEN', message: 'Acesso negado.' };
+  }
+  if (lower.includes('permission denied')) {
+    return { status: 403, code: 'FORBIDDEN', message: 'Sem permissao para operacao.' };
+  }
+  if (lower.includes('invalid request') || lower.includes('zod')) {
+    return { status: 400, code: 'INVALID_INPUT', message: 'Dados invalidos.' };
+  }
+
+  return { status: 500, code: 'INTERNAL', message: 'Erro interno no assistente.' };
+}
+
 function getEnv(name: string, fallback?: string) {
   return process.env[name] ?? fallback ?? null;
 }
@@ -598,7 +630,8 @@ export default async function handler(req: AgentApiRequest, res: AgentApiRespons
       interaction_mode: explainOnly ? 'explain_only' : 'full',
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unexpected agent error.';
-    return jsonResponse(res, 400, { error: message });
+    console.error('[dre-agent] internal error:', error);
+    const safe = classifyAgentError(error);
+    return jsonResponse(res, safe.status, { error: safe.message, code: safe.code });
   }
 }

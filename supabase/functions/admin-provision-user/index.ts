@@ -62,6 +62,38 @@ function jsonResponse(request: Request, status: number, body: unknown) {
   });
 }
 
+interface SafeError {
+  status: number;
+  code: string;
+  message: string;
+}
+
+function classifyError(error: unknown): SafeError {
+  const raw = error instanceof Error ? error.message : String(error);
+  const lower = raw.toLowerCase();
+
+  if (lower.includes('duplicate key') || lower.includes('unique constraint')) {
+    return { status: 409, code: 'DUPLICATE', message: 'Recurso ja existe.' };
+  }
+  if (lower.includes('violates foreign key')) {
+    return { status: 400, code: 'INVALID_REFERENCE', message: 'Referencia invalida no payload.' };
+  }
+  if (lower.includes('violates check constraint') || lower.includes('violates not-null')) {
+    return { status: 400, code: 'INVALID_INPUT', message: 'Dados invalidos ou campos obrigatorios ausentes.' };
+  }
+  if (lower.includes('permission denied') || lower.includes('acesso negado')) {
+    return { status: 403, code: 'FORBIDDEN', message: 'Acesso negado para a operacao.' };
+  }
+  if (lower.includes('nao encontrad')) {
+    return { status: 404, code: 'NOT_FOUND', message: 'Recurso nao encontrado.' };
+  }
+  if (lower.includes('password') && lower.includes('weak')) {
+    return { status: 400, code: 'WEAK_PASSWORD', message: 'Senha fraca. Use no minimo 8 caracteres.' };
+  }
+
+  return { status: 500, code: 'INTERNAL', message: 'Erro interno ao processar requisicao.' };
+}
+
 function normalizePayload(payload: ProvisionUserPayload) {
   return {
     email: payload.email.trim().toLowerCase(),
@@ -294,8 +326,8 @@ Deno.serve(async (request) => {
           : "Acesso atualizado com sucesso.",
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unexpected error.";
-
-    return jsonResponse(request, 400, { error: message });
+    console.error("[admin-provision-user] internal error:", error);
+    const safe = classifyError(error);
+    return jsonResponse(request, safe.status, { error: safe.message, code: safe.code });
   }
 });
