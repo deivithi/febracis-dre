@@ -21,6 +21,10 @@ Portal gerencial multi-franquias da Febracis para coleta padronizada da **DRE** 
 - React Router
 - Assistente DRE: função serverless `api/dre-agent.ts` (OpenRouter quando configurado; modo guiado local sem chave)
 
+## CI (GitHub Actions)
+
+O workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) executa `lint`, `test` e `build` em cada push e pull request para `main`. O job `audit` (dependências de produção) roda de forma informativa e **não** bloqueia o merge.
+
 ## Ambiente local
 
 1. Instale as dependências:

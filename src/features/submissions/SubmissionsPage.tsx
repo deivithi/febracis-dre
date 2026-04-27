@@ -137,7 +137,9 @@ export function SubmissionsPage() {
   });
 
   useEffect(() => {
-    setMobileWorkspaceTab('chat');
+    queueMicrotask(() => {
+      setMobileWorkspaceTab('chat');
+    });
   }, [resolvedFranchiseId, resolvedPeriodId]);
 
   const canEdit = access?.canOperateSubmission ?? false;
@@ -178,7 +180,7 @@ export function SubmissionsPage() {
   const draftStatementRows = useMemo(() => {
     if (!workspaceQuery.data?.inputLines?.length) return [];
     return buildDraftStatementRows(workspaceQuery.data.inputLines, effectiveLineValues, parseCurrencyInput);
-  }, [workspaceQuery.data?.inputLines, effectiveLineValues]);
+  }, [workspaceQuery.data, effectiveLineValues]);
 
   const { rows: resolvedStatementRows, source: statementSource } = useMemo(
     () => resolveStatementRows(workspaceQuery.data?.dreStatement, draftStatementRows),
@@ -190,7 +192,7 @@ export function SubmissionsPage() {
       return { ok: true, missingRequired: [] as const, filledCount: 0, totalInputs: 0 };
     }
     return validateDraftInputs(workspaceQuery.data.inputLines, effectiveLineValues, parseCurrencyInput);
-  }, [workspaceQuery.data?.inputLines, effectiveLineValues]);
+  }, [workspaceQuery.data, effectiveLineValues]);
 
   const currentSubmissionStatus = currentSubmission?.status ?? null;
   const activeSubmissionStatus = workspaceQuery.data?.submission?.status ?? currentSubmissionStatus;
