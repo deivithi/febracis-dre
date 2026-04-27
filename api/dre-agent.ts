@@ -21,6 +21,7 @@ import {
   type DreAssistantTurnResult,
   type FlowCheckpoint,
 } from '../src/features/submissions/dreAssistant.js';
+import { parseAgentRateLimitEnv, parseRateLimitRpcResult } from './agentRateLimitConfig.js';
 
 const DEFAULT_OPENROUTER_MODEL = 'minimax/minimax-m2.7';
 
@@ -34,6 +35,7 @@ interface AgentApiRequest {
 }
 
 interface AgentApiResponse {
+  setHeader?: (name: string, value: string) => void;
   status: (code: number) => {
     json: (body: unknown) => unknown;
   };
@@ -498,6 +500,36 @@ export default async function handler(req: AgentApiRequest, res: AgentApiRespons
 
   if (!parsedBody.success) {
     return jsonResponse(res, 400, { error: 'Invalid request body.' });
+  }
+
+  const rateLimit = parseAgentRateLimitEnv();
+  if (rateLimit.enabled) {
+    try {
+      const supabase = createSupabaseUserClient(authorization);
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userData.user) {
+        return jsonResponse(res, 401, { error: 'Usuario autenticado nao encontrado para o assistente.' });
+      }
+      const { data: rateData, error: rateError } = await supabase.rpc('fn_agent_rate_check', {
+        p_limit: rateLimit.limit,
+        p_window_seconds: rateLimit.windowSeconds,
+      });
+      if (rateError) {
+        // Fail-open: evita bloquear o assistente se a RPC ou RLS nao estiverem aplicados no ambiente.
+        console.error('[dre-agent] rate limit check failed (fail-open):', rateError.message);
+      } else {
+        const { allowed, retryAfterSeconds } = parseRateLimitRpcResult(rateData);
+        if (!allowed) {
+          res.setHeader?.('Retry-After', String(retryAfterSeconds));
+          return jsonResponse(res, 429, {
+            error: 'rate_limit_exceeded',
+            retryAfterSeconds,
+          });
+        }
+      }
+    } catch (rateException) {
+      console.error('[dre-agent] rate limit exception (fail-open):', rateException);
+    }
   }
 
   try {
