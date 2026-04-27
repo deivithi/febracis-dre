@@ -1,5 +1,26 @@
 # TODO - 2026-03-28
 
+## Rodada 2026-04-27 (encerramento) — Migração Vercel + deploy + doc
+
+### Plano
+
+- [x] Pre-flight: `vercel whoami` → `richardrios10000-5421`; build local `lint` + `test` + `build` verde
+- [x] Deploy produção na conta destino: `npx vercel@latest deploy --prod --yes` → alias **`https://febracis-dre-phi.vercel.app`**, deployment `dpl_HK91SCXq2wRd8iNZWkqmSvnguYYd`
+- [x] Documentação e `.env.example` alinhados ao novo alias; guia [`references/operacoes-pendentes-supabase-vercel-2026-04-27.md`](../references/operacoes-pendentes-supabase-vercel-2026-04-27.md) para secrets Vercel + Supabase (requer credenciais locais)
+- [ ] Migration `015` aplicada no Supabase remoto — **pendente** (`supabase login` / `SUPABASE_ACCESS_TOKEN` em falta no agente); seguir guia acima
+- [ ] Variáveis de ambiente no projeto Vercel novo — **pendente** (tabela no guia); sem elas o site em produção não liga ao Supabase nem ao OpenRouter
+- [ ] Smoke manual em produção (login, assistente, rate limit 429, CORS admin) — **após** secrets + migration
+
+### Critérios de aceite (encerramento)
+
+- [x] `npm run lint`, `npm run test`, `npm run build` verdes na máquina de implementação
+- [x] Deploy Vercel READY com URL de produção e alias documentados
+- [ ] Migration `015` + `supabase migration list --linked` confirmando `015` no remoto
+- [ ] `npx vercel@latest env ls` com as 9 variáveis (Production + Preview conforme política)
+- [x] `project-context.md` + `README` + referência operacional atualizados
+
+---
+
 ## Rodada 2026-04-27 — CI, rate limit, gap Despesas Variáveis (doc), refator Submissões
 
 ### Plano
@@ -13,8 +34,8 @@
 ### Critérios de aceite (rodada)
 
 - [x] CI verde na `main` em push/PR
-- [ ] Migration `015` aplicada no Supabase **DRE FEBRACIS** (rate limit real; sem RPC = fail-open no API)
-- [ ] Deploy produção: `npx vercel --prod --yes` (alias `https://febracis-dre.vercel.app`) — [Não verificado nesta sessão] CLI global `vercel` falhou com `js-yaml` (`MODULE_NOT_FOUND './common'`); usar `npx vercel@latest` após instalação limpa ou deploy pelo dashboard
+- [ ] Migration `015` aplicada no Supabase **DRE FEBRACIS** (rate limit real; sem RPC = fail-open no API) — ver `references/operacoes-pendentes-supabase-vercel-2026-04-27.md`
+- [x] Deploy produção: `npx vercel@latest deploy --prod --yes` (alias `https://febracis-dre-phi.vercel.app`, team `richardrios10000-5421s-projects`) — 2026-04-27
 - [x] Doc de gap revisado pelo PO
 - [x] Refator sem alterar contratos de API/assistente
 

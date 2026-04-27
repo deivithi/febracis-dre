@@ -6,6 +6,7 @@ Portal gerencial multi-franquias da Febracis para coleta padronizada da **DRE** 
 
 | Documento | Conteúdo |
 |-----------|-----------|
+| [`.agents/skills/febracis-dre/SKILL.md`](../.agents/skills/febracis-dre/SKILL.md) | Skill de agente (roteamento) — ponto de entrada em sessões/cursor; detalhe em `project-context` |
 | [`docs/visao-geral-do-sistema.md`](docs/visao-geral-do-sistema.md) | Visão geral, camadas e fluxo canônico |
 | [`references/project-context.md`](references/project-context.md) | URLs, stack, rotas, deploy e contexto operacional |
 | [`docs/logica-da-dre-e-do-workflow.md`](docs/logica-da-dre-e-do-workflow.md) | Lógica da DRE e estados da submissão |
@@ -127,11 +128,11 @@ Fluxo usado para publicar o portal (SPA + API do assistente):
 
 ```bash
 npm run build
-npx vercel deploy --prod -y
+npx vercel@latest deploy --prod --yes
 ```
 
-- Variáveis de ambiente de build e runtime devem estar configuradas no projeto Vercel (`VITE_*`, Supabase, OpenRouter).
-- URL de referência: ver `references/project-context.md`.
+- Variáveis de ambiente de build e runtime devem estar configuradas no projeto Vercel (`VITE_*`, Supabase, OpenRouter). Após migrar de conta, revalidar a lista: [`references/operacoes-pendentes-supabase-vercel-2026-04-27.md`](references/operacoes-pendentes-supabase-vercel-2026-04-27.md).
+- URL de referência: ver `references/project-context.md` (produção atual: `https://febracis-dre-phi.vercel.app`).
 
 ## Deploy no GitHub Pages (alternativo)
 

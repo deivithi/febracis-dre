@@ -4,14 +4,23 @@
 
 ## Raiz e URLs
 
-- **Repositório (canônico nesta máquina):** `C:/Users/PC/Documents/VS CODE/febracis-dre`
-- **Produção (Vercel):** https://febracis-dre.vercel.app
+- **Repositório (canônico neste workspace / OneDrive):** `C:/Users/deivithi.lopes/OneDrive - Febracis/Documentos/Antigravity 3/febracis-dre`
+- **Outras raízes (outros PCs / legado):** p.ex. `C:/Users/PC/Documents/VS CODE/febracis-dre` — o código versionado a seguir é o do caminho canónico acima quando o workspace aberto for Antigravity 3.
+- **Produção (Vercel):** `https://febracis-dre-phi.vercel.app` (alias estável; deploy 2026-04-27)
+- **Vercel (team ativo):** `richardrios10000-5421s-projects` — projeto `febracis-dre` (ficheiros em `.vercel/` locais; pasta em gitignore)
+- **Evidência último deploy produção:** `dpl_HK91SCXq2wRd8iNZWkqmSvnguYYd` — [inspect Vercel](https://vercel.com/richardrios10000-5421s-projects/febracis-dre/HK91SCXq2wRd8iNZWkqmSvnguYYd)
 - **Supabase (projeto DRE FEBRACIS):** `vwxgrjjwbvdiaqxqbryk` — único remoto permitido para operação
+
+#### Histórico de migrações de conta Vercel
+
+| Data | Conta / team origem | Conta / team destino | URL produção ativa | Notas |
+|------|---------------------|----------------------|----------------------|-------|
+| 2026-04-27 | `deivithis-projects` (legado) | `richardrios10000-5421s-projects` | `https://febracis-dre-phi.vercel.app` | Alias legado `https://febracis-dre.vercel.app` pode continuar a existir na conta antiga; não é a fonte de deploy após esta migração. Variáveis de ambiente devem ser **recriadas** no projeto novo — ver [`operacoes-pendentes-supabase-vercel-2026-04-27.md`](./operacoes-pendentes-supabase-vercel-2026-04-27.md). |
 
 ### Deploy na Vercel (instrução para agentes IA)
 
 - **Quando:** ao **fechar um bloco de implementação** no `febracis-dre` que deva refletir em produção (frontend, `api/*`, ou qualquer ficheiro que entre no build/deploy), **sem esperar pedido explícito** do usuário.
-- **Como:** na raiz do repositório, após `npm run build` (e `npm run test` quando houver alterações no assistente ou regras críticas), executar **`npx vercel --prod --yes`** (CLI autenticada). Confirmar no output o alias **`https://febracis-dre.vercel.app`**.
+- **Como:** na raiz do repositório, após `npm run build` (e `npm run test` quando houver alterações no assistente ou regras críticas), executar **`npx vercel@latest deploy --prod --yes`** (CLI autenticada). Confirmar no output o alias **`https://febracis-dre-phi.vercel.app`** (ou o URL de produção indicado).
 - **Git:** se o usuário quiser o remoto atualizado, fazer **commit + push** para o branch acordado (ex.: `main`) **além** do deploy.
 - **Exceções:** usuário pediu para **não** publicar; sessão **só leitura/planejamento** sem mudanças de código; falta de rede ou CLI não autenticada — comunicar e não assumir que o deploy correu.
 - **Sincronização com o workspace global:** o `AGENTS.md` da raiz do monorepo/workspace do utilizador **aponta para este ficheiro** como fonte de verdade operacional do portal DRE (evita duplicar regras longas lá).
@@ -27,7 +36,7 @@
 - Migration `015_agent_rate_limits.sql`: tabela `agent_rate_limits`, RLS, RPC `fn_agent_rate_check` (perfil `auth.uid()`).
 - Variáveis: `AGENT_RATE_LIMIT_PER_MINUTE`, `AGENT_RATE_LIMIT_WINDOW_SECONDS`, `AGENT_RATE_LIMIT_ENABLED` (fail-open se RPC/infra falhar) — ver [`.env.example`](../.env.example).
 - Resposta **429** com corpo mínimo `{ error: 'rate_limit_exceeded', retryAfterSeconds }` e header `Retry-After` quando o limite é excedido.
-- [Não verificado nesta sessão] Aplicar a migration no projeto Supabase remoto antes de contar com bloqueio real em produção.
+- **Aplicar no remoto:** `npx supabase link --project-ref vwxgrjjwbvdiaqxqbryk` (com `supabase login` ou `SUPABASE_ACCESS_TOKEN`) → `npx supabase db push --linked`. Passo a passo e alternativas: [`operacoes-pendentes-supabase-vercel-2026-04-27.md`](./operacoes-pendentes-supabase-vercel-2026-04-27.md). Enquanto a migration não estiver aplicada, o API continua **fail-open** em falhas de RPC (comportamento documentado no código).
 
 ### Assistente DRE (OpenRouter / MiniMax)
 

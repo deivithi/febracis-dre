@@ -1,5 +1,28 @@
 # Lessons
 
+## 2026-04-27 (migração Vercel)
+
+### [Migração de team Vercel exige re-criar todas as variáveis no projeto novo]
+
+**Trigger:** Deploy na conta `richardrios10000-5421s-projects` concluiu com `npx vercel@latest deploy --prod --yes`, mas `vercel env ls` listou **zero** variáveis — o bundle não recebe `VITE_*` sem configuração explícita.
+**Instinct:** Sempre, ao mudar de team/projeto, copiar a tabela de `references/operacoes-pendentes-supabase-vercel-2026-04-27.md` e preencher Production (e Preview se necessário) antes de considerar a app “viva” em produção; redeploy após inserir env.
+**Fonte:** Rodada 2026-04-27 encerramento
+**Data:** 2026-04-27
+
+### [Supabase CLI exige `supabase login` ou `SUPABASE_ACCESS_TOKEN` para `link` e `db push`]
+
+**Trigger:** `npx supabase link --project-ref vwxgrjjwbvdiaqxqbryk` falhou com *Access token not provided*.
+**Instinct:** Em CI ou no portátil, exportar `SUPABASE_ACCESS_TOKEN` (token de acesso pessoal) **ou** correr `supabase login` interativo antes de `db push` para aplicar a migration 015.
+**Fonte:** Rodada 2026-04-27 encerramento
+**Data:** 2026-04-27
+
+### [CORS da Edge Function deve incluir o novo domínio no mesmo passo do deploy Vercel]
+
+**Trigger:** Plano pós-migração: `ADMIN_PROVISION_ALLOWED_ORIGINS` no Supabase deve listar o alias novo (`https://febracis-dre-phi.vercel.app`) para o fluxo de aprovisionamento admin não quebrar.
+**Instinct:** Atualizar o secret imediatamente após o primeiro deploy com URL definitiva, não na semana seguinte.
+**Fonte:** Rodada 2026-04-27 encerramento
+**Data:** 2026-04-27
+
 ## 2026-04-27
 
 ### [Playwright precisa de VITE_SUPABASE_* no webServer para o Vite não abortar]
