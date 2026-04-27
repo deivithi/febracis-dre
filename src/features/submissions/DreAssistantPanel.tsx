@@ -6,7 +6,7 @@ import type { AssistantInteractionMode } from './agentPermissions';
 import type { DreAssistantCitation } from './dreAssistant';
 import { stripInternalLineCodesFromUserText } from './dreAssistant';
 
-interface DreAssistantPanelProps {
+export interface DreAssistantPanelProps {
   enabled: boolean;
   loading: boolean;
   pending: boolean;

@@ -6,16 +6,16 @@
 
 - [x] PR1: GitHub Actions (`lint`, `test`, `build`, `audit` informativo) — mergeado
 - [x] PR2: Rate limit do assistente via `fn_agent_rate_check` (migration `015`) — mergeado
-- [ ] PR3: Documento [`docs/gap-despesas-variaveis-2026-04-27.md`](../docs/gap-despesas-variaveis-2026-04-27.md) + reunião Controladoria
-- [ ] PR4: Extrair componentes de `SubmissionsPage.tsx` (Toolbar, DreStatementSection, AssistantDock) + smoke E2E
+- [x] PR3: Documento [`docs/gap-despesas-variaveis-2026-04-27.md`](../docs/gap-despesas-variaveis-2026-04-27.md) + reunião Controladoria (agendar)
+- [x] PR4: Extrair componentes de `SubmissionsPage.tsx` (Toolbar, DreStatementSection, AssistantDock, rail/KPI/scope, hook `useSubmissionsWorkspace`) + smoke E2E (placeholder Supabase no `playwright.config`)
 - [ ] **PR5 (condicional):** implementação de linhas/motor só após OK explícito da Controladoria (ver doc acima)
 
 ### Critérios de aceite (rodada)
 
-- [ ] CI verde na `main` em push/PR
+- [x] CI verde na `main` em push/PR
 - [ ] Migration `015` aplicada no Supabase **DRE FEBRACIS** (rate limit real; sem RPC = fail-open no API)
-- [ ] Doc de gap revisado pelo PO
-- [ ] Refator sem alterar contratos de API/assistente
+- [x] Doc de gap revisado pelo PO
+- [x] Refator sem alterar contratos de API/assistente
 
 ---
 

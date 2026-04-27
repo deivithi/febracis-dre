@@ -1,5 +1,23 @@
 # Lessons
 
+## 2026-04-27
+
+### [Playwright precisa de VITE_SUPABASE_* no webServer para o Vite não abortar]
+
+**Trigger:** `npm run test:e2e` subia o dev server sem `.env.local`, o módulo `src/lib/supabase.ts` lançava e a UI não renderizava (testes falhavam).
+**Instinct:** No `playwright.config.ts`, passar `env` no `webServer` com URL/anon key placeholder (ou usar `process.env` quando o CI tiver segredos), documentar que o smoke é de **UI** e não valida API Supabase.
+**Dominio:** Testes E2E
+**Fonte:** Rodada refator Submissões
+**Data:** 2026-04-27
+
+### [SubmissionsPage: componentes + hook em vez de um único ficheiro gigante]
+
+**Trigger:** Critério de manutenção (<25 KB no `SubmissionsPage.tsx`) e diff reviável.
+**Instinct:** Extrair `SubmissionToolbar`, `AssistantDock`, `DreStatementSection`, `SubmissionKpiSection`, `SubmissionWorkbenchRail`, `SubmissionsScopeTable` e mover o estado/lógica para `useSubmissionsWorkspace.ts`; `currencyInput.ts` para utilitários de máscara.
+**Dominio:** Frontend
+**Fonte:** Rodada refator Submissões
+**Data:** 2026-04-27
+
 ## 2026-03-28
 
 ### [Serverless Vercel exige imports ESM explicitos entre api e src]

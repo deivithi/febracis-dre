@@ -1,6 +1,6 @@
 # Febracis DRE — contexto do projeto (fonte de verdade operacional)
 
-Última revisão documental: 2026-03-29. Validar sempre contra o código antes de mudar papéis ou RLS.
+Última revisão documental: 2026-04-27. Validar sempre contra o código antes de mudar papéis ou RLS.
 
 ## Raiz e URLs
 
@@ -21,6 +21,13 @@
 - React 19 + Vite + TypeScript + React Router 7 + TanStack Query
 - Supabase (auth, dados, RPC/views)
 - API serverless: `api/dre-agent.ts` (assistente DRE; Vercel)
+
+### Rate limit do assistente (`api/dre-agent.ts`)
+
+- Migration `015_agent_rate_limits.sql`: tabela `agent_rate_limits`, RLS, RPC `fn_agent_rate_check` (perfil `auth.uid()`).
+- Variáveis: `AGENT_RATE_LIMIT_PER_MINUTE`, `AGENT_RATE_LIMIT_WINDOW_SECONDS`, `AGENT_RATE_LIMIT_ENABLED` (fail-open se RPC/infra falhar) — ver [`.env.example`](../.env.example).
+- Resposta **429** com corpo mínimo `{ error: 'rate_limit_exceeded', retryAfterSeconds }` e header `Retry-After` quando o limite é excedido.
+- [Não verificado nesta sessão] Aplicar a migration no projeto Supabase remoto antes de contar com bloqueio real em produção.
 
 ### Assistente DRE (OpenRouter / MiniMax)
 
@@ -59,7 +66,7 @@ npm run validate:settings
 npm run validate:phase1:local
 ```
 
-E2E (após `npx playwright install`): `npm run test:e2e`
+E2E (após `npx playwright install`): `npm run test:e2e` — o `playwright.config.ts` injeta `VITE_SUPABASE_*` de placeholder no processo do `npm run dev` usado pelos testes, para o bundle não abortar em ambientes **sem** `.env.local` (smoke de UI; não valida ligação ao Supabase real).
 
 ## Linha do tempo e lições
 

@@ -7,6 +7,15 @@ test.describe('Rotas protegidas', () => {
     await expect(page.getByTestId('login-email')).toBeVisible();
     await expect(page.getByTestId('login-password')).toBeVisible();
   });
+
+  test('submissões protegidas: workbench/hero não renderizam sem autenticação (smoke p/ pending_adjustment em credenciais reais)', async ({
+    page,
+  }) => {
+    await page.goto('/app/submissions');
+    await expect(page.getByTestId('login-email')).toBeVisible();
+    await expect(page.getByTestId('submission-workbench')).toHaveCount(0);
+    await expect(page.getByTestId('submission-hero-toolbar')).toHaveCount(0);
+  });
 });
 
 test.describe('Landing e login', () => {
