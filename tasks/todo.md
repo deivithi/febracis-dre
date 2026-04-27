@@ -1,5 +1,24 @@
 # TODO - 2026-03-28
 
+## Rodada 2026-04-27 — CI, rate limit, gap Despesas Variáveis (doc), refator Submissões
+
+### Plano
+
+- [x] PR1: GitHub Actions (`lint`, `test`, `build`, `audit` informativo) — mergeado
+- [x] PR2: Rate limit do assistente via `fn_agent_rate_check` (migration `015`) — mergeado
+- [ ] PR3: Documento [`docs/gap-despesas-variaveis-2026-04-27.md`](../docs/gap-despesas-variaveis-2026-04-27.md) + reunião Controladoria
+- [ ] PR4: Extrair componentes de `SubmissionsPage.tsx` (Toolbar, DreStatementSection, AssistantDock) + smoke E2E
+- [ ] **PR5 (condicional):** implementação de linhas/motor só após OK explícito da Controladoria (ver doc acima)
+
+### Critérios de aceite (rodada)
+
+- [ ] CI verde na `main` em push/PR
+- [ ] Migration `015` aplicada no Supabase **DRE FEBRACIS** (rate limit real; sem RPC = fail-open no API)
+- [ ] Doc de gap revisado pelo PO
+- [ ] Refator sem alterar contratos de API/assistente
+
+---
+
 ## Rodada Atual - Cockpit Executivo e Assistente DRE
 
 ### Plano
