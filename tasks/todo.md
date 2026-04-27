@@ -8,15 +8,16 @@
 - [x] Deploy produção na conta destino: `npx vercel@latest deploy --prod --yes` → alias **`https://febracis-dre-phi.vercel.app`**, deployment `dpl_HK91SCXq2wRd8iNZWkqmSvnguYYd`
 - [x] Documentação e `.env.example` alinhados ao novo alias; guia [`references/operacoes-pendentes-supabase-vercel-2026-04-27.md`](../references/operacoes-pendentes-supabase-vercel-2026-04-27.md) para secrets Vercel + Supabase (requer credenciais locais)
 - [ ] Migration `015` aplicada no Supabase remoto — **pendente** (`supabase login` / `SUPABASE_ACCESS_TOKEN` em falta no agente); seguir guia acima
-- [ ] Variáveis de ambiente no projeto Vercel novo — **pendente** (tabela no guia); sem elas o site em produção não liga ao Supabase nem ao OpenRouter
-- [ ] Smoke manual em produção (login, assistente, rate limit 429, CORS admin) — **após** secrets + migration
+- [x] Variáveis de ambiente no projeto Vercel (parcial) — **2026-04-27:** 7/9 em Production (faltam `VITE_SUPABASE_ANON_KEY`, `OPENROUTER_API_KEY`; `.env.local` ausente no workspace do agente). Preview bloqueado sem Git no projeto Vercel.
+- [ ] `npx vercel deploy --prod` com sucesso após adicionar segredos e validar build remoto — **tentativas 2026-04-27 falharam** (`deploy_failed`); usar *Redeploy* no dashboard ou investigar logs
+- [ ] Smoke manual em produção (login, assistente, rate limit 429, CORS admin) — **após** `VITE_SUPABASE_ANON_KEY` + migration 015
 
 ### Critérios de aceite (encerramento)
 
 - [x] `npm run lint`, `npm run test`, `npm run build` verdes na máquina de implementação
 - [x] Deploy Vercel READY com URL de produção e alias documentados
 - [ ] Migration `015` + `supabase migration list --linked` confirmando `015` no remoto
-- [ ] `npx vercel@latest env ls` com as 9 variáveis (Production + Preview conforme política)
+- [ ] `npx vercel@latest env ls` com as 9 variáveis (Production; Preview após Git) — hoje **7** em Production
 - [x] `project-context.md` + `README` + referência operacional atualizados
 
 ---

@@ -8,8 +8,10 @@
 - **Outras raízes (outros PCs / legado):** p.ex. `C:/Users/PC/Documents/VS CODE/febracis-dre` — o código versionado a seguir é o do caminho canónico acima quando o workspace aberto for Antigravity 3.
 - **Produção (Vercel):** `https://febracis-dre-phi.vercel.app` (alias estável; deploy 2026-04-27)
 - **Vercel (team ativo):** `richardrios10000-5421s-projects` — projeto `febracis-dre` (ficheiros em `.vercel/` locais; pasta em gitignore)
-- **Evidência último deploy produção:** `dpl_HK91SCXq2wRd8iNZWkqmSvnguYYd` — [inspect Vercel](https://vercel.com/richardrios10000-5421s-projects/febracis-dre/HK91SCXq2wRd8iNZWkqmSvnguYYd)
+- **Evidência último deploy produção (READY documentado):** `dpl_HK91SCXq2wRd8iNZWkqmSvnguYYd` — [inspect Vercel](https://vercel.com/richardrios10000-5421s-projects/febracis-dre/HK91SCXq2wRd8iNZWkqmSvnguYYd)
+- **Sessão 2026-04-27 (destravar envs):** no projeto Vercel foram adicionadas **7** variáveis em **Production** (`VITE_SUPABASE_URL`, `OPENROUTER_*`, `AGENT_RATE_LIMIT_*`, `ADMIN_PROVISION_ALLOWED_ORIGINS`). Faltam **`VITE_SUPABASE_ANON_KEY`** e **`OPENROUTER_API_KEY`** (não estavam em `.env.local` no workspace; não inventar). `npx vercel deploy --prod` e `--prebuilt` falharam no remoto com erro genérico vazio; `vercel build --prod` + `vercel pull` locais correram verdes. Smoke no alias: HTTP 200 no HTML (contém `id="root"`), `POST /api/dre-agent` → **401** (esperado sem auth). **Preview (envs):** não aplicável enquanto o projeto não tiver **Git ligado** na Vercel (a CLI recusa `preview` com branch).
 - **Supabase (projeto DRE FEBRACIS):** `vwxgrjjwbvdiaqxqbryk` — único remoto permitido para operação
+- **Página em branco / crash no cliente:** o bundle chama `createClient` em [`src/lib/supabase.ts`](../src/lib/supabase.ts) — se `VITE_SUPABASE_URL` ou `VITE_SUPABASE_ANON_KEY` faltarem no **build** (Vercel), o módulo lança e a app não monta. Configurar ambas no projeto Vercel (Production) e voltar a fazer deploy.
 
 #### Histórico de migrações de conta Vercel
 

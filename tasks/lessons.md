@@ -1,5 +1,21 @@
 # Lessons
 
+## 2026-04-27 (destravar envs + deploy CLI)
+
+### [Vercel Preview com branch exige repositório Git ligado ao projeto]
+
+**Trigger:** `vercel env add ... preview` devolveu *Project does not have a connected Git repository* ao passar branch `main`.
+**Instinct:** Ligar o repo no dashboard (secção Git) **antes** de duplicar envs para Preview; até lá, produção pode usar só `Production` envs.
+**Fonte:** Sessão destravar produção 2026-04-27
+**Data:** 2026-04-27
+
+### [`vercel deploy` remoto falhou com `deploy_failed` e mensagem vazia; `vercel build --prod` local OK]
+
+**Trigger:** Várias tentativas `npx vercel deploy --prod --yes` e `--prebuilt` após `vercel build --prod` local.
+**Instinct:** Inspecionar o *deployment* na dashboard, tentar *Redeploy* a partir de um build conhecido, ou abrir ticket se o erro persistir sem logs.
+**Fonte:** Sessão destravar produção 2026-04-27
+**Data:** 2026-04-27
+
 ## 2026-04-27 (migração Vercel)
 
 ### [Migração de team Vercel exige re-criar todas as variáveis no projeto novo]
