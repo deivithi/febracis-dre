@@ -14,6 +14,7 @@
 
 - [x] CI verde na `main` em push/PR
 - [ ] Migration `015` aplicada no Supabase **DRE FEBRACIS** (rate limit real; sem RPC = fail-open no API)
+- [ ] Deploy produção: `npx vercel --prod --yes` (alias `https://febracis-dre.vercel.app`) — [Não verificado nesta sessão] CLI global `vercel` falhou com `js-yaml` (`MODULE_NOT_FOUND './common'`); usar `npx vercel@latest` após instalação limpa ou deploy pelo dashboard
 - [x] Doc de gap revisado pelo PO
 - [x] Refator sem alterar contratos de API/assistente
 
