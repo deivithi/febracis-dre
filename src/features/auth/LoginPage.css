@@ -374,6 +374,16 @@
   color: var(--status-danger);
 }
 
+.login-page__alert--blocking {
+  align-items: flex-start;
+  margin-bottom: var(--space-4);
+}
+
+.login-page__alert--blocking svg {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+
 .login-page__toggle-password {
   position: absolute;
   right: var(--space-3);

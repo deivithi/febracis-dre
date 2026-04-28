@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
 
   const dreAgentProxy =
-    env.VITE_DRE_AGENT_PROXY_TARGET?.trim() || 'https://febracis-dre.vercel.app';
+    env.VITE_DRE_AGENT_PROXY_TARGET?.trim() || 'https://febracis-dre-phi.vercel.app';
 
   return {
     base: normalizeBasePath(env.VITE_BASE_PATH),

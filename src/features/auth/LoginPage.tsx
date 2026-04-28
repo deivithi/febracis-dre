@@ -43,7 +43,7 @@ const loginBackgroundStyle = {
 } as CSSProperties;
 
 export function LoginPage() {
-  const { session, signIn } = useAuth();
+  const { session, signIn, supabaseMisconfigured } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [showPassword, setShowPassword] = useState(false);
@@ -164,6 +164,20 @@ export function LoginPage() {
 
       <section className="login-page__panel animate-fade-in-up">
         <div className="login-page__panel-card glass-strong">
+          {supabaseMisconfigured ? (
+            <div className="login-page__alert login-page__alert--blocking" role="alert">
+              <AlertCircle size={16} />
+              <div>
+                <strong>Configuração incompleta</strong>
+                <p style={{ margin: '0.5rem 0 0', fontSize: '0.9rem', lineHeight: 1.5 }}>
+                  {supabaseMisconfigured.message}
+                </p>
+                <p style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', opacity: 0.9 }}>
+                  {supabaseMisconfigured.hint}
+                </p>
+              </div>
+            </div>
+          ) : null}
           <div className="login-page__panel-header">
             <span className="badge badge--gold">Acesso ao portal</span>
             <h2 className="login-page__form-title">Entrar para operar ou validar</h2>
@@ -172,7 +186,11 @@ export function LoginPage() {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="login-page__form">
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="login-page__form"
+            aria-disabled={Boolean(supabaseMisconfigured)}
+          >
             {authError && (
               <div className="login-page__alert">
                 <AlertCircle size={16} />
@@ -192,6 +210,7 @@ export function LoginPage() {
                 placeholder="seu@email.com"
                 autoComplete="email"
                 {...register('email')}
+                disabled={Boolean(supabaseMisconfigured)}
               />
               {errors.email && (
                 <span className="form-error">
@@ -214,6 +233,7 @@ export function LoginPage() {
                   placeholder="••••••••"
                   autoComplete="current-password"
                   {...register('password')}
+                  disabled={Boolean(supabaseMisconfigured)}
                 />
                 <button
                   type="button"
@@ -236,7 +256,7 @@ export function LoginPage() {
               type="submit"
               data-testid="login-submit"
               className={`btn btn--gold btn--lg btn--full ${isSubmitting ? 'btn--loading' : ''}`}
-              disabled={isSubmitting}
+              disabled={isSubmitting || Boolean(supabaseMisconfigured)}
             >
               {isSubmitting ? (
                 <>

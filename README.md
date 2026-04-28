@@ -131,7 +131,8 @@ npm run build
 npx vercel@latest deploy --prod --yes
 ```
 
-- Variáveis de ambiente de build e runtime devem estar configuradas no projeto Vercel (`VITE_*`, Supabase, OpenRouter). Após migrar de conta, revalidar a lista: [`references/operacoes-pendentes-supabase-vercel-2026-04-27.md`](references/operacoes-pendentes-supabase-vercel-2026-04-27.md).
+- Variáveis de ambiente de build e runtime devem estar configuradas no projeto Vercel (`VITE_*`, Supabase, OpenRouter). Após migrar de conta, revalidar a lista: [`references/operacoes-pendentes-supabase-vercel-2026-04-27.md`](references/operacoes-pendentes-supabase-vercel-2026-04-27.md). Estado documentado: **7/9** em Production até preencher `VITE_SUPABASE_ANON_KEY` e `OPENROUTER_API_KEY`.
+- Se `npx vercel deploy --prod` falhar com erro opaco, usar **Redeploy** no dashboard (ver `tasks/lessons.md`).
 - URL de referência: ver `references/project-context.md` (produção atual: `https://febracis-dre-phi.vercel.app`).
 
 ## Deploy no GitHub Pages (alternativo)

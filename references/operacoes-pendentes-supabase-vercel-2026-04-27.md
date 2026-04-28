@@ -1,6 +1,12 @@
 # Operações pendentes — pós-migração Vercel (2026-04-27)
 
-Este ficheiro consolida o que **não pôde ser concluído de forma autónima** (tokens em falta no ambiente do agente) e deve ser executado **uma vez** com credenciais válidas.
+Este ficheiro consolida o que **não pôde ser concluído de forma autónoma** (tokens em falta no ambiente do agente) e deve ser executado **uma vez** com credenciais válidas.
+
+## Checklist — app verde no browser
+
+1. **Vercel Production:** `VITE_SUPABASE_ANON_KEY` + `OPENROUTER_API_KEY` → **redeploy** (CLI ou *Redeploy* no dashboard se `deploy --prod` falhar).
+2. **Supabase:** token CLI (`login` ou `SUPABASE_ACCESS_TOKEN`) → `link` → **`db push`** (migration **015** no remoto).
+3. **Smoke:** secção 4 deste ficheiro (login, LLM, 429, CORS).
 
 ## Status (2026-04-27 — agente)
 
@@ -39,7 +45,27 @@ No dashboard do projeto ou via CLI: `npx vercel@latest env add` (repetir por var
 
 Após alterar variáveis: **redeploy** (`npx vercel@latest deploy --prod --yes` na raiz do repositório) ou *Redeploy* no dashboard.
 
-## 2. Supabase — `supabase link` e migration 015 (rate limit)
+## 1b. Smoke de bundle (produção e CI)
+
+Na raiz `febracis-dre`:
+
+```bash
+npm run smoke:prod
+# ou, para falhar o job se o alias público não tiver Supabase embutido (cmd.exe):
+set SMOKE_STRICT=1 && node scripts/smoke-prod-bundle.mjs
+# PowerShell:
+# $env:SMOKE_STRICT = "1"; node scripts/smoke-prod-bundle.mjs
+```
+
+Variável opcional: `SMOKE_PROD_URL` (default `https://febracis-dre-phi.vercel.app`). Saída inclui `hasUrl`, `hasProjectRefInBundle`, `hasFallbackStrings`, status HTTP por asset e hash curto (`sha256_16`) por chunk.
+
+Gate local do `dist` após build (quando `VITE_*` estão no ambiente do Node ou `FORCE_VERIFY_DIST=1`):
+
+```bash
+npm run verify:dist
+```
+
+## 2. Supabase — `supabase link` e migrations **015** + **016**
 
 **Requisito:** `supabase login` na máquina **ou** `SUPABASE_ACCESS_TOKEN` no ambiente (token de acesso pessoal na conta Supabase).
 
@@ -50,9 +76,9 @@ npx supabase db push --linked
 npx supabase migration list --linked
 ```
 
-Isto aplica `supabase/migrations/015_agent_rate_limits.sql` (RLS, `fn_agent_rate_check`, etc.).
+Isto aplica, entre outras, `supabase/migrations/015_agent_rate_limits.sql` (rate limit do assistente) e `supabase/migrations/016_harden_audit_log_insert.sql` (hardening de `audit_log`), conforme a fila local do repositório.
 
-**Alternativa (sem CLI):** no Supabase Studio → **SQL** → colar o conteúdo de `supabase/migrations/015_agent_rate_limits.sql` e executar (só se a equipa validar idempotência e ausência de divergência com a fila de migrations).
+**Alternativa (sem CLI):** no Supabase Studio → **SQL** → colar e executar cada ficheiro em `supabase/migrations/` ainda não aplicado (validar idempotência e ordem com a equipa).
 
 ## 3. Supabase — secret CORS (Edge Function `admin-provision-user`)
 

@@ -1,6 +1,6 @@
 # Febracis DRE — contexto do projeto (fonte de verdade operacional)
 
-Última revisão documental: 2026-04-27. Validar sempre contra o código antes de mudar papéis ou RLS.
+Última revisão documental: 2026-04-28. Validar sempre contra o código antes de mudar papéis ou RLS.
 
 ## Raiz e URLs
 
@@ -11,7 +11,15 @@
 - **Evidência último deploy produção (READY documentado):** `dpl_HK91SCXq2wRd8iNZWkqmSvnguYYd` — [inspect Vercel](https://vercel.com/richardrios10000-5421s-projects/febracis-dre/HK91SCXq2wRd8iNZWkqmSvnguYYd)
 - **Sessão 2026-04-27 (destravar envs):** no projeto Vercel foram adicionadas **7** variáveis em **Production** (`VITE_SUPABASE_URL`, `OPENROUTER_*`, `AGENT_RATE_LIMIT_*`, `ADMIN_PROVISION_ALLOWED_ORIGINS`). Faltam **`VITE_SUPABASE_ANON_KEY`** e **`OPENROUTER_API_KEY`** (não estavam em `.env.local` no workspace; não inventar). `npx vercel deploy --prod` e `--prebuilt` falharam no remoto com erro genérico vazio; `vercel build --prod` + `vercel pull` locais correram verdes. Smoke no alias: HTTP 200 no HTML (contém `id="root"`), `POST /api/dre-agent` → **401** (esperado sem auth). **Preview (envs):** não aplicável enquanto o projeto não tiver **Git ligado** na Vercel (a CLI recusa `preview` com branch).
 - **Supabase (projeto DRE FEBRACIS):** `vwxgrjjwbvdiaqxqbryk` — único remoto permitido para operação
-- **Página em branco / crash no cliente:** o bundle chama `createClient` em [`src/lib/supabase.ts`](../src/lib/supabase.ts) — se `VITE_SUPABASE_URL` ou `VITE_SUPABASE_ANON_KEY` faltarem no **build** (Vercel), o módulo lança e a app não monta. Configurar ambas no projeto Vercel (Production) e voltar a fazer deploy.
+- **Tela preta / envs ausentes no bundle:** [`src/lib/supabase.ts`](../src/lib/supabase.ts) **não** aborta mais o carregamento do módulo: expõe `getSupabaseConfig()` / `getSupabaseClient()` e um proxy `supabase` que só falha ao **usar** o cliente sem `VITE_*`. O login mostra aviso quando a configuração falta; `AppErrorBoundary` e o bootstrap em [`src/main.tsx`](../src/main.tsx) evitam `#root` vazio por exceções de render. **Para dados reais e auth**, continuam a ser obrigatórios `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` no **build** de Production e um deploy que os embuta — validar com `npm run smoke:prod` (opcional `SMOKE_STRICT=1`).
+
+### Checklist — app “verde” no browser (resumo)
+
+Detalhe e comandos: [`operacoes-pendentes-supabase-vercel-2026-04-27.md`](./operacoes-pendentes-supabase-vercel-2026-04-27.md).
+
+1. **Vercel Production:** preencher **`VITE_SUPABASE_ANON_KEY`** e **`OPENROUTER_API_KEY`** (hoje **7/9** envs) e **redeploy** para embutir `VITE_*` no bundle.
+2. **Supabase:** `supabase login` ou `SUPABASE_ACCESS_TOKEN` → `link` → **`db push`** (migrations **015** `015_agent_rate_limits.sql` e **016** `016_harden_audit_log_insert.sql` ainda pendentes no remoto, conforme backlog em [`operacoes-pendentes-supabase-vercel-2026-04-27.md`](./operacoes-pendentes-supabase-vercel-2026-04-27.md)).
+3. **Smoke:** login no alias, assistente, 429, CORS admin — secção 4 do doc de operações.
 
 #### Histórico de migrações de conta Vercel
 
@@ -22,7 +30,7 @@
 ### Deploy na Vercel (instrução para agentes IA)
 
 - **Quando:** ao **fechar um bloco de implementação** no `febracis-dre` que deva refletir em produção (frontend, `api/*`, ou qualquer ficheiro que entre no build/deploy), **sem esperar pedido explícito** do usuário.
-- **Como:** na raiz do repositório, após `npm run build` (e `npm run test` quando houver alterações no assistente ou regras críticas), executar **`npx vercel@latest deploy --prod --yes`** (CLI autenticada). Confirmar no output o alias **`https://febracis-dre-phi.vercel.app`** (ou o URL de produção indicado).
+- **Como:** na raiz do repositório, após `npm run build` (e `npm run test` quando houver alterações no assistente ou regras críticas), executar **`npx vercel@latest deploy --prod --yes`** (CLI autenticada). Confirmar no output o alias **`https://febracis-dre-phi.vercel.app`** (ou o URL de produção indicado). Se a CLI devolver **`deploy_failed`** sem mensagem útil, usar **Redeploy** no dashboard Vercel (deployment conhecido) — ver `tasks/lessons.md`.
 - **Git:** se o usuário quiser o remoto atualizado, fazer **commit + push** para o branch acordado (ex.: `main`) **além** do deploy.
 - **Exceções:** usuário pediu para **não** publicar; sessão **só leitura/planejamento** sem mudanças de código; falta de rede ou CLI não autenticada — comunicar e não assumir que o deploy correu.
 - **Sincronização com o workspace global:** o `AGENTS.md` da raiz do monorepo/workspace do utilizador **aponta para este ficheiro** como fonte de verdade operacional do portal DRE (evita duplicar regras longas lá).
@@ -40,10 +48,14 @@
 - Resposta **429** com corpo mínimo `{ error: 'rate_limit_exceeded', retryAfterSeconds }` e header `Retry-After` quando o limite é excedido.
 - **Aplicar no remoto:** `npx supabase link --project-ref vwxgrjjwbvdiaqxqbryk` (com `supabase login` ou `SUPABASE_ACCESS_TOKEN`) → `npx supabase db push --linked`. Passo a passo e alternativas: [`operacoes-pendentes-supabase-vercel-2026-04-27.md`](./operacoes-pendentes-supabase-vercel-2026-04-27.md). Enquanto a migration não estiver aplicada, o API continua **fail-open** em falhas de RPC (comportamento documentado no código).
 
-### Assistente DRE (OpenRouter / MiniMax)
+### Hardening de `audit_log` (migration `016`)
 
-- Variáveis de ambiente: ver [`.env.example`](../.env.example) — `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` (default em código: `minimax/minimax-m2.7`), `OPENROUTER_APP_URL`.
-- Sem `OPENROUTER_API_KEY`, o handler usa `runLocalAssistantTurn` (`mode: 'fallback'`); a UI mostra o modo guiado local (detalhes técnicos colapsáveis em **Detalhes técnicos**).
+- Ficheiro: [`supabase/migrations/016_harden_audit_log_insert.sql`](../supabase/migrations/016_harden_audit_log_insert.sql). Remove a policy permissiva de INSERT em `public.audit_log` e revoga INSERT para `anon`/`authenticated` (mitiga log poisoning — ver comentário no SQL). Os triggers `security definer` da migration **006** continuam a registar eventos. **Nota de numeração:** no repositório remoto `main` (clone antigo) este patch existia como `015_harden_audit_log_insert.sql`; no workspace canónico, **015** está reservada a `015_agent_rate_limits.sql`, pelo que o hardening foi renumerado para **016**.
+
+### Assistente DRE (OpenAI nativa ou OpenRouter)
+
+- Variáveis de ambiente: ver [`.env.example`](../.env.example). **Prioridade:** `OPENAI_API_KEY` + `OPENAI_MODEL` (default em código: `gpt-5.4-mini`, endpoint OpenAI) **sobre** `OPENROUTER_API_KEY` + `OPENROUTER_MODEL` (default `minimax/minimax-m2.7`, `OPENROUTER_APP_URL` para `HTTP-Referer`).
+- Sem `OPENAI_API_KEY` nem `OPENROUTER_API_KEY`, o handler usa `runLocalAssistantTurn` (`mode: 'fallback'`); a UI mostra o modo guiado local (detalhes técnicos colapsáveis em **Detalhes técnicos**).
 - Contexto no LLM: `retrieveRelevantAssistantKnowledge` (pontuação lexical sobre excertos curados + docs estáticos). Não substitui RAG com embeddings até existir pipeline de ingestão.
 
 #### Governança do assistente (papéis, números, continuidade)
@@ -75,7 +87,12 @@ npm run lint
 npm run test
 npm run validate:settings
 npm run validate:phase1:local
+npm run smoke:prod
+npm run verify:dist
 ```
+
+- **`npm run smoke:prod`:** faz fetch do HTML de produção (default `https://febracis-dre-phi.vercel.app`) e procura `supabase.co` / project ref `vwxgrjjwbvdiaqxqbryk` nos chunks JS. Com **`SMOKE_STRICT=1`**, falha com exit code 1 se o bundle público não contiver evidência Supabase (útil em CI após deploy).
+- **`npm run verify:dist`:** após `npm run build`, valida `dist/assets/*.js` quando `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` estão definidos no processo (ex. `vercel env run -e production -- npm run build` seguido do mesmo prefixo no script), ou use **`FORCE_VERIFY_DIST=1`** para forçar a checagem do `dist` já gerado.
 
 E2E (após `npx playwright install`): `npm run test:e2e` — o `playwright.config.ts` injeta `VITE_SUPABASE_*` de placeholder no processo do `npm run dev` usado pelos testes, para o bundle não abortar em ambientes **sem** `.env.local` (smoke de UI; não valida ligação ao Supabase real).
 

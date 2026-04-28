@@ -24,6 +24,8 @@ import {
 import { parseAgentRateLimitEnv, parseRateLimitRpcResult } from './agentRateLimitConfig.js';
 
 const DEFAULT_OPENROUTER_MODEL = 'minimax/minimax-m2.7';
+/** Modelo por defeito quando `OPENAI_API_KEY` está definida (API nativa OpenAI). */
+const DEFAULT_OPENAI_MODEL = 'gpt-5.4-mini';
 
 /** Limite de caracteres por mensagem do utilizador (custo LLM / payload). */
 export const AGENT_USER_MESSAGE_MAX_LENGTH = 12000;
@@ -299,9 +301,10 @@ async function runModelTurn(input: {
   explainOnly: boolean;
   conversationSummary: string | null;
 }) {
-  const apiKey = getEnv('OPENROUTER_API_KEY');
+  const openaiKey = getEnv('OPENAI_API_KEY');
+  const openrouterKey = getEnv('OPENROUTER_API_KEY');
 
-  if (!apiKey) {
+  if (!openaiKey && !openrouterKey) {
     return runLocalAssistantTurn({
       message: input.userMessage,
       lines: input.lines,
@@ -321,18 +324,27 @@ async function runModelTurn(input: {
     });
   }
 
-  const model = new ChatOpenAI({
-    apiKey,
-    model: getEnv('OPENROUTER_MODEL', DEFAULT_OPENROUTER_MODEL) ?? DEFAULT_OPENROUTER_MODEL,
-    temperature: 0.15,
-    configuration: {
-      baseURL: 'https://openrouter.ai/api/v1',
-      defaultHeaders: {
-        'HTTP-Referer': getEnv('OPENROUTER_APP_URL', 'https://febracis-dre.vercel.app') ?? 'https://febracis-dre.vercel.app',
-        'X-Title': 'Febracis DRE Assistant',
-      },
-    },
-  }).withStructuredOutput(turnResultSchema);
+  /** Prioridade: OpenAI nativa (`OPENAI_API_KEY`) > OpenRouter (`OPENROUTER_API_KEY`). */
+  const baseLlm = openaiKey
+    ? new ChatOpenAI({
+        apiKey: openaiKey,
+        model: getEnv('OPENAI_MODEL', DEFAULT_OPENAI_MODEL) ?? DEFAULT_OPENAI_MODEL,
+        temperature: 0.15,
+      })
+    : new ChatOpenAI({
+        apiKey: openrouterKey!,
+        model: getEnv('OPENROUTER_MODEL', DEFAULT_OPENROUTER_MODEL) ?? DEFAULT_OPENROUTER_MODEL,
+        temperature: 0.15,
+        configuration: {
+          baseURL: 'https://openrouter.ai/api/v1',
+          defaultHeaders: {
+            'HTTP-Referer': getEnv('OPENROUTER_APP_URL', 'https://febracis-dre-phi.vercel.app') ?? 'https://febracis-dre-phi.vercel.app',
+            'X-Title': 'Febracis DRE Assistant',
+          },
+        },
+      });
+
+  const model = baseLlm.withStructuredOutput(turnResultSchema);
 
   const allowedFields = input.lines.map((line) => ({
     lineCode: line.line_code,

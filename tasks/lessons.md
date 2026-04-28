@@ -1,5 +1,49 @@
 # Lessons
 
+## 2026-04-28 (frontend — resiliência Supabase + smoke de bundle)
+
+### [Não lançar erro no import de `supabase.ts`; tratar env ausente como estado]
+
+**Trigger:** Produção servia bundle sem `VITE_*`; `throw` no carregamento do módulo impedia o React de montar (`#root` vazio).
+**Instinct:** Expor `getSupabaseConfig()` / `getSupabaseClient()`, proxy lazy para imports legados, `AuthProvider` com `supabaseMisconfigured`, login com alerta bloqueante, `AppErrorBoundary` + `renderOperationalErrorToRoot` no bootstrap.
+**Fonte:** Plano “Corrigir Portal DRE” 2026-04-28
+**Data:** 2026-04-28
+
+### [Smoke objetivo do bundle público: `npm run smoke:prod` + `SMOKE_STRICT=1`]
+
+**Trigger:** Alias pode servir deploy antigo sem Supabase embutido; diagnóstico manual era frágil.
+**Instinct:** Script `scripts/smoke-prod-bundle.mjs` reporta `hasUrl`, `hasProjectRefInBundle`, hashes curtos dos chunks; `scripts/verify-dist-supabase.mjs` valida `dist/` após build com `VITE_*` ou `FORCE_VERIFY_DIST`.
+**Fonte:** Plano “Corrigir Portal DRE” 2026-04-28
+**Data:** 2026-04-28
+
+## 2026-04-28 (produção — rotação manual de chaves)
+
+**Rotação (sem automatizar no repositório — nunca gravar segredos em ficheiros):**
+
+1. **Supabase (projeto `vwxgrjjwbvdiaqxqbryk`):** no dashboard, *Project Settings → API*, gerar/rotação conforme política da equipa do *anon key* e *service_role*; atualizar em **Vercel → febracis-dre → Settings → Environment Variables** as variáveis `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `SUPABASE_URL`, `SUPABASE_ANON_KEY` (e qualquer secret server-side que use o service role); fazer **Redeploy** em Production.
+2. **OpenAI ou OpenRouter:** no respetivo dashboard do fornecedor, revogar/criar nova API key; em Vercel Production definir `OPENAI_API_KEY` **ou** `OPENROUTER_API_KEY` (consoante o backend usa API nativa ou OpenRouter), alinhar `OPENAI_MODEL` / `OPENROUTER_MODEL` se necessário; **Redeploy**.
+3. **Validação pós-rotação:** smoke no browser (login + submissão), chamada de teste a `/api/dre-agent` com sessão válida, e verificação de logs Vercel/Supabase para erros 401/403 por chave errada.
+
+**Data:** 2026-04-28
+
+## 2026-04-28 (migrations — colisão 015 GitHub vs workspace)
+
+### [Duas migrations diferentes não podem partilhar o número `015` no mesmo histórico local]
+
+**Trigger:** O clone do `main` no GitHub trazia `015_harden_audit_log_insert.sql` enquanto o workspace canónico já tinha `015_agent_rate_limits.sql` (rate limit do assistente).
+**Instinct:** Renumerar o hardening de `audit_log` para **`016_harden_audit_log_insert.sql`**, documentar em `project-context.md` e antecipar reconciliação com o remoto no próximo `push` (o `main` remoto pode ainda ter o ficheiro como 015).
+**Fonte:** Incorporação `febracis-dre2` → workspace 2026-04-28
+**Data:** 2026-04-28
+
+## 2026-04-28 (doc / envs de build)
+
+### [Sem `VITE_SUPABASE_ANON_KEY` no build de produção, `supabase.ts` lança e a SPA não monta]
+
+**Trigger:** Migração Vercel com **7/9** variáveis em Production; `VITE_SUPABASE_URL` existe mas falta a chave anónima no bundle.
+**Instinct:** Tratar `VITE_SUPABASE_URL` **e** `VITE_SUPABASE_ANON_KEY` como par obrigatório no dashboard **antes** de considerar a app utilizável no browser; redeploy após acrescentar `VITE_*`.
+**Fonte:** Sincronização doc pós-deploy 2026-04-28
+**Data:** 2026-04-28
+
 ## 2026-04-27 (destravar envs + deploy CLI)
 
 ### [Vercel Preview com branch exige repositório Git ligado ao projeto]

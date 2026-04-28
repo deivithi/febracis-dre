@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '../../lib/supabase';
+import { getSupabaseClient } from '../../lib/supabase';
 import {
   hasReviewAccess,
   hasSubmissionOperationAccess,
@@ -33,6 +33,13 @@ function unique(values: Array<string | null>) {
 }
 
 async function fetchAccessProfile(userId: string): Promise<AccessProfile> {
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    throw new Error(
+      'Cliente Supabase indisponível. Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no build (Vercel Production + redeploy).',
+    );
+  }
+
   const [profileResult, roleLinksResult, scopesResult] = await Promise.all([
     supabase
       .from('profiles')

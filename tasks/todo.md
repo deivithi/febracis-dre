@@ -4,6 +4,7 @@
 
 ### Plano
 
+- **HEAD do repo da app:** não fixar hash aqui — na raiz de `febracis-dre/` correr `git log -1 --oneline` ao fechar uma rodada de doc/deploy.
 - [x] Pre-flight: `vercel whoami` → `richardrios10000-5421`; build local `lint` + `test` + `build` verde
 - [x] Deploy produção na conta destino: `npx vercel@latest deploy --prod --yes` → alias **`https://febracis-dre-phi.vercel.app`**, deployment `dpl_HK91SCXq2wRd8iNZWkqmSvnguYYd`
 - [x] Documentação e `.env.example` alinhados ao novo alias; guia [`references/operacoes-pendentes-supabase-vercel-2026-04-27.md`](../references/operacoes-pendentes-supabase-vercel-2026-04-27.md) para secrets Vercel + Supabase (requer credenciais locais)
@@ -41,6 +42,8 @@
 - [x] Refator sem alterar contratos de API/assistente
 
 ---
+
+> **URLs históricas:** secções abaixo que citam `https://febracis-dre.vercel.app` referem o **team legado** (`deivithis-projects`) antes da migração 2026-04-27. Produção operacional atual: **`https://febracis-dre-phi.vercel.app`** (`richardrios10000-5421s-projects`) — `references/project-context.md`.
 
 ## Rodada Atual - Cockpit Executivo e Assistente DRE
 

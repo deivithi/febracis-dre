@@ -1,5 +1,7 @@
 # Cockpit Executivo e Assistente DRE - 2026-03-28
 
+> **2026-04-28:** Documento da rodada de março/2026. Referências a `https://febracis-dre.vercel.app` abaixo são **histórico** (team legado `deivithis-projects`). Produção atual: **`https://febracis-dre-phi.vercel.app`** — ver [`references/project-context.md`](../references/project-context.md).
+
 ## Objetivo
 
 Fechar a proxima camada da demonstracao executiva de segunda-feira com dois eixos sincronizados:
@@ -99,7 +101,7 @@ O endpoint ja esta preparado para esse caminho:
 
 - `OPENROUTER_API_KEY` configurado na Vercel em `Production`
 - `OPENROUTER_MODEL` configurado na Vercel como `openrouter/free`
-- deploy de producao republicado em `https://febracis-dre.vercel.app`
+- deploy de producao republicado em `https://febracis-dre.vercel.app` *(conta legado; hoje: `febracis-dre-phi.vercel.app`)*
 - validacao tecnica feita por chamada autenticada ao endpoint oficial `/api/dre-agent`
 - resposta confirmada com:
   - `mode = llm`
@@ -128,9 +130,11 @@ O endpoint ja esta preparado para esse caminho:
 
 ## Deploys desta rodada
 
+*(URLs da época; team `deivithis-projects`.)*
+
 - Preview: `https://febracis-qn3op8k2g-deivithis-projects.vercel.app`
 - Producao publicada: `https://febracis-368ddfl8z-deivithis-projects.vercel.app`
-- URL oficial: `https://febracis-dre.vercel.app`
+- URL oficial na época: `https://febracis-dre.vercel.app` — migração 2026-04-27: alias operacional **`https://febracis-dre-phi.vercel.app`**
 
 ## Proximo passo
 

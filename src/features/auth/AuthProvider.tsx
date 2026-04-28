@@ -1,35 +1,56 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { type Session, type User } from '@supabase/supabase-js';
-import { supabase } from '../../lib/supabase';
+import { getSupabaseClient, getSupabaseConfig } from '../../lib/supabase';
 import { AuthContext } from './AuthContext';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const initialClient = getSupabaseClient();
+  const [loading, setLoading] = useState(() => initialClient !== null);
+
+  const supabaseMisconfigured = (() => {
+    const cfg = getSupabaseConfig();
+    if (cfg.ok) {
+      return null;
+    }
+    return { message: cfg.message, hint: cfg.hint };
+  })();
 
   useEffect(() => {
-    // Recuperar sessão atual
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    const client = getSupabaseClient();
+    if (!client) {
+      return;
+    }
+
+    void client.auth.getSession().then(({ data: { session: nextSession } }) => {
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
       setLoading(false);
     });
 
-    // Listener de mudanças de auth
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-      }
-    );
+    const {
+      data: { subscription },
+    } = client.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+      setLoading(false);
+    });
 
     return () => subscription.unsubscribe();
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
+    if (supabaseMisconfigured) {
+      return { error: new Error(supabaseMisconfigured.message) };
+    }
+
+    const client = getSupabaseClient();
+    if (!client) {
+      return { error: new Error('Cliente Supabase indisponível.') };
+    }
+
+    const { error } = await client.auth.signInWithPassword({
       email,
       password,
     });
@@ -37,13 +58,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    const client = getSupabaseClient();
+    if (client) {
+      await client.auth.signOut();
+    }
     setSession(null);
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, loading, signIn, signOut }}>
+    <AuthContext.Provider
+      value={{ session, user, loading, supabaseMisconfigured, signIn, signOut }}
+    >
       {children}
     </AuthContext.Provider>
   );
