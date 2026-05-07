@@ -1,5 +1,35 @@
 # Lessons
 
+## 2026-05-07 (Vercel/GitHub/Supabase — reconciliacao operacional)
+
+### [A Vercel acessivel via MCP/CLI e a Vercel documentada podem ser contas diferentes]
+
+**Trigger:** A documentacao apontava para `deivithilopes-6933s-projects`/`febracis-dre-rho`, mas o MCP autenticado listou apenas `deivithis-projects` com o projeto real `prj_TRfWzt0jvjnqmGynfr6hKTC1qDyq` e alias `https://febracis-dre.vercel.app`.
+**Instinct:** Antes de qualquer deploy, listar teams/projetos pela ferramenta autenticada atual e cruzar com `.vercel/project.json`; se contradizer a doc, tratar a doc como drift ate reconciliar.
+**Fonte:** Plano “Investigar e Arrumar Tudo 100%” 2026-05-07
+**Data:** 2026-05-07
+
+### [Repositorio Git dentro do OneDrive pode perder ficheiros rastreados]
+
+**Trigger:** O working tree apareceu com deletes-fantasma em `auth.types.ts`, `HoldingCockpitView.tsx`, `navigation.ts` e migrations `004/005`, enquanto os ficheiros existiam no HEAD/GitHub.
+**Instinct:** Manter repo Git fora do OneDrive (`C:/Repos/...`) para desenvolvimento ativo; se surgir `D` inesperado em muitos ficheiros, fazer backup branch/tag antes de resetar.
+**Fonte:** Plano “Sincronizar Vercel, GitHub e Máquina” 2026-05-07
+**Data:** 2026-05-07
+
+### [Filter-branch removeu workflows e quebrou ancestral comum entre clones]
+
+**Trigger:** O `main` local antigo e `origin/main` do GitHub tinham 35/29 commits exclusivos, apesar de representarem mudanças parecidas, por reescrita de historico sem `.github/workflows`.
+**Instinct:** Antes de comparar ou resetar, criar branch/tag de backup; para restaurar CI, pedir scope `workflow` com `gh auth refresh -h github.com -s workflow`.
+**Fonte:** Plano “Sincronizar Vercel, GitHub e Máquina” 2026-05-07
+**Data:** 2026-05-07
+
+### [Supabase CLI e Supabase MCP podem ter permissoes diferentes]
+
+**Trigger:** `npx supabase link --project-ref vwxgrjjwbvdiaqxqbryk` falhou por access-control, mas o MCP Supabase conseguiu listar o projeto e aplicar migrations `015/016`.
+**Instinct:** Quando CLI negar acesso, verificar MCP antes de declarar bloqueio; quando usar MCP para DDL, confirmar depois com `list_migrations`.
+**Fonte:** Plano “Investigar e Arrumar Tudo 100%” 2026-05-07
+**Data:** 2026-05-07
+
 ## 2026-04-28 (frontend — resiliência Supabase + smoke de bundle)
 
 ### [Não lançar erro no import de `supabase.ts`; tratar env ausente como estado]

@@ -1,36 +1,39 @@
 # Febracis DRE — contexto do projeto (fonte de verdade operacional)
 
-Última revisão documental: 2026-04-28. Validar sempre contra o código antes de mudar papéis ou RLS.
+Última revisão documental: 2026-05-07. Validar sempre contra Vercel/GitHub/Supabase antes de mudar papéis, RLS ou deploy.
 
 ## Raiz e URLs
 
-- **Repositório (canônico neste workspace / OneDrive):** `C:/Users/deivithi.lopes/OneDrive - Febracis/Documentos/Antigravity 3/febracis-dre`
-- **Outras raízes (outros PCs / legado):** p.ex. `C:/Users/PC/Documents/VS CODE/febracis-dre` — o código versionado a seguir é o do caminho canónico acima quando o workspace aberto for Antigravity 3.
-- **Produção (Vercel):** `https://febracis-dre-phi.vercel.app` (alias estável; deploy 2026-04-27)
-- **Vercel (team ativo):** `richardrios10000-5421s-projects` — projeto `febracis-dre` (ficheiros em `.vercel/` locais; pasta em gitignore)
-- **Evidência último deploy produção (READY documentado):** `dpl_HK91SCXq2wRd8iNZWkqmSvnguYYd` — [inspect Vercel](https://vercel.com/richardrios10000-5421s-projects/febracis-dre/HK91SCXq2wRd8iNZWkqmSvnguYYd)
-- **Sessão 2026-04-27 (destravar envs):** no projeto Vercel foram adicionadas **7** variáveis em **Production** (`VITE_SUPABASE_URL`, `OPENROUTER_*`, `AGENT_RATE_LIMIT_*`, `ADMIN_PROVISION_ALLOWED_ORIGINS`). Faltam **`VITE_SUPABASE_ANON_KEY`** e **`OPENROUTER_API_KEY`** (não estavam em `.env.local` no workspace; não inventar). `npx vercel deploy --prod` e `--prebuilt` falharam no remoto com erro genérico vazio; `vercel build --prod` + `vercel pull` locais correram verdes. Smoke no alias: HTTP 200 no HTML (contém `id="root"`), `POST /api/dre-agent` → **401** (esperado sem auth). **Preview (envs):** não aplicável enquanto o projeto não tiver **Git ligado** na Vercel (a CLI recusa `preview` com branch).
-- **Supabase (projeto DRE FEBRACIS):** `vwxgrjjwbvdiaqxqbryk` — único remoto permitido para operação
+- **Repositório (GitHub canônico):** `https://github.com/deivithi/febracis-dre` — privado; branch `main`; remoto local esperado: `origin`.
+- **Repositório local (atual):** `C:/Users/deivithi.lopes/OneDrive - Febracis/Documentos/Antigravity 3/febracis-dre`. **Risco conhecido:** OneDrive já causou arquivos rastreados ausentes; mover para `C:/Repos/febracis-dre` quando a rodada estiver verde.
+- **Outras raízes (outros PCs / legado):** p.ex. `C:/Users/PC/Documents/VS CODE/febracis-dre` — validar sempre contra o GitHub canônico antes de usar.
+- **Produção (Vercel canônica):** `https://febracis-dre.vercel.app` no team **`deivithis-projects`**.
+- **Vercel (team ativo):** `deivithis-projects` — projeto `febracis-dre`, `projectId` **`prj_TRfWzt0jvjnqmGynfr6hKTC1qDyq`**, teamId **`team_OFMmpjaot33SjbhGk0lLBFs1`**. O MCP da Vercel acessa esta conta. A CLI local pode estar logada em outra conta; verificar antes de deploy.
+- **Produção READY atual (2026-05-07):** `dpl_D5R69dMXX4QgScopdJDmmLcMkQMs`, commit `f3ffc35daaf72dab711a94597c683b77b354b909`, alias `https://febracis-dre.vercel.app`.
+- **GitHub main atual (2026-05-07):** `f0645821dabf12da020a8f007ffa0934a1e1f196`. O último auto-deploy deste commit (`dpl_2EMgRwmt7vR7i78Q2MHDmSTm7NE9`) ficou `ERROR`; build local com Node 24 passa, então a causa provável é configuração/ambiente Vercel.
+- **Supabase (produção canônica atual):** `vwxgrjjwbvdiaqxqbryk` — projeto `febracis-dre`, org `nayypuosrfhhrkorfszw`, região `sa-east-1`. Manter este projeto como produção; `gjocbbipuguapypxfbub` foi uma migração abortada/não canônica nesta rodada.
+- **Contas históricas / não canônicas:** `richardrios10000-5421s-projects` (`febracis-dre-phi`) e `deivithilopes-6933s-projects` (`febracis-dre-rho`) não são fonte de produção nesta decisão.
 - **Tela preta / envs ausentes no bundle:** [`src/lib/supabase.ts`](../src/lib/supabase.ts) **não** aborta mais o carregamento do módulo: expõe `getSupabaseConfig()` / `getSupabaseClient()` e um proxy `supabase` que só falha ao **usar** o cliente sem `VITE_*`. O login mostra aviso quando a configuração falta; `AppErrorBoundary` e o bootstrap em [`src/main.tsx`](../src/main.tsx) evitam `#root` vazio por exceções de render. **Para dados reais e auth**, continuam a ser obrigatórios `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` no **build** de Production e um deploy que os embuta — validar com `npm run smoke:prod` (opcional `SMOKE_STRICT=1`).
 
 ### Checklist — app “verde” no browser (resumo)
 
 Detalhe e comandos: [`operacoes-pendentes-supabase-vercel-2026-04-27.md`](./operacoes-pendentes-supabase-vercel-2026-04-27.md).
 
-1. **Vercel Production:** preencher **`VITE_SUPABASE_ANON_KEY`** e **`OPENROUTER_API_KEY`** (hoje **7/9** envs) e **redeploy** para embutir `VITE_*` no bundle.
-2. **Supabase:** `supabase login` ou `SUPABASE_ACCESS_TOKEN` → `link` → **`db push`** (migrations **015** `015_agent_rate_limits.sql` e **016** `016_harden_audit_log_insert.sql` ainda pendentes no remoto, conforme backlog em [`operacoes-pendentes-supabase-vercel-2026-04-27.md`](./operacoes-pendentes-supabase-vercel-2026-04-27.md)).
+1. **Vercel Production:** confirmar `VITE_SUPABASE_URL=https://vwxgrjjwbvdiaqxqbryk.supabase.co`, `VITE_SUPABASE_ANON_KEY`, rate limit e `ADMIN_PROVISION_ALLOWED_ORIGINS=https://febracis-dre.vercel.app,http://localhost:5173`; redeploy para embutir `VITE_*` no bundle.
+2. **Supabase:** migrations **015** (`agent_rate_limits`) e **016** (`harden_audit_log_insert`) aplicadas no remoto legado via MCP em 2026-05-07; confirmar em `list_migrations` antes de novo deploy.
 3. **Smoke:** login no alias, assistente, 429, CORS admin — secção 4 do doc de operações.
 
 #### Histórico de migrações de conta Vercel
 
 | Data | Conta / team origem | Conta / team destino | URL produção ativa | Notas |
 |------|---------------------|----------------------|----------------------|-------|
-| 2026-04-27 | `deivithis-projects` (legado) | `richardrios10000-5421s-projects` | `https://febracis-dre-phi.vercel.app` | Alias legado `https://febracis-dre.vercel.app` pode continuar a existir na conta antiga; não é a fonte de deploy após esta migração. Variáveis de ambiente devem ser **recriadas** no projeto novo — ver [`operacoes-pendentes-supabase-vercel-2026-04-27.md`](./operacoes-pendentes-supabase-vercel-2026-04-27.md). |
+| 2026-05-07 | `richardrios10000-5421s-projects` / `deivithilopes-6933s-projects` (tentativas históricas) | `deivithis-projects` | `https://febracis-dre.vercel.app` | Decisão operacional: manter a produção na conta Gmail que já serve o alias ativo. MCP Vercel acessa este team; CLI local deve ser conferida antes de deploy. |
+| 2026-04-27 | `deivithis-projects` | `richardrios10000-5421s-projects` | `https://febracis-dre-phi.vercel.app` | Migração histórica revertida/desclassificada. Não usar como fonte canônica. |
 
 ### Deploy na Vercel (instrução para agentes IA)
 
 - **Quando:** ao **fechar um bloco de implementação** no `febracis-dre` que deva refletir em produção (frontend, `api/*`, ou qualquer ficheiro que entre no build/deploy), **sem esperar pedido explícito** do usuário.
-- **Como:** na raiz do repositório, após `npm run build` (e `npm run test` quando houver alterações no assistente ou regras críticas), executar **`npx vercel@latest deploy --prod --yes`** (CLI autenticada). Confirmar no output o alias **`https://febracis-dre-phi.vercel.app`** (ou o URL de produção indicado). Se a CLI devolver **`deploy_failed`** sem mensagem útil, usar **Redeploy** no dashboard Vercel (deployment conhecido) — ver `tasks/lessons.md`.
+- **Como:** na raiz do repositório, após `npm run build` (e `npm run test` quando houver alterações no assistente ou regras críticas), executar deploy somente se a CLI estiver no team `deivithis-projects` ou usar o dashboard/MCP da conta correta. Confirmar o alias **`https://febracis-dre.vercel.app`**. Se a CLI estiver em `deivithilopes-6933`, ela está na conta errada para esta produção.
 - **Git:** se o usuário quiser o remoto atualizado, fazer **commit + push** para o branch acordado (ex.: `main`) **além** do deploy.
 - **Exceções:** usuário pediu para **não** publicar; sessão **só leitura/planejamento** sem mudanças de código; falta de rede ou CLI não autenticada — comunicar e não assumir que o deploy correu.
 - **Sincronização com o workspace global:** o `AGENTS.md` da raiz do monorepo/workspace do utilizador **aponta para este ficheiro** como fonte de verdade operacional do portal DRE (evita duplicar regras longas lá).
@@ -91,7 +94,7 @@ npm run smoke:prod
 npm run verify:dist
 ```
 
-- **`npm run smoke:prod`:** faz fetch do HTML de produção (default `https://febracis-dre-phi.vercel.app`) e procura `supabase.co` / project ref `vwxgrjjwbvdiaqxqbryk` nos chunks JS. Com **`SMOKE_STRICT=1`**, falha com exit code 1 se o bundle público não contiver evidência Supabase (útil em CI após deploy).
+- **`npm run smoke:prod`:** faz fetch do HTML de produção (definir `SMOKE_PROD_URL=https://febracis-dre.vercel.app`) e procura `supabase.co` / project ref `vwxgrjjwbvdiaqxqbryk` nos chunks JS. Com **`SMOKE_STRICT=1`**, falha com exit code 1 se o bundle público não contiver evidência Supabase (útil em CI após deploy).
 - **`npm run verify:dist`:** após `npm run build`, valida `dist/assets/*.js` quando `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` estão definidos no processo (ex. `vercel env run -e production -- npm run build` seguido do mesmo prefixo no script), ou use **`FORCE_VERIFY_DIST=1`** para forçar a checagem do `dist` já gerado.
 
 E2E (após `npx playwright install`): `npm run test:e2e` — o `playwright.config.ts` injeta `VITE_SUPABASE_*` de placeholder no processo do `npm run dev` usado pelos testes, para o bundle não abortar em ambientes **sem** `.env.local` (smoke de UI; não valida ligação ao Supabase real).
