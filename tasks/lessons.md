@@ -1,5 +1,21 @@
 # Lessons
 
+## 2026-05-07 (Vercel CLI — troca de conta)
+
+### [CLI Vercel local agora autenticada na conta dona de `deivithis-projects`]
+
+**Trigger:** A CLI estava logada como `deivithilopes-6933` (Febracis pessoal) e nao tinha acesso ao team `deivithis-projects`, dono do projeto `prj_TRfWzt0jvjnqmGynfr6hKTC1qDyq` e do alias `https://febracis-dre.vercel.app`.
+**Instinct:** Rodar `vercel logout` + `vercel login` no shell e abrir o link `vercel.com/oauth/device?...` em janela anonima (ou apos deslogar do `deivithilopes-6933` em vercel.com) para autorizar com a conta `deivithi74@gmail.com`. Validar com `vercel whoami` (`deivithi`), `vercel teams ls` (`deivithis-projects`), `vercel project inspect febracis-dre` e `vercel env ls`.
+**Fonte:** Plano "Trocar a conta autenticada na Vercel CLI local" 2026-05-07
+**Data:** 2026-05-07
+
+### [Production no projeto febracis-dre tem 4 envs configuradas; checklist documentado pede 9]
+
+**Trigger:** `vercel env ls` mostrou em Production apenas `OPENROUTER_MODEL`, `OPENROUTER_API_KEY`, `VITE_SUPABASE_ANON_KEY` e `VITE_SUPABASE_URL`. Faltam `OPENROUTER_APP_URL`, `AGENT_RATE_LIMIT_*` (3) e `ADMIN_PROVISION_ALLOWED_ORIGINS`.
+**Instinct:** Confirmar com `vercel env ls` antes de redeploy; o handler `api/dre-agent.ts` faz fail-open quando o gate de rate limit nao tem RPC/env, mas o produto fica sem 429 real. Tratar como pendencia da Fase 2 do plano "Investigar e Arrumar Tudo 100%".
+**Fonte:** Plano "Trocar a conta autenticada na Vercel CLI local" 2026-05-07
+**Data:** 2026-05-07
+
 ## 2026-05-07 (Vercel/GitHub/Supabase — reconciliacao operacional)
 
 ### [A Vercel acessivel via MCP/CLI e a Vercel documentada podem ser contas diferentes]
