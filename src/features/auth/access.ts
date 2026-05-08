@@ -66,7 +66,7 @@ export function getDashboardScopeLabel(scope: DashboardScope) {
     case 'controladoria':
       return 'Controladoria';
     case 'holding':
-      return 'Holding';
+      return 'Visão rede';
     case 'regional':
       return 'Regional';
     default:

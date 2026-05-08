@@ -1,17 +1,14 @@
-import { useMemo, useState } from 'react';
-import { ClipboardList, DollarSign, ShieldCheck, TrendingUp } from 'lucide-react';
+import { ClipboardList } from 'lucide-react';
 import './DashboardPage.css';
-import type { DashboardSnapshot, FranchiseDashboardRow } from '../shared/portal.types';
+import type { DerivedHoldingView, HoldingFilterState } from './holdingDerivations';
+import type { FranchiseDashboardRow } from '../shared/portal.types';
 import {
-  calculateDelta,
   formatCurrency,
-  formatDelta,
   formatInteger,
   formatPercent,
   formatPeriodLabel,
   formatStatusLabel,
   getStatusVariant,
-  isPositiveDelta,
   toNumber,
 } from '../../utils/formatters';
 
@@ -21,148 +18,20 @@ function getTopFranchises(rows: FranchiseDashboardRow[]) {
     .slice(0, 5);
 }
 
-function buildHoldingTotals(rows: FranchiseDashboardRow[]) {
-  const totalGrossRevenue = rows.reduce((total, row) => total + toNumber(row.gross_revenue), 0);
-  const totalEbitda2 = rows.reduce((total, row) => total + toNumber(row.ebitda_2), 0);
-  const approvedCount = rows.filter((row) => row.submission_status === 'approved').length;
-  const pendingCount = rows.filter((row) =>
-    ['submitted', 'under_review', 'pending_adjustment'].includes(row.submission_status),
-  ).length;
-  const regionals = new Set(rows.map((row) => row.regional_id)).size;
-  const margins = rows.map((row) => toNumber(row.ebitda2_pct));
+type Props = {
+  derived: DerivedHoldingView | null;
+  onPatchFilters: (patch: Partial<HoldingFilterState>) => void;
+};
 
-  return {
-    totalGrossRevenue,
-    totalEbitda2,
-    totalFranchises: rows.length,
-    totalRegionals: regionals,
-    approvedCount,
-    pendingCount,
-    avgMarginPct: totalGrossRevenue > 0 ? (totalEbitda2 / totalGrossRevenue) * 100 : 0,
-    minMarginPct: margins.length ? Math.min(...margins) : 0,
-    maxMarginPct: margins.length ? Math.max(...margins) : 0,
-  };
-}
-
-function HoldingKpiCards({
-  currentRows,
-  previousRows,
-}: {
-  currentRows: FranchiseDashboardRow[];
-  previousRows: FranchiseDashboardRow[];
-}) {
-  const current = buildHoldingTotals(currentRows);
-  const previous = buildHoldingTotals(previousRows);
-
-  const items = [
-    {
-      label: 'Receita filtrada',
-      value: formatCurrency(current.totalGrossRevenue),
-      percent: `${formatInteger(current.totalFranchises)} unidades no recorte`,
-      trend: formatDelta(calculateDelta(current.totalGrossRevenue, previous.totalGrossRevenue)),
-      trendUp: isPositiveDelta(calculateDelta(current.totalGrossRevenue, previous.totalGrossRevenue)),
-      icon: DollarSign,
-      variant: 'gold',
-    },
-    {
-      label: 'EBITDA 2 filtrado',
-      value: formatCurrency(current.totalEbitda2),
-      percent: `${formatPercent(current.avgMarginPct)} margem consolidada`,
-      trend: formatDelta(calculateDelta(current.totalEbitda2, previous.totalEbitda2)),
-      trendUp: isPositiveDelta(calculateDelta(current.totalEbitda2, previous.totalEbitda2)),
-      icon: TrendingUp,
-      variant: 'success',
-    },
-    {
-      label: 'Aprovadas',
-      value: formatInteger(current.approvedCount),
-      percent: `${formatInteger(current.approvedCount)}/${formatInteger(current.totalFranchises)} no recorte`,
-      trend: formatDelta(calculateDelta(current.approvedCount, previous.approvedCount)),
-      trendUp: isPositiveDelta(calculateDelta(current.approvedCount, previous.approvedCount)),
-      icon: ShieldCheck,
-      variant: 'default',
-    },
-    {
-      label: 'Fila / desvios',
-      value: formatInteger(current.pendingCount),
-      percent: `Pior margem: ${formatPercent(current.minMarginPct)}`,
-      trend: formatDelta(calculateDelta(current.pendingCount, previous.pendingCount)),
-      trendUp: !isPositiveDelta(calculateDelta(current.pendingCount, previous.pendingCount)),
-      icon: ClipboardList,
-      variant: 'warning',
-    },
-  ];
-
-  return (
-    <div className="kpi-grid">
-      {items.map((item) => {
-        const Icon = item.icon;
-        const cardClassName =
-          item.variant === 'default'
-            ? 'kpi-card'
-            : `kpi-card kpi-card--${item.variant}`;
-
-        return (
-          <div key={item.label} className={cardClassName}>
-            <div className="kpi-card__header">
-              <span className="kpi-card__label">{item.label}</span>
-              <div className="kpi-card__icon">
-                <Icon />
-              </div>
-            </div>
-            <div
-              className={`kpi-card__value ${
-                item.variant === 'gold'
-                  ? 'kpi-card__value--gold'
-                  : item.variant === 'success'
-                    ? 'kpi-card__value--success'
-                    : ''
-              }`}
-            >
-              {item.value}
-            </div>
-            <div className="kpi-card__footer">
-              <span className="kpi-card__percent">{item.percent}</span>
-              <span className={`kpi-card__trend ${item.trendUp ? 'kpi-card__trend--up' : 'kpi-card__trend--down'}`}>
-                {item.trend}
-              </span>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-export function HoldingCockpitView({ snapshot }: { snapshot: DashboardSnapshot }) {
-  const current = snapshot.latestNetwork;
-
-  const periodOptions = useMemo(() => {
-    const seen = new Set<string>();
-    const values: string[] = [];
-
-    snapshot.franchiseRows.forEach((row) => {
-      if (!seen.has(row.period_label)) {
-        seen.add(row.period_label);
-        values.push(row.period_label);
-      }
-    });
-
-    return values;
-  }, [snapshot.franchiseRows]);
-
-  const [selectedPeriodLabel, setSelectedPeriodLabel] = useState(current?.period_label ?? '');
-  const [selectedRegionalId, setSelectedRegionalId] = useState('all');
-  const [selectedFranchiseId, setSelectedFranchiseId] = useState('all');
-
-  if (!current) {
+export function HoldingCockpitView({ derived, onPatchFilters }: Props) {
+  if (!derived) {
     return (
       <div className="dashboard__content page-stack">
         <div className="card card--accent">
           <div className="card__body">
             <div className="empty-state empty-state--spaced">
               <div className="empty-state__icon">
-                <ShieldCheck />
+                <ClipboardList />
               </div>
               <h3 className="empty-state__title">Consolidado da rede ainda indisponível</h3>
               <p className="empty-state__description">
@@ -177,63 +46,17 @@ export function HoldingCockpitView({ snapshot }: { snapshot: DashboardSnapshot }
     );
   }
 
-  const activePeriodLabel = periodOptions.includes(selectedPeriodLabel)
-    ? selectedPeriodLabel
-    : current.period_label;
-  const previousPeriodLabel =
-    periodOptions[periodOptions.findIndex((label) => label === activePeriodLabel) + 1] ?? null;
-
-  const currentPeriodRows = snapshot.franchiseRows.filter((row) => row.period_label === activePeriodLabel);
-  const regionalOptions = [...new Map(
-    currentPeriodRows.map((row) => [row.regional_id, { id: row.regional_id, name: row.regional_name }]),
-  ).values()].sort((left, right) => left.name.localeCompare(right.name));
-
-  const effectiveRegionalId = regionalOptions.some((regional) => regional.id === selectedRegionalId)
-    ? selectedRegionalId
-    : 'all';
-
-  const franchiseOptions = [...new Map(
-    currentPeriodRows
-      .filter((row) => effectiveRegionalId === 'all' || row.regional_id === effectiveRegionalId)
-      .map((row) => [
-        row.franchise_id,
-        { id: row.franchise_id, name: row.franchise_name, code: row.franchise_code },
-      ]),
-  ).values()].sort((left, right) => left.name.localeCompare(right.name));
-
-  const effectiveFranchiseId = franchiseOptions.some((franchise) => franchise.id === selectedFranchiseId)
-    ? selectedFranchiseId
-    : 'all';
-
-  const filteredRows = currentPeriodRows.filter((row) => {
-    const matchesRegional = effectiveRegionalId === 'all' || row.regional_id === effectiveRegionalId;
-    const matchesFranchise = effectiveFranchiseId === 'all' || row.franchise_id === effectiveFranchiseId;
-    return matchesRegional && matchesFranchise;
-  });
-
-  const filteredPreviousRows = previousPeriodLabel
-    ? snapshot.franchiseRows.filter((row) => {
-        if (row.period_label !== previousPeriodLabel) {
-          return false;
-        }
-
-        const matchesRegional = effectiveRegionalId === 'all' || row.regional_id === effectiveRegionalId;
-        const matchesFranchise = effectiveFranchiseId === 'all' || row.franchise_id === effectiveFranchiseId;
-        return matchesRegional && matchesFranchise;
-      })
-    : [];
-
-  const filteredPendingReviews = snapshot.pendingReviews.filter((row) => {
-    const matchesPeriod = row.period_label === activePeriodLabel;
-    const matchesFranchise = effectiveFranchiseId === 'all' || row.franchise_id === effectiveFranchiseId;
-    const matchesRegional =
-      effectiveRegionalId === 'all' ||
-      filteredRows.some((franchiseRow) => franchiseRow.franchise_id === row.franchise_id);
-
-    return matchesPeriod && matchesFranchise && matchesRegional;
-  });
-
-  const summary = buildHoldingTotals(filteredRows);
+  const {
+    periodOptions,
+    activePeriodLabel,
+    regionalOptions,
+    franchiseOptions,
+    effectiveRegionalId,
+    effectiveFranchiseId,
+    filteredRows,
+    filteredPendingReviews,
+    summary,
+  } = derived;
 
   return (
     <div className="dashboard__content page-stack">
@@ -242,18 +65,18 @@ export function HoldingCockpitView({ snapshot }: { snapshot: DashboardSnapshot }
           <div>
             <h3 className="card__title">Cockpit executivo da rede</h3>
             <p className="card__subtitle">
-              Filtre a competencia, a regional e a unidade para sair da visao total e mergulhar na operacao.
+              Filtre a competência, a regional e a unidade para sair da visão total e mergulhar na operação.
             </p>
           </div>
           <span className="badge badge--gold">{formatPeriodLabel(activePeriodLabel)}</span>
         </div>
         <div className="card__body dashboard-filters__body">
           <label className="form-group">
-            <span className="form-label">Competencia</span>
+            <span className="form-label">Competência</span>
             <select
               className="form-select"
               value={activePeriodLabel}
-              onChange={(event) => setSelectedPeriodLabel(event.target.value)}
+              onChange={(event) => onPatchFilters({ selectedPeriodLabel: event.target.value })}
             >
               {periodOptions.map((periodLabel) => (
                 <option key={periodLabel} value={periodLabel}>
@@ -269,8 +92,7 @@ export function HoldingCockpitView({ snapshot }: { snapshot: DashboardSnapshot }
               className="form-select"
               value={effectiveRegionalId}
               onChange={(event) => {
-                setSelectedRegionalId(event.target.value);
-                setSelectedFranchiseId('all');
+                onPatchFilters({ selectedRegionalId: event.target.value, selectedFranchiseId: 'all' });
               }}
             >
               <option value="all">Toda a rede</option>
@@ -287,7 +109,7 @@ export function HoldingCockpitView({ snapshot }: { snapshot: DashboardSnapshot }
             <select
               className="form-select"
               value={effectiveFranchiseId}
-              onChange={(event) => setSelectedFranchiseId(event.target.value)}
+              onChange={(event) => onPatchFilters({ selectedFranchiseId: event.target.value })}
             >
               <option value="all">Todas as unidades</option>
               {franchiseOptions.map((franchise) => (
@@ -300,20 +122,18 @@ export function HoldingCockpitView({ snapshot }: { snapshot: DashboardSnapshot }
         </div>
       </div>
 
-      <HoldingKpiCards currentRows={filteredRows} previousRows={filteredPreviousRows} />
-
       <div className="content-grid content-grid--sidebar">
         <div className="card card--accent">
           <div className="card__header">
             <div>
               <h3 className="card__title">Radar executivo do recorte</h3>
               <p className="card__subtitle">
-                Ranking, margem e status oficial das unidades visiveis no filtro atual.
+                Ranking, margem e status oficial das unidades visíveis no filtro atual.
               </p>
             </div>
             <span className="badge badge--gold">{formatInteger(filteredRows.length)} unidades</span>
           </div>
-          <div className="card__body">
+          <div className="card__body card__body--table-scroll">
             {filteredRows.length === 0 ? (
               <div className="empty-state empty-state--compact">
                 <div className="empty-state__icon">
@@ -327,7 +147,7 @@ export function HoldingCockpitView({ snapshot }: { snapshot: DashboardSnapshot }
                 </p>
               </div>
             ) : (
-              <div className="table-shell">
+              <div className="table-shell table-shell--scroll">
                 <table className="data-table">
                   <thead>
                     <tr>
@@ -424,13 +244,13 @@ export function HoldingCockpitView({ snapshot }: { snapshot: DashboardSnapshot }
 
           <div className="card">
             <div className="card__header">
-              <h3 className="card__title">Fila de revisao</h3>
+              <h3 className="card__title">Fila de revisão</h3>
               <span className="badge badge--warning">{formatInteger(filteredPendingReviews.length)}</span>
             </div>
             <div className="card__body">
               {filteredPendingReviews.length === 0 ? (
                 <div className="inline-message inline-message--success">
-                  Nenhuma unidade aguardando revisao neste recorte.
+                  Nenhuma unidade aguardando revisão neste recorte.
                 </div>
               ) : (
                 <div className="list-stack">
@@ -442,7 +262,7 @@ export function HoldingCockpitView({ snapshot }: { snapshot: DashboardSnapshot }
                       </div>
                       <div className="list-row__value">
                         <div className="font-mono">{formatCurrency(row.ebitda_2)}</div>
-                        <div className="list-row__meta">{formatInteger(row.open_issues_count)} pendencias</div>
+                        <div className="list-row__meta">{formatInteger(row.open_issues_count)} pendências</div>
                       </div>
                     </div>
                   ))}

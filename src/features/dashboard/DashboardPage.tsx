@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   ArrowDownRight,
@@ -8,10 +9,10 @@ import {
   Building2,
   CheckCircle2,
   ClipboardList,
-  DatabaseZap,
   DollarSign,
+  FileText,
+  RefreshCw,
   ShieldCheck,
-  Sparkles,
   Target,
   TrendingUp,
 } from 'lucide-react';
@@ -40,6 +41,7 @@ import {
   toNumber,
 } from '../../utils/formatters';
 import { HoldingCockpitView } from './HoldingCockpitView';
+import { buildHoldingTotals, deriveHoldingView, type HoldingFilterState } from './holdingDerivations';
 import './DashboardPage.css';
 
 interface KpiCardModel {
@@ -156,6 +158,53 @@ function buildRegionalKpis(snapshot: DashboardSnapshot): KpiCardModel[] {
   ];
 }
 
+function buildHoldingFilteredKpis(
+  currentRows: FranchiseDashboardRow[],
+  previousRows: FranchiseDashboardRow[],
+): KpiCardModel[] {
+  const current = buildHoldingTotals(currentRows);
+  const previous = buildHoldingTotals(previousRows);
+
+  return [
+    {
+      label: 'Receita do recorte',
+      value: formatCurrency(current.totalGrossRevenue),
+      percent: `${formatInteger(current.totalFranchises)} unidades no filtro`,
+      trend: formatDelta(calculateDelta(current.totalGrossRevenue, previous.totalGrossRevenue)),
+      trendUp: isPositiveDelta(calculateDelta(current.totalGrossRevenue, previous.totalGrossRevenue)),
+      variant: 'gold',
+      icon: DollarSign,
+    },
+    {
+      label: 'EBITDA 2 do recorte',
+      value: formatCurrency(current.totalEbitda2),
+      percent: `${formatPercent(current.avgMarginPct)} margem consolidada`,
+      trend: formatDelta(calculateDelta(current.totalEbitda2, previous.totalEbitda2)),
+      trendUp: isPositiveDelta(calculateDelta(current.totalEbitda2, previous.totalEbitda2)),
+      variant: 'success',
+      icon: TrendingUp,
+    },
+    {
+      label: 'DREs aprovadas',
+      value: formatInteger(current.approvedCount),
+      percent: `${formatInteger(current.approvedCount)}/${formatInteger(current.totalFranchises)} no filtro`,
+      trend: formatDelta(calculateDelta(current.approvedCount, previous.approvedCount)),
+      trendUp: isPositiveDelta(calculateDelta(current.approvedCount, previous.approvedCount)),
+      variant: 'default',
+      icon: ShieldCheck,
+    },
+    {
+      label: 'Em ajuste / fila',
+      value: formatInteger(current.pendingCount),
+      percent: `Pior margem: ${formatPercent(current.minMarginPct)}`,
+      trend: formatDelta(calculateDelta(current.pendingCount, previous.pendingCount)),
+      trendUp: !isPositiveDelta(calculateDelta(current.pendingCount, previous.pendingCount)),
+      variant: 'warning',
+      icon: ClipboardList,
+    },
+  ];
+}
+
 function buildNetworkKpis(snapshot: DashboardSnapshot): KpiCardModel[] {
   if (!snapshot.latestNetwork) {
     return [];
@@ -246,15 +295,15 @@ function getCriticalFranchises(rows: FranchiseDashboardRow[]) {
 function KpiCards({ items }: { items: KpiCardModel[] }) {
   return (
     <div className="kpi-grid">
-      {items.map((kpi, index) => {
+      {items.map((kpi) => {
         const Icon = kpi.icon;
         const cardClassName =
           kpi.variant === 'default'
-            ? 'kpi-card animate-fade-in-up'
-            : `kpi-card kpi-card--${kpi.variant} animate-fade-in-up`;
+            ? 'kpi-card'
+            : `kpi-card kpi-card--${kpi.variant}`;
 
         return (
-          <div key={kpi.label} className={`${cardClassName} delay-${index + 1}`}>
+          <div key={kpi.label} className={cardClassName}>
             <div className="kpi-card__header">
               <span className="kpi-card__label">{kpi.label}</span>
               <div className="kpi-card__icon">
@@ -295,23 +344,26 @@ function KpiCards({ items }: { items: KpiCardModel[] }) {
 function getScopeNarrative(scope: string) {
   switch (scope) {
     case 'controladoria':
-      return 'Quem precisa de ação agora, o que falta validar e o ritmo do fechamento da rede.';
+      return 'Fila, pendências e ritmo de fechamento — ação imediata quando algo depende de você.';
     case 'holding':
-      return 'Resultado consolidado da rede, ranking de margem e unidades que precisam de atenção.';
+      return 'Consolidado da rede por competência — filtre regional e unidade no cockpit abaixo.';
     case 'regional':
-      return 'Compare as franquias da sua carteira, veja quem está acima ou abaixo da meta e cobre envios em atraso.';
+      return 'Carteira da regional — compare margens e cobre envios em atraso.';
     default:
-      return 'A DRE oficial da sua unidade, o status do período corrente e os próximos passos.';
+      return 'Último envio oficial, status na competência e próximos passos da sua unidade.';
   }
 }
 
 function DashboardHero({
   accessProfile,
   snapshot,
+  isDashboardFetching,
 }: {
   accessProfile: AccessProfile | undefined;
   snapshot: DashboardSnapshot;
+  isDashboardFetching: boolean;
 }) {
+  const queryClient = useQueryClient();
   if (!accessProfile) {
     return null;
   }
@@ -326,48 +378,40 @@ function DashboardHero({
     ? {
         to: '/app/admin',
         label: hasOperationalData ? 'Gerenciar ambiente demo' : 'Preparar ambiente demo',
+        icon: ShieldCheck,
       }
     : {
         to: '/app/submissions',
         label: 'Abrir Submissões',
+        icon: FileText,
       };
 
-  const secondaryAction = accessProfile.canManageReview
-    ? { to: '/app/workflow', label: 'Abrir fila de aprovações' }
-    : { to: '/app/dashboard', label: 'Atualizar leitura' };
+  const PrimaryIcon = primaryAction.icon;
 
-  const flow = [
-    'A franquia preenche e envia',
-    'A controladoria revisa e aprova',
-    'O consolidado chega à diretoria',
-  ];
+  const pendingLabel =
+    accessProfile.canManageReview || accessProfile.dashboardScope !== 'franchise'
+      ? 'aguardando revisão'
+      : 'pendências (fila interna)';
+
+  const handleRefreshReadings = () => {
+    void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+  };
 
   return (
     <div className="page-stack">
       <section className="dashboard-hero card card--gold">
         <div className="dashboard-hero__copy">
           <span className="badge badge--gold">{getDashboardScopeLabel(accessProfile.dashboardScope)}</span>
-          <h1 className="page-container__title dashboard-hero__title">
-            O resultado da rede em uma página.
-          </h1>
+          <h1 className="page-container__title dashboard-hero__title">Painel executivo</h1>
           <p className="page-container__subtitle dashboard-hero__subtitle">
-            {getScopeNarrative(accessProfile.dashboardScope)} Competência atual: {currentPeriod}.
+            {getScopeNarrative(accessProfile.dashboardScope)}{' '}
+            <span className="dashboard-hero__period">Competência atual: {currentPeriod}.</span>
           </p>
-
-          <div className="dashboard-hero__flow">
-            {flow.map((step, index) => (
-              <div key={step} className="dashboard-hero__flow-step">
-                <span className="dashboard-hero__flow-index">0{index + 1}</span>
-                <span>{step}</span>
-              </div>
-            ))}
-          </div>
         </div>
 
         <div className="dashboard-hero__panel glass">
           <div className="dashboard-hero__panel-header">
-            <Sparkles size={16} />
-            <span>O que está acontecendo agora</span>
+            <span>Leitura operacional</span>
           </div>
 
           <div className="dashboard-hero__metrics">
@@ -377,23 +421,35 @@ function DashboardHero({
             </div>
             <div>
               <strong>{formatInteger(snapshot.pendingReviews.length)}</strong>
-              <span>aguardando revisão</span>
+              <span>{pendingLabel}</span>
             </div>
             <div>
               <strong>{currentPeriod}</strong>
-              <span>competência atual</span>
+              <span>competência</span>
             </div>
           </div>
 
           <div className="dashboard-hero__actions">
             <Link to={primaryAction.to} className="btn btn--gold">
-              <DatabaseZap size={18} />
+              <PrimaryIcon size={18} />
               {primaryAction.label}
             </Link>
-            <Link to={secondaryAction.to} className="btn btn--secondary">
-              {secondaryAction.label}
-              <ArrowRight size={16} />
-            </Link>
+            {accessProfile.canManageReview ? (
+              <Link to="/app/workflow" className="btn btn--secondary">
+                Abrir fila de aprovações
+                <ArrowRight size={16} />
+              </Link>
+            ) : (
+              <button
+                type="button"
+                className="btn btn--secondary"
+                disabled={isDashboardFetching}
+                onClick={handleRefreshReadings}
+              >
+                <RefreshCw size={16} />
+                Atualizar leitura
+              </button>
+            )}
           </div>
 
           {!hasOperationalData && (
@@ -739,10 +795,6 @@ function RegionalDashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
   );
 }
 
-function HoldingDashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
-  return <HoldingCockpitView snapshot={snapshot} />;
-}
-
 function ControladoriaDashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
   const current = snapshot.latestNetwork;
   const currentRows = getCurrentPeriodFranchiseRows(snapshot);
@@ -826,6 +878,12 @@ function ControladoriaDashboardView({ snapshot }: { snapshot: DashboardSnapshot 
 
 export function DashboardPage() {
   const accessProfileQuery = useAccessProfile();
+  const [holdingFilters, setHoldingFilters] = useState<HoldingFilterState>(() => ({
+    selectedPeriodLabel: '',
+    selectedRegionalId: 'all',
+    selectedFranchiseId: 'all',
+  }));
+
   const dashboardQuery = useQuery({
     queryKey: [
       'dashboard',
@@ -837,12 +895,54 @@ export function DashboardPage() {
     enabled: Boolean(accessProfileQuery.data),
   });
 
+  const snapshot = dashboardQuery.data;
+  const profile = accessProfileQuery.data;
+
+  useEffect(() => {
+    if (profile?.dashboardScope !== 'holding' || !snapshot?.latestNetwork) {
+      return;
+    }
+    const periodLabel = snapshot.latestNetwork.period_label;
+    setHoldingFilters((prev) => {
+      if (prev.selectedPeriodLabel) {
+        return prev;
+      }
+      return { ...prev, selectedPeriodLabel: periodLabel };
+    });
+  }, [profile?.dashboardScope, snapshot?.latestNetwork?.period_label]);
+
+  const holdingDerived = useMemo(() => {
+    if (!snapshot || profile?.dashboardScope !== 'holding') {
+      return null;
+    }
+    return deriveHoldingView(snapshot, holdingFilters);
+  }, [snapshot, profile?.dashboardScope, holdingFilters]);
+
+  const kpis = useMemo(() => {
+    if (!snapshot || !profile) {
+      return [];
+    }
+    if (profile.dashboardScope === 'franchise') {
+      return buildFranchiseKpis(snapshot);
+    }
+    if (profile.dashboardScope === 'regional') {
+      return buildRegionalKpis(snapshot);
+    }
+    if (profile.dashboardScope === 'holding') {
+      if (!holdingDerived) {
+        return [];
+      }
+      return buildHoldingFilteredKpis(holdingDerived.filteredRows, holdingDerived.filteredPreviousRows);
+    }
+    return buildNetworkKpis(snapshot);
+  }, [snapshot, profile, holdingDerived]);
+
   if (accessProfileQuery.isLoading || dashboardQuery.isLoading) {
     return (
       <div className="page-stack">
         <div className="page-container__title-bar">
           <div>
-            <h1 className="page-container__title">Painel executivo</h1>
+            <p className="page-container__title page-container__title--loading">Painel executivo</p>
             <p className="page-container__subtitle">Carregando os números da rede…</p>
           </div>
         </div>
@@ -856,7 +956,7 @@ export function DashboardPage() {
     );
   }
 
-  if (accessProfileQuery.error || !accessProfileQuery.data) {
+  if (accessProfileQuery.error || !profile) {
     return (
       <div className="inline-message inline-message--danger">
         Não conseguimos identificar o seu perfil de acesso. Atualize a página ou peça ao administrador para revisar a sua conta.
@@ -864,7 +964,7 @@ export function DashboardPage() {
     );
   }
 
-  if (dashboardQuery.error || !dashboardQuery.data) {
+  if (dashboardQuery.error || !snapshot) {
     return (
       <div className="inline-message inline-message--danger">
         Não foi possível carregar os números da rede neste momento. Tente novamente em alguns instantes.
@@ -872,23 +972,15 @@ export function DashboardPage() {
     );
   }
 
-  const accessProfile = accessProfileQuery.data;
-  const snapshot = dashboardQuery.data;
+  const accessProfile = profile;
   const currentPeriodLabel = formatPeriodLabel(getCurrentPeriodLabel(snapshot));
-  const kpis =
-    accessProfile.dashboardScope === 'franchise'
-      ? buildFranchiseKpis(snapshot)
-      : accessProfile.dashboardScope === 'regional'
-        ? buildRegionalKpis(snapshot)
-        : buildNetworkKpis(snapshot);
 
   return (
     <div className="dashboard page-stack">
-      <div className="page-container__title-bar">
+      <div className="page-container__title-bar page-container__title-bar--dashboard">
         <div>
-          <h1 className="page-container__title">Painel executivo</h1>
-          <p className="page-container__subtitle">
-            Leitura {getDashboardScopeLabel(accessProfile.dashboardScope).toLowerCase()} da competência{' '}
+          <p className="page-container__subtitle page-container__subtitle--dashboard-title">
+            Leitura {getDashboardScopeLabel(accessProfile.dashboardScope).toLowerCase()} · competência{' '}
             {currentPeriodLabel}
           </p>
         </div>
@@ -900,13 +992,22 @@ export function DashboardPage() {
         </div>
       </div>
 
-      <DashboardHero accessProfile={accessProfile} snapshot={snapshot} />
+      <DashboardHero
+        accessProfile={accessProfile}
+        snapshot={snapshot}
+        isDashboardFetching={dashboardQuery.isFetching}
+      />
 
       <KpiCards items={kpis} />
 
       {accessProfile.dashboardScope === 'franchise' && <FranchiseDashboardView snapshot={snapshot} />}
       {accessProfile.dashboardScope === 'regional' && <RegionalDashboardView snapshot={snapshot} />}
-      {accessProfile.dashboardScope === 'holding' && <HoldingDashboardView snapshot={snapshot} />}
+      {accessProfile.dashboardScope === 'holding' && (
+        <HoldingCockpitView
+          derived={holdingDerived}
+          onPatchFilters={(patch) => setHoldingFilters((prev) => ({ ...prev, ...patch }))}
+        />
+      )}
       {accessProfile.dashboardScope === 'controladoria' && (
         <ControladoriaDashboardView snapshot={snapshot} />
       )}
