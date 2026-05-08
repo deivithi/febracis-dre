@@ -17,7 +17,7 @@ function gridFillAriaLabel(summary: DraftGridSummary): string {
   if (!summary.totalInputs) {
     return 'Preenchimento da grelha: sem linhas editáveis no contexto atual';
   }
-  return `Preenchimento da grelha: ${summary.filledCount} de ${summary.totalInputs} campos preenchidos`;
+  return `Preenchimento da grelha: ${summary.filledCount} de ${summary.totalInputs} linhas obrigatórias`;
 }
 
 /**
@@ -35,6 +35,7 @@ export function SubmissionKpiSection({
   const cappedFilled = totalInputs > 0 ? Math.min(filledCount, totalInputs) : 0;
   const percentFilled =
     totalInputs > 0 ? Math.round((cappedFilled / totalInputs) * 100) : null;
+  const gridProgressComplete = totalInputs > 0 && cappedFilled === totalInputs;
 
   return (
     <div className="submissions-kpi-wrap submissions-kpi-wrap--tiered">
@@ -56,30 +57,43 @@ export function SubmissionKpiSection({
           </div>
         </div>
 
-        <div
-          className="kpi-card"
-          role="group"
-          aria-label={gridFillAriaLabel(draftSummary)}
-        >
-          <div className="kpi-card__header">
-            <span className="kpi-card__label">Preenchimento da grelha</span>
-            <div className="kpi-card__icon">
-              <ClipboardList />
-            </div>
-          </div>
+        <div className="kpi-card kpi-card--grid-fill" role="group" aria-label={gridFillAriaLabel(draftSummary)}>
           {totalInputs > 0 ? (
-            <>
-              <div className="kpi-card__value">
-                {formatInteger(cappedFilled)} / {formatInteger(totalInputs)}
-              </div>
-              <div className="kpi-card__footer">
-                <span className="kpi-card__percent">
-                  {percentFilled}% dos campos com valor • prévia atualiza ao editar
+            <div className="draft-progress draft-progress--kpi-card">
+              <div className="draft-progress__head">
+                <span className="draft-progress__title">Preenchimento da grelha</span>
+                <span className="draft-progress__counter">
+                  <strong>{formatInteger(cappedFilled)}</strong> de{' '}
+                  <strong>{formatInteger(totalInputs)}</strong> linhas obrigatórias
                 </span>
               </div>
-            </>
+              <div
+                className="draft-progress__track"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={totalInputs}
+                aria-valuenow={cappedFilled}
+                aria-label="Progresso de preenchimento da grelha"
+              >
+                <div
+                  className={`draft-progress__fill${gridProgressComplete ? ' draft-progress__fill--complete' : ''}`}
+                  style={{ width: `${percentFilled}%` }}
+                />
+              </div>
+              <p className="draft-progress__hint">
+                {gridProgressComplete
+                  ? 'Tudo preenchido. Você pode enviar a DRE para revisão da controladoria.'
+                  : `Faltam ${formatInteger(totalInputs - cappedFilled)} linha(s) com valor para liberar o envio.`}
+              </p>
+            </div>
           ) : (
             <>
+              <div className="kpi-card__header">
+                <span className="kpi-card__label">Preenchimento da grelha</span>
+                <div className="kpi-card__icon">
+                  <ClipboardList />
+                </div>
+              </div>
               <div className="kpi-card__value kpi-card__value--placeholder">—</div>
               <div className="kpi-card__footer">
                 <span className="kpi-card__percent">
