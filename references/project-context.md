@@ -1,16 +1,17 @@
 # Febracis DRE — contexto do projeto (fonte de verdade operacional)
 
-Última revisão documental: 2026-05-07. Validar sempre contra Vercel/GitHub/Supabase antes de mudar papéis, RLS ou deploy.
+Última revisão documental: 2026-05-08. Validar sempre contra Vercel/GitHub/Supabase antes de mudar papéis, RLS ou deploy.
 
 ## Raiz e URLs
 
 - **Repositório (GitHub canônico):** `https://github.com/deivithi/febracis-dre` — privado; branch `main`; remoto local esperado: `origin`.
 - **Repositório local (atual):** `C:/Users/deivithi.lopes/OneDrive - Febracis/Documentos/Antigravity 3/febracis-dre`. **Risco conhecido:** OneDrive já causou arquivos rastreados ausentes; mover para `C:/Repos/febracis-dre` quando a rodada estiver verde.
-- **Outras raízes (outros PCs / legado):** p.ex. `C:/Users/PC/Documents/VS CODE/febracis-dre` — validar sempre contra o GitHub canônico antes de usar.
+- **Outras raízes (outros PCs / workspace Cursor):** p.ex. `C:/Users/PC/Documents/VS CODE/febracis-dre` ou `C:/Users/PC/OneDrive/Documents/VS CODE/febracis-dre` — validar qual pasta está aberta no Cursor (ver `AGENTS.md` na raiz do monorepo quando aplicável) e cruzar com o GitHub canônico antes de usar.
 - **Produção (Vercel canônica):** `https://febracis-dre.vercel.app` no team **`deivithis-projects`**.
 - **Vercel (team ativo):** `deivithis-projects` — projeto `febracis-dre`, `projectId` **`prj_TRfWzt0jvjnqmGynfr6hKTC1qDyq`**, teamId **`team_OFMmpjaot33SjbhGk0lLBFs1`**. O MCP da Vercel acessa esta conta. A CLI local pode estar logada em outra conta; verificar antes de deploy.
-- **Produção READY atual (2026-05-07):** `dpl_D5R69dMXX4QgScopdJDmmLcMkQMs`, commit `f3ffc35daaf72dab711a94597c683b77b354b909`, alias `https://febracis-dre.vercel.app`.
-- **GitHub main atual (2026-05-07):** `f0645821dabf12da020a8f007ffa0934a1e1f196`. O último auto-deploy deste commit (`dpl_2EMgRwmt7vR7i78Q2MHDmSTm7NE9`) ficou `ERROR`; build local com Node 24 passa, então a causa provável é configuração/ambiente Vercel.
+- **Produção READY (2026-05-07, antes da sequência ERROR):** `dpl_D5R69dMXX4QgScopdJDmmLcMkQMs`, commit `f3ffc35daaf72dab711a94597c683b77b354b909`, alias `https://febracis-dre.vercel.app`.
+- **Produção READY atual (2026-05-08, recuperação vía CLI no team correto):** `dpl_9GRYX3oQrPqNtqrSHbXJM4RBvWyw`, alias `https://febracis-dre.vercel.app`; origem código = clone local sincronizado com `main` no momento do deploy (`npx vercel pull --yes` quando faltar link local, depois `npm run build` + `npx vercel --prod --yes`).
+- **GitHub `main` (2026-05-07, referência histórica):** `f0645821dabf12da020a8f007ffa0934a1e1f196`. O último auto-deploy deste commit (`dpl_2EMgRwmt7vR7i78Q2MHDmSTm7NE9`) ficou `ERROR`; build local com Node 24 passa, então a causa provável é configuração/ambiente Vercel.
 - **Supabase (produção canônica atual):** `vwxgrjjwbvdiaqxqbryk` — projeto `febracis-dre`, org `nayypuosrfhhrkorfszw`, região `sa-east-1`. Manter este projeto como produção; `gjocbbipuguapypxfbub` foi uma migração abortada/não canônica nesta rodada.
 - **Contas históricas / não canônicas:** `richardrios10000-5421s-projects` (`febracis-dre-phi`) e `deivithilopes-6933s-projects` (`febracis-dre-rho`) não são fonte de produção nesta decisão.
 - **Tela preta / envs ausentes no bundle:** [`src/lib/supabase.ts`](../src/lib/supabase.ts) **não** aborta mais o carregamento do módulo: expõe `getSupabaseConfig()` / `getSupabaseClient()` e um proxy `supabase` que só falha ao **usar** o cliente sem `VITE_*`. O login mostra aviso quando a configuração falta; `AppErrorBoundary` e o bootstrap em [`src/main.tsx`](../src/main.tsx) evitam `#root` vazio por exceções de render. **Para dados reais e auth**, continuam a ser obrigatórios `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` no **build** de Production e um deploy que os embuta — validar com `npm run smoke:prod` (opcional `SMOKE_STRICT=1`).
@@ -33,10 +34,14 @@ Detalhe e comandos: [`operacoes-pendentes-supabase-vercel-2026-04-27.md`](./oper
 ### Deploy na Vercel (instrução para agentes IA)
 
 - **Quando:** ao **fechar um bloco de implementação** no `febracis-dre` que deva refletir em produção (frontend, `api/*`, ou qualquer ficheiro que entre no build/deploy), **sem esperar pedido explícito** do usuário.
-- **Como:** na raiz do repositório, após `npm run build` (e `npm run test` quando houver alterações no assistente ou regras críticas), executar deploy somente se a CLI estiver no team `deivithis-projects` ou usar o dashboard/MCP da conta correta. Confirmar o alias **`https://febracis-dre.vercel.app`**. Se a CLI estiver em `deivithilopes-6933`, ela está na conta errada para esta produção.
+- **Como:** na raiz do repositório, após `npm run build` (e `npm run test` quando houver alterações no assistente ou regras críticas), executar **`npx vercel --prod --yes`** somente com a CLI ligada ao team `deivithis-projects` (ou dashboard/MCP dessa conta). Confirmar no output o alias **`https://febracis-dre.vercel.app`**. Se a CLI estiver em `deivithilopes-6933` ou outra conta, não publica na produção correta.
 - **Git:** se o usuário quiser o remoto atualizado, fazer **commit + push** para o branch acordado (ex.: `main`) **além** do deploy.
 - **Exceções:** usuário pediu para **não** publicar; sessão **só leitura/planejamento** sem mudanças de código; falta de rede ou CLI não autenticada — comunicar e não assumir que o deploy correu.
 - **Sincronização com o workspace global:** o `AGENTS.md` da raiz do monorepo/workspace do utilizador **aponta para este ficheiro** como fonte de verdade operacional do portal DRE (evita duplicar regras longas lá).
+
+#### Incidentes de deploy (referência)
+
+- **2026-05-07/08:** várias tentativas de produção na Vercel falharam em sequência (status `Error` no dashboard). `npm run build` e `npx vercel build` locais permaneceram verdes; a recuperação foi feita com deploy a partir do clone autenticado (`npx vercel --prod --yes`) na raiz do repo, após `npx vercel pull --yes` quando faltavam settings locais. Para diagnóstico: `npx vercel inspect <url-da-deployment>`.
 
 ## Stack resumida
 

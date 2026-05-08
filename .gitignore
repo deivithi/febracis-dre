@@ -32,3 +32,7 @@ supabase/.temp/
 test-results/
 output/
 .cursor/
+
+# Dumps / ferramentas locais (nao versionar)
+cloud-dump-schema.sql
+.omc/

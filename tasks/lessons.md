@@ -228,3 +228,13 @@
 **Dominio:** Supabase
 **Fonte:** Correcao interna
 **Data:** 2026-03-28
+
+## 2026-05-08
+
+### [Confirmar deploy prod na Vercel apos sequencia de falhas]
+
+**Trigger:** Multiplas deployments `febracis-dre` em Production com status `Error` (`vercel ls`); producao real ficou desalinhada dos commits locais de seguranca ate deploy manual com CLI.
+**Instinct:** Depois de merges ou rotinas em CI, SEMPRE confirmar o ultimo deployment com `npx vercel ls` ou inspect do URL; se o build local passa e a cloud falha, usar `vercel pull --yes` no clone e repetir `npm run build`, depois `npx vercel --prod --yes` quando a politica permitir publicar.
+**Dominio:** Deploy
+**Fonte:** Alinhamento mai/2026 (recuperacao producao)
+**Data:** 2026-05-08
