@@ -190,6 +190,7 @@ export function AssistantPage() {
         approvedCount={approvedCount}
         pendingCount={pendingCount}
         preview={w.preview}
+        draftSummary={w.draftValidation}
       />
 
       {w.assistantErrorMessage ? (

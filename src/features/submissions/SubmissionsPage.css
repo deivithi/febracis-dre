@@ -1178,7 +1178,7 @@
   }
 }
 
-/* KPI: foco executivo — dois cartões visíveis; restantes em disclosure */
+/* KPI: faixa principal — escopo + preenchimento + EBITDA prévia; mais indicadores em disclosure */
 .submissions-kpi-wrap--tiered {
   display: grid;
   gap: var(--space-3);
@@ -1186,8 +1186,12 @@
 
 .submissions-kpi-primary {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-4);
+}
+
+.submissions-kpi-primary .kpi-card__value--placeholder {
+  color: var(--text-muted);
 }
 
 .submissions-kpi-more {

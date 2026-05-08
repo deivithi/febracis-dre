@@ -130,6 +130,7 @@ export function SubmissionsPage() {
         approvedCount={approvedCount}
         pendingCount={pendingCount}
         preview={w.preview}
+        draftSummary={w.draftValidation}
       />
 
       <div className="submission-mobile-tabs" role="tablist" aria-label="Secções do workspace de submissão">
