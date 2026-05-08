@@ -158,11 +158,6 @@ export function SubmissionWorkbenchRail({
       : 'Sem rascunho ativo';
   const sourceVariant = previewSourceIsDraft ? 'draft' : 'official';
 
-  const totalInputs = draftValidation.totalInputs || 0;
-  const filledCount = Math.min(draftValidation.filledCount, totalInputs);
-  const percent = totalInputs > 0 ? Math.round((filledCount / totalInputs) * 100) : 0;
-  const progressComplete = totalInputs > 0 && filledCount === totalInputs;
-
   return (
     <aside
       className={`submission-workbench__rail submission-workbench__rail--grid submission-sidebar submission-workbench__panel ${
@@ -274,7 +269,7 @@ export function SubmissionWorkbenchRail({
         </div>
       </div>
 
-      {/* Coluna 2: Resumo financeiro + progresso */}
+      {/* Coluna 2: Resumo financeiro (preenchimento da grelha está na faixa KPI no topo) */}
       <div className="submission-workbench__rail-col">
         <div className="card">
           <div className="card__header">
@@ -323,35 +318,6 @@ export function SubmissionWorkbenchRail({
             </div>
           </div>
         </div>
-
-        {totalInputs > 0 ? (
-          <div className="draft-progress" data-testid="draft-progress">
-            <div className="draft-progress__head">
-              <span className="draft-progress__title">Preenchimento da grelha</span>
-              <span className="draft-progress__counter">
-                <strong>{filledCount}</strong> de <strong>{totalInputs}</strong> linhas obrigatórias
-              </span>
-            </div>
-            <div
-              className="draft-progress__track"
-              role="progressbar"
-              aria-valuemin={0}
-              aria-valuemax={totalInputs}
-              aria-valuenow={filledCount}
-              aria-label="Progresso de preenchimento da DRE"
-            >
-              <div
-                className={`draft-progress__fill${progressComplete ? ' draft-progress__fill--complete' : ''}`}
-                style={{ width: `${percent}%` }}
-              />
-            </div>
-            <p className="draft-progress__hint">
-              {progressComplete
-                ? 'Tudo preenchido. Você pode enviar a DRE para revisão da controladoria.'
-                : `Faltam ${totalInputs - filledCount} linha(s) com valor para liberar o envio.`}
-            </p>
-          </div>
-        ) : null}
       </div>
 
       {/* Coluna 3: Validações */}

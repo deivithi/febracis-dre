@@ -59,7 +59,7 @@ export function SubmissionKpiSection({
 
         <div className="kpi-card kpi-card--grid-fill" role="group" aria-label={gridFillAriaLabel(draftSummary)}>
           {totalInputs > 0 ? (
-            <div className="draft-progress draft-progress--kpi-card">
+            <div className="draft-progress draft-progress--kpi-card" data-testid="draft-progress">
               <div className="draft-progress__head">
                 <span className="draft-progress__title">Preenchimento da grelha</span>
                 <span className="draft-progress__counter">
