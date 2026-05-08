@@ -10,7 +10,8 @@
 - **Produção (Vercel canônica):** `https://febracis-dre.vercel.app` no team **`deivithis-projects`**.
 - **Vercel (team ativo):** `deivithis-projects` — projeto `febracis-dre`, `projectId` **`prj_TRfWzt0jvjnqmGynfr6hKTC1qDyq`**, teamId **`team_OFMmpjaot33SjbhGk0lLBFs1`**. O MCP da Vercel acessa esta conta. A CLI local pode estar logada em outra conta; verificar antes de deploy.
 - **Produção READY (2026-05-07, antes da sequência ERROR):** `dpl_D5R69dMXX4QgScopdJDmmLcMkQMs`, commit `f3ffc35daaf72dab711a94597c683b77b354b909`, alias `https://febracis-dre.vercel.app`.
-- **Produção READY atual (Último `vercel inspect` 08/05/2026 BRT):** `dpl_9GRYX3oQrPqNtqrSHbXJM4RBvWyw` (URL `https://febracis-mvz4witu9-deivithis-projects.vercel.app`), alias **`https://febracis-dre.vercel.app`**, `api/dre-agent` (~1.97 MB, `iad1`), estado **Ready**.
+- **Produção READY atual (`vercel inspect` 08/05/2026 BRT, commit `473fe09`):** `dpl_Hbz2oi4AqyR2adx6s5oNps1PvnMB` (URL `https://febracis-rmqi7hmbz-deivithis-projects.vercel.app`), alias **`https://febracis-dre.vercel.app`**, `api/dre-agent` (~2 MB), região build `iad1`, estado **Ready** — inclui hub **Assistente** `/app/assistant` + governança `assistantProductTab` modo Dúvidas.
+- **Produção READY anterior (08/05/2026 BRT, referência):** `dpl_9GRYX3oQrPqNtqrSHbXJM4RBvWyw` (`https://febracis-mvz4witu9-deivithis-projects.vercel.app`).
 - **Deploy intermédio (auditoria DRE Agent, mesma janela):** `dpl_78Q5paVibSPCrb2AMNSFg2qigCZX` (`febracis-c5r88l4c9-deivithis-projects`).
 - **Produção READY anterior (2026-05-08 documental):** `dpl_9uBcfAUK1JxsxjGznd3Jq2sMg8c3` (`febracis-ligzmsedq-deivithis-projects`), commit de referência histórica **`8eb04ee`**.
 - **GitHub `main` (2026-05-07, referência histórica):** `f0645821dabf12da020a8f007ffa0934a1e1f196`. O último auto-deploy deste commit (`dpl_2EMgRwmt7vR7i78Q2MHDmSTm7NE9`) ficou `ERROR`; build local com Node 24 passa, então a causa provável é configuração/ambiente Vercel.
