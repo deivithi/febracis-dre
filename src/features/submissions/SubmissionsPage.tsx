@@ -136,6 +136,8 @@ export function SubmissionsPage() {
         <button
           type="button"
           role="tab"
+          id="tab-panel"
+          aria-controls="panel-view"
           aria-selected={w.mobileWorkspaceTab === 'panel'}
           className="submission-mobile-tabs__btn"
           onClick={() => w.setMobileWorkspaceTab('panel')}
@@ -145,6 +147,8 @@ export function SubmissionsPage() {
         <button
           type="button"
           role="tab"
+          id="tab-dre"
+          aria-controls="dre-view"
           aria-selected={w.mobileWorkspaceTab === 'dre'}
           className="submission-mobile-tabs__btn"
           onClick={() => w.setMobileWorkspaceTab('dre')}
@@ -153,7 +157,7 @@ export function SubmissionsPage() {
         </button>
       </div>
 
-      <div className="submission-workbench" data-testid="submission-workbench">
+      <div className="submission-workbench" id="panel-view" role="tabpanel" aria-labelledby="tab-panel" data-testid="submission-workbench">
         <SubmissionWorkbenchRail
           mobileWorkspaceTab={w.mobileWorkspaceTab}
           selectedFranchise={w.selectedFranchise}

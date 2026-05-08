@@ -172,7 +172,7 @@ export function SubmissionWorkbenchRail({
       }`}
       aria-label="Painel da submissão"
     >
-      {/* Coluna esquerda: situação + observações + ações */}
+      {/* Coluna 1: Situação + observações + ações */}
       <div className="submission-workbench__rail-col">
         <div className="card">
           <div className="card__header">
@@ -274,7 +274,7 @@ export function SubmissionWorkbenchRail({
         </div>
       </div>
 
-      {/* Coluna direita: resumo financeiro + progresso + validações */}
+      {/* Coluna 2: Resumo financeiro + progresso */}
       <div className="submission-workbench__rail-col">
         <div className="card">
           <div className="card__header">
@@ -332,7 +332,14 @@ export function SubmissionWorkbenchRail({
                 <strong>{filledCount}</strong> de <strong>{totalInputs}</strong> linhas obrigatórias
               </span>
             </div>
-            <div className="draft-progress__track" aria-hidden>
+            <div
+              className="draft-progress__track"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={totalInputs}
+              aria-valuenow={filledCount}
+              aria-label="Progresso de preenchimento da DRE"
+            >
               <div
                 className={`draft-progress__fill${progressComplete ? ' draft-progress__fill--complete' : ''}`}
                 style={{ width: `${percent}%` }}
@@ -345,7 +352,10 @@ export function SubmissionWorkbenchRail({
             </p>
           </div>
         ) : null}
+      </div>
 
+      {/* Coluna 3: Validações */}
+      <div className="submission-workbench__rail-col">
         <div className="card">
           <div className="card__header">
             <div>

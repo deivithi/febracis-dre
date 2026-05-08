@@ -54,6 +54,15 @@ export function SubmissionsScopeTable({ rows, activeSubmissionId, onSelectRow, g
                       key={row.submission_id}
                       className={row.submission_id === activeSubmissionId ? 'data-row--active' : ''}
                       onClick={() => onSelectRow(row)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          onSelectRow(row);
+                        }
+                      }}
+                      tabIndex={0}
+                      role="button"
+                      aria-label={`Abrir DRE da franquia ${row.franchise_name}, competência ${formatPeriodLabel(row.period_label)}`}
                     >
                       <td>
                         <div className="list-row__title">{row.franchise_name}</div>
