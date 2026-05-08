@@ -351,8 +351,9 @@
 
 /* ===== Layout de colunas no rail (desktop e tablet) ===== */
 
+/* Especificidade maior que `.submission-sidebar { display:flex }` mais abaixo. */
 @media (min-width: 1024px) {
-  .submission-workbench__rail--grid {
+  .submission-workbench__rail.submission-workbench__rail--grid {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: var(--space-5);
@@ -361,7 +362,7 @@
 }
 
 @media (min-width: 1280px) {
-  .submission-workbench__rail--grid {
+  .submission-workbench__rail.submission-workbench__rail--grid {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, 1fr);
   }
 }
