@@ -122,6 +122,44 @@ export function getStatusVariant(status: string | null | undefined) {
   return statusVariants[status] ?? 'draft';
 }
 
+const validationStatusLabels: Record<string, string> = {
+  passed: 'Conforme',
+  pass: 'Conforme',
+  ok: 'Conforme',
+  success: 'Conforme',
+  warning: 'Atenção',
+  warn: 'Atenção',
+  pending: 'Atenção',
+  failed: 'Falhou',
+  fail: 'Falhou',
+  error: 'Falhou',
+  blocked: 'Bloqueado',
+};
+
+export type ValidationSeverity = 'pass' | 'warn' | 'fail';
+
+export function getValidationSeverity(status: string | null | undefined): ValidationSeverity {
+  if (!status) {
+    return 'warn';
+  }
+  const key = status.toLowerCase();
+  if (key === 'passed' || key === 'pass' || key === 'ok' || key === 'success') {
+    return 'pass';
+  }
+  if (key === 'failed' || key === 'fail' || key === 'error' || key === 'blocked') {
+    return 'fail';
+  }
+  return 'warn';
+}
+
+export function formatValidationStatusLabel(status: string | null | undefined) {
+  if (!status) {
+    return 'Atenção';
+  }
+  const key = status.toLowerCase();
+  return validationStatusLabels[key] ?? status;
+}
+
 export function calculateDelta(current: unknown, previous: unknown) {
   const currentValue = toNumber(current);
   const previousValue = toNumber(previous);

@@ -120,7 +120,8 @@ export function AssistantPage() {
             Assistente DRE
           </h1>
           <p className="page-container__subtitle">
-            Dois modos fixos: orientação sem gravar pelo chat, ou preenchimento guiado sincronizado com Submissões.
+            Converse com o assistente para entender cada linha da DRE ou preencher passo a passo. Os números aqui
+            são os mesmos que aparecem em <strong>Submissões</strong> — escolha onde é mais confortável trabalhar.
           </p>
         </div>
       </div>
@@ -145,10 +146,10 @@ export function AssistantPage() {
       </div>
 
       <p className="assistant-hub-context" role="status">
-        <strong>Contexto:</strong> {franchiseLabel} · {periodLabel}
+        <strong>Você está em:</strong> {franchiseLabel} · competência {periodLabel}
         {productTab === 'duvidas'
-          ? ' · só orientação (o chat não altera valores da DRE).'
-          : ' · o chat pode propor valores; confirme e grave o rascunho na mesma página ou finalize o preenchimento na grelha em Submissões.'}
+          ? ' — modo orientação. O assistente explica cada linha da DRE; nada é gravado por aqui.'
+          : ' — modo preenchimento guiado. O assistente sugere valores; você confirma e grava o rascunho como na grelha de Submissões.'}
       </p>
 
       <SubmissionToolbar
