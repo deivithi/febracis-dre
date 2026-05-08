@@ -1,16 +1,57 @@
-import { useCallback, useEffect, useMemo, useRef, type KeyboardEvent } from 'react';
-import { Bot, BookOpenText, CornerDownLeft, HelpCircle, Loader2, SkipForward, Sparkles } from 'lucide-react';
-import type { AgentMessageRow } from '../shared/portal.types';
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import {
+  Bot,
+  BookOpenText,
+  ChevronLeft,
+  ChevronRight,
+  CornerDownLeft,
+  HelpCircle,
+  Loader2,
+  MapPin,
+  RefreshCw,
+  SkipForward,
+  Sparkles,
+  List,
+} from 'lucide-react';
+import type { AgentMessageRow, DreInputCatalogLine } from '../shared/portal.types';
 import { AssistantProse } from './AssistantProse';
 import type { AssistantInteractionMode } from './agentPermissions';
-import type { DreAssistantCitation } from './dreAssistant';
-import { stripInternalLineCodesFromUserText } from './dreAssistant';
+import {
+  DRE_PHASE_COUNT,
+  getDrePhaseMetas,
+  getFieldGuide,
+  getPhaseProgress,
+  mapLineToPhase,
+  stripInternalLineCodesFromUserText,
+  type DreAssistantCitation,
+  type ProposedAssistantValue,
+} from './dreAssistant';
+import { CurrencyKeypad } from './components/CurrencyKeypad';
+
+/** Comando canónico equivalente ao cumprimento inicial. */
+const CMD_START = 'cmd:start';
+
+function formatBrl(amount: number): string {
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(amount);
+}
 
 export interface DreAssistantPanelProps {
   enabled: boolean;
   loading: boolean;
   pending: boolean;
   focusLabel: string | null;
+  /** Linha em foco (catálogo) para CTA e microcopy */
+  focusLine: DreInputCatalogLine | null;
+  /** Linhas do catálogo (stepper / fases) */
+  catalogLines: DreInputCatalogLine[];
+  /** Valores actuais por line_code (progresso por fase) */
+  lineValueMap: Record<string, string>;
+  /** Fase DRE persistida ou derivada no workspace */
+  drePhaseId: number | null;
+  /** Proposta HITL pendente (sessão) */
+  proposedValue: ProposedAssistantValue | null;
+  skippedLineCodes: readonly string[];
+  canEditActiveSubmission: boolean;
   nextPrompt: string | null;
   /** Rótulo da fase persistida em `flow_checkpoint` (state_json). */
   flowPhaseLabel: string | null;
@@ -28,31 +69,35 @@ export interface DreAssistantPanelProps {
   interactionMode: AssistantInteractionMode;
   onDraftChange: (value: string) => void;
   onSend: () => void;
-  onQuickAction: (prompt: string) => void;
+  /** Comandos determinísticos `cmd:*`. */
+  onCommand: (command: string) => void;
+  onSaveDraft: () => void;
+  onSubmitReview: () => void;
+  savePending: boolean;
+  submitPending: boolean;
 }
-
-const OLA_PROMPT = 'Olá! Vamos começar o preenchimento da DRE.';
-
-const QUICK_ACTIONS_FULL: { label: string; prompt: string; variant?: 'primary' }[] = [
-  { label: 'Olá', prompt: OLA_PROMPT, variant: 'primary' },
-  { label: 'Explicar campo', prompt: 'Explicar o campo atual' },
-  { label: 'Saltar por agora', prompt: 'Quero pular o campo em foco por agora' },
-  { label: 'Salvar rascunho', prompt: 'Salvar rascunho atual' },
-];
-
-const QUICK_ACTIONS_EXPLAIN: { label: string; prompt: string; variant?: 'primary' }[] = [
-  { label: 'Olá', prompt: OLA_PROMPT, variant: 'primary' },
-  { label: 'Explicar campo', prompt: 'Explicar o campo atual' },
-];
 
 /** Altura máxima do textarea (~8 linhas) em px, alinhada ao line-height do composer. */
 const TEXTAREA_MAX_HEIGHT_PX = 200;
+
+/** Trecho do glossário (repo: `docs/dre-glossario.md`). */
+const GLOSSARY_EXCERPT = `Glossário DRE (rascunho para revisão da controladoria)
+— Ordem canónica: Receita bruta → Deduções → Custos variáveis e evento → Marketing → Inadimplência → Folha → Estrutura → Impostos → Resultado (MC2/EBITDA).
+— Referências: Lei 6.404/76 art. 187, NBC TG 26 (CFC), Conceptual Framework IFRS, setoriais de franquia (IFB/SBVC).
+— Detalhe por linha editável: ver documento completo em docs/dre-glossario.md no repositório febracis-dre.`;
 
 export function DreAssistantPanel({
   enabled,
   loading,
   pending,
   focusLabel,
+  focusLine,
+  catalogLines,
+  lineValueMap,
+  drePhaseId,
+  proposedValue,
+  skippedLineCodes,
+  canEditActiveSubmission,
   nextPrompt,
   flowPhaseLabel,
   realignHint,
@@ -66,10 +111,35 @@ export function DreAssistantPanel({
   interactionMode,
   onDraftChange,
   onSend,
-  onQuickAction,
+  onCommand,
+  onSaveDraft,
+  onSubmitReview,
+  savePending,
+  submitPending,
 }: DreAssistantPanelProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const quickActions = interactionMode === 'explain_only' ? QUICK_ACTIONS_EXPLAIN : QUICK_ACTIONS_FULL;
+  const [keypadOpen, setKeypadOpen] = useState(false);
+
+  const skippedSet = useMemo(() => new Set(skippedLineCodes), [skippedLineCodes]);
+
+  const activePhaseId = useMemo(() => {
+    if (drePhaseId !== null && drePhaseId >= 1 && drePhaseId <= DRE_PHASE_COUNT) {
+      return drePhaseId;
+    }
+    if (focusLine) {
+      return mapLineToPhase(focusLine);
+    }
+    return 1;
+  }, [drePhaseId, focusLine]);
+
+  const phaseMetas = useMemo(() => getDrePhaseMetas(), []);
+
+  const focusGuide = focusLine ? getFieldGuide(focusLine) : null;
+
+  const proposedLine = useMemo(() => {
+    if (!proposedValue) return null;
+    return catalogLines.find((row) => row.line_code === proposedValue.line_code) ?? null;
+  }, [catalogLines, proposedValue]);
 
   const progressPercent = useMemo(() => {
     if (totalSteps <= 0) {
@@ -113,6 +183,11 @@ export function DreAssistantPanel({
     [draftValue, onSend, pending],
   );
 
+  const insertTargetLine = focusLine ?? catalogLines[0] ?? null;
+
+  const toolbarDisabled = loading || pending || !enabled;
+  const ctaDisabled = toolbarDisabled || !insertTargetLine;
+
   return (
     <div className="card card--accent dre-assistant dre-assistant--hero">
       <div className="dre-assistant__hero-top dre-assistant__hero-top--compact">
@@ -136,14 +211,14 @@ export function DreAssistantPanel({
             <p className="dre-assistant__hero-sub">
               {interactionMode === 'explain_only' ? (
                 <>
-                  Modo leitura: explico campos e fluxo; quem preenche valores é o franqueado com permissão de operação.{' '}
-                  <kbd className="dre-assistant__kbd">Enter</kbd> envia; <kbd className="dre-assistant__kbd">Shift+Enter</kbd>{' '}
-                  nova linha.
+                  Modo leitura: exploro fases e campos; valores só com perfil de edição. Botões enviam comandos
+                  determinísticos (sem texto livre obsoleto nos atalhos). <kbd className="dre-assistant__kbd">Enter</kbd>{' '}
+                  envia mensagem própria.
                 </>
               ) : (
                 <>
-                  Toque em <strong>Olá</strong> ou escreva abaixo. <kbd className="dre-assistant__kbd">Enter</kbd> envia;{' '}
-                  <kbd className="dre-assistant__kbd">Shift+Enter</kbd> nova linha.
+                  Use os botões do cartão do campo ou a barra de ferramentas — cada um envia um comando canónico
+                  estável para o servidor. Mensagem livre continua disponível em baixo quando precisar.
                 </>
               )}
             </p>
@@ -171,6 +246,32 @@ export function DreAssistantPanel({
                 números oficiais.
               </div>
             ) : null}
+
+            <div className="dre-assistant__phase-stepper" data-testid="dre-assistant-stepper" role="navigation" aria-label="Fases da DRE">
+              {phaseMetas.map((phase) => {
+                const prog = getPhaseProgress(phase.id, catalogLines, lineValueMap, skippedSet);
+                const pillClass =
+                  phase.id === activePhaseId
+                    ? 'dre-assistant__phase-chip dre-assistant__phase-chip--current'
+                    : 'dre-assistant__phase-chip';
+                return (
+                  <button
+                    key={phase.id}
+                    type="button"
+                    className={pillClass}
+                    title={phase.title}
+                    disabled={toolbarDisabled || catalogLines.length === 0}
+                    onClick={() => onCommand(`cmd:phase_summary ${phase.id}`)}
+                  >
+                    <span className="dre-assistant__phase-chip-id">{phase.id}</span>
+                    <span className="dre-assistant__phase-chip-meta">
+                      {prog.filled}/{prog.total}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
             <div className="dre-assistant__progress-block" aria-label="Progresso do preenchimento">
               <div className="dre-assistant__progress-meta">
                 <span>{progressLabel}</span>
@@ -198,45 +299,187 @@ export function DreAssistantPanel({
                   style={{ width: `${totalSteps > 0 ? progressPercent : 0}%` }}
                 />
               </div>
-              <p className="dre-assistant__focus-line">
-                <HelpCircle size={14} aria-hidden />
-                <span>
-                  <strong>Próximo passo:</strong>{' '}
-                  <strong>{focusLabel ?? 'Aguardando o próximo passo'}</strong>
-                  {nextPrompt ? (
-                    <>
-                      <span className="dre-assistant__focus-sep">·</span>
-                      <span className="dre-assistant__next-inline">{nextPrompt}</span>
-                    </>
-                  ) : null}
-                </span>
-              </p>
-              {realignHint ? (
-                <p className="dre-assistant__realign-hint" role="status">
-                  {realignHint}
+            </div>
+
+            <section className="dre-assistant__cta-card" aria-labelledby="dre-assistant-cta-title">
+              <div className="dre-assistant__cta-head">
+                <h4 id="dre-assistant-cta-title" className="dre-assistant__cta-title">
+                  {focusGuide?.label ?? focusLabel ?? 'Aguardando o próximo campo'}
+                </h4>
+                {focusGuide ? (
+                  <p className="dre-assistant__cta-help">{focusGuide.help}</p>
+                ) : (
+                  <p className="dre-assistant__cta-help">
+                    Comece por <strong>Olá</strong> (comando <code className="dre-assistant__code-snippet">cmd:start</code>) ou
+                    escolha uma fase no stepper.
+                  </p>
+                )}
+              </div>
+              {focusLine ? (
+                <p className="dre-assistant__cta-micro">
+                  Este valor entra em <strong>{focusLine.section_name}</strong> e alimenta{' '}
+                  <strong>{focusLine.line_name}</strong>.
                 </p>
+              ) : null}
+              <div className="dre-assistant__cta-actions">
+                <button
+                  type="button"
+                  className="btn btn--ghost dre-assistant__cta-btn"
+                  data-testid="dre-assistant-cta-explain"
+                  disabled={ctaDisabled}
+                  onClick={() => onCommand('cmd:explain_field')}
+                >
+                  <HelpCircle size={16} aria-hidden /> Explicar
+                </button>
+                {interactionMode === 'full' && canEditActiveSubmission ? (
+                  <button
+                    type="button"
+                    className="btn btn--gold dre-assistant__cta-btn"
+                    disabled={ctaDisabled || !insertTargetLine}
+                    onClick={() => setKeypadOpen(true)}
+                  >
+                    Inserir valor
+                  </button>
+                ) : null}
+                {interactionMode === 'full' && canEditActiveSubmission ? (
+                  <button
+                    type="button"
+                    className="btn btn--ghost dre-assistant__cta-btn"
+                    disabled={ctaDisabled}
+                    onClick={() => onCommand('cmd:skip_field')}
+                  >
+                    <SkipForward size={16} aria-hidden /> Pular
+                  </button>
+                ) : null}
+              </div>
+              {nextPrompt ? (
+                <p className="dre-assistant__cta-next">
+                  <strong>Sugestão:</strong> {nextPrompt}
+                </p>
+              ) : null}
+              {keypadOpen && insertTargetLine && interactionMode === 'full' ? (
+                <div className="dre-assistant__keypad-wrap">
+                  <CurrencyKeypad
+                    key={insertTargetLine.line_code}
+                    lineCode={insertTargetLine.line_code}
+                    lineLabel={getFieldGuide(insertTargetLine).label}
+                    disabled={pending}
+                    onCancel={() => setKeypadOpen(false)}
+                    onPropose={(cmd) => {
+                      setKeypadOpen(false);
+                      onCommand(cmd);
+                    }}
+                  />
+                </div>
+              ) : null}
+            </section>
+
+            {proposedValue && interactionMode === 'full' ? (
+              <div className="dre-assistant__hitl-card" role="region" aria-label="Confirmação de valor proposto">
+                <p className="dre-assistant__hitl-text">
+                  <strong>Proposta pendente:</strong> {formatBrl(proposedValue.amount)}
+                  {proposedLine ? ` → ${proposedLine.line_name}` : ` → ${proposedValue.line_code}`}
+                </p>
+                <div className="dre-assistant__hitl-actions">
+                  <button
+                    type="button"
+                    className="btn btn--gold"
+                    data-testid="dre-assistant-hitl-confirm"
+                    disabled={!canEditActiveSubmission || toolbarDisabled}
+                    onClick={() => onCommand('cmd:confirm_value')}
+                  >
+                    Confirmar
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn--ghost"
+                    disabled={toolbarDisabled}
+                    onClick={() => onCommand('cmd:reject_value')}
+                  >
+                    Editar / cancelar
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="dre-assistant__toolbar" role="toolbar" aria-label="Navegação guiada da DRE">
+              <button
+                type="button"
+                className="btn btn--ghost btn--compact"
+                disabled={toolbarDisabled}
+                onClick={() => onCommand('cmd:where_am_i')}
+              >
+                <MapPin size={14} aria-hidden /> Onde estou
+              </button>
+              <button
+                type="button"
+                className="btn btn--ghost btn--compact"
+                disabled={toolbarDisabled}
+                onClick={() => onCommand('cmd:prev_field')}
+              >
+                <ChevronLeft size={14} aria-hidden /> Voltar
+              </button>
+              <button
+                type="button"
+                className="btn btn--ghost btn--compact"
+                disabled={toolbarDisabled}
+                onClick={() => onCommand('cmd:next_field')}
+              >
+                Próximo <ChevronRight size={14} aria-hidden />
+              </button>
+              <button
+                type="button"
+                className="btn btn--ghost btn--compact"
+                disabled={toolbarDisabled}
+                onClick={() => onCommand('cmd:phase_summary')}
+              >
+                Resumo da fase
+              </button>
+              {interactionMode === 'explain_only' ? (
+                <button
+                  type="button"
+                  className="btn btn--ghost btn--compact"
+                  disabled={toolbarDisabled}
+                  onClick={() => onCommand('cmd:list_phase')}
+                >
+                  <List size={14} aria-hidden /> Campos da fase
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="btn btn--ghost btn--compact"
+                disabled={toolbarDisabled}
+                onClick={() => onCommand('cmd:restart')}
+              >
+                <RefreshCw size={14} aria-hidden /> Recomeçar
+              </button>
+              {interactionMode === 'full' ? (
+                <>
+                  <button
+                    type="button"
+                    className="btn btn--compact"
+                    disabled={!canEditActiveSubmission || savePending || toolbarDisabled}
+                    onClick={() => onSaveDraft()}
+                  >
+                    {savePending ? 'A gravar…' : 'Salvar rascunho'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn--gold btn--compact"
+                    disabled={!canEditActiveSubmission || submitPending || toolbarDisabled}
+                    onClick={() => onSubmitReview()}
+                  >
+                    {submitPending ? 'A enviar…' : 'Submeter revisão'}
+                  </button>
+                </>
               ) : null}
             </div>
 
-            <div className="dre-assistant__chips" role="toolbar" aria-label="Atalhos do assistente">
-              {quickActions.map((action) => (
-                <button
-                  key={action.prompt}
-                  type="button"
-                  className={
-                    action.variant === 'primary'
-                      ? 'dre-assistant__chip dre-assistant__chip--primary'
-                      : 'dre-assistant__chip dre-assistant__chip--ghost'
-                  }
-                  onClick={() => onQuickAction(action.prompt)}
-                  disabled={loading || pending}
-                >
-                  {action.label === 'Saltar por agora' ? <SkipForward size={14} aria-hidden /> : null}
-                  {action.label === 'Explicar campo' ? <HelpCircle size={14} aria-hidden /> : null}
-                  {action.label}
-                </button>
-              ))}
-            </div>
+            {realignHint ? (
+              <p className="dre-assistant__realign-hint" role="status">
+                {realignHint}
+              </p>
+            ) : null}
 
             <div className="dre-assistant__thread-wrap">
               <div
@@ -255,20 +498,20 @@ export function DreAssistantPanel({
                   <div className="dre-assistant__ola-gate">
                     <p className="dre-assistant__ola-gate-text">
                       {interactionMode === 'explain_only'
-                        ? 'Pergunte sobre qualquer campo da DRE ou sobre o fluxo de submissão. Não aplico valores neste perfil.'
-                        : 'Comece por aqui: o assistente percorre todos os campos da DRE na ordem correta e diz exatamente o que precisa em cada mensagem.'}
+                        ? 'Explore as fases no stepper ou peça uma explicação do campo atual.'
+                        : 'Siga o roteiro: confirme cada valor proposto antes de avançar. Toque em “Olá” para posicionar o assistente.'}
                     </p>
                     <button
                       type="button"
                       className="dre-assistant__chip dre-assistant__chip--primary dre-assistant__ola-btn"
                       disabled={pending}
-                      onClick={() => onQuickAction(OLA_PROMPT)}
+                      onClick={() => onCommand(CMD_START)}
                     >
                       Olá
                     </button>
                     <p className="dre-assistant__ola-gate-hint">
-                      Ou escreva o valor em reais no campo no final — <kbd className="dre-assistant__kbd">Enter</kbd>{' '}
-                      para enviar.
+                      As acções rápidas usam comandos <code className="dre-assistant__code-snippet">cmd:*</code> à prova de
+                      variação de texto.
                     </p>
                     {pending ? (
                       <p className="dre-assistant__thinking" role="status" aria-live="polite">
@@ -320,11 +563,11 @@ export function DreAssistantPanel({
               </div>
             </div>
 
-            {lastCitations.length > 0 && (
+            {lastCitations.length > 0 ? (
               <details className="dre-assistant__citations-details">
                 <summary className="dre-assistant__citations-summary">
                   <BookOpenText size={15} aria-hidden />
-                  Base de conhecimento usada (curadoria interna)
+                  Base de conhecimento usada (última resposta)
                 </summary>
                 <div className="dre-assistant__citation-list">
                   {lastCitations.map((citation) => (
@@ -335,7 +578,20 @@ export function DreAssistantPanel({
                   ))}
                 </div>
               </details>
-            )}
+            ) : null}
+            <details className="dre-assistant__citations-details dre-assistant__glossary-details">
+              <summary className="dre-assistant__citations-summary">
+                <BookOpenText size={15} aria-hidden />
+                Glossário DRE (referências)
+              </summary>
+              <div className="dre-assistant__glossary-excerpt">
+                <pre>{GLOSSARY_EXCERPT}</pre>
+                <p className="dre-assistant__glossary-hint">
+                  Documento completo: <code>docs/dre-glossario.md</code> no repositório — placeholder para revisão
+                  Febracis Controladoria.
+                </p>
+              </div>
+            </details>
 
             <div
               className={`dre-assistant__composer-dock ${pending ? 'dre-assistant__composer-dock--pending' : ''}`}
@@ -350,8 +606,8 @@ export function DreAssistantPanel({
                   onKeyDown={handleComposerKeyDown}
                   placeholder={
                     interactionMode === 'explain_only'
-                      ? 'Dúvida sobre um campo da DRE ou sobre o fluxo…'
-                      : 'Valor em reais, dúvida sobre o campo ou pedido para salvar…'
+                      ? 'Dúvida livre sobre um campo ou o fluxo…'
+                      : 'Valor em reais, dúvida ou pedido em linguagem natural…'
                   }
                   disabled={pending}
                   rows={1}

@@ -174,6 +174,13 @@ export function SubmissionsPage() {
             loading: w.agentSessionQuery.isLoading || w.agentMessagesQuery.isLoading,
             pending: w.assistantMutation.isPending,
             focusLabel: w.assistantFocusLabel,
+            focusLine: w.assistantFocusLine,
+            catalogLines: w.workspaceQuery.data?.inputLines ?? [],
+            lineValueMap: w.effectiveLineValues,
+            drePhaseId: w.assistantDrePhaseId,
+            proposedValue: w.assistantProposedValue,
+            skippedLineCodes: w.assistantSkippedCodes,
+            canEditActiveSubmission: w.canEditActiveSubmission,
             nextPrompt: w.assistantNextPrompt,
             flowPhaseLabel: w.assistantFlowPhaseLabel,
             realignHint: w.assistantRealignHint,
@@ -187,7 +194,11 @@ export function SubmissionsPage() {
             interactionMode: w.assistantInteractionMode,
             onDraftChange: w.setAssistantDraft,
             onSend: () => w.sendAssistantPrompt(w.assistantDraft),
-            onQuickAction: w.sendAssistantPrompt,
+            onCommand: w.sendAssistantCommand,
+            onSaveDraft: () => w.saveDraftMutation.mutate(),
+            onSubmitReview: () => w.submitMutation.mutate(),
+            savePending: w.saveDraftMutation.isPending,
+            submitPending: w.submitMutation.isPending,
           }}
         />
 

@@ -10,7 +10,9 @@
 - **Produção (Vercel canônica):** `https://febracis-dre.vercel.app` no team **`deivithis-projects`**.
 - **Vercel (team ativo):** `deivithis-projects` — projeto `febracis-dre`, `projectId` **`prj_TRfWzt0jvjnqmGynfr6hKTC1qDyq`**, teamId **`team_OFMmpjaot33SjbhGk0lLBFs1`**. O MCP da Vercel acessa esta conta. A CLI local pode estar logada em outra conta; verificar antes de deploy.
 - **Produção READY (2026-05-07, antes da sequência ERROR):** `dpl_D5R69dMXX4QgScopdJDmmLcMkQMs`, commit `f3ffc35daaf72dab711a94597c683b77b354b909`, alias `https://febracis-dre.vercel.app`.
-- **Produção READY atual (2026-05-08):** `dpl_9uBcfAUK1JxsxjGznd3Jq2sMg8c3` (URL `febracis-ligzmsedq-deivithis-projects`), commit GitHub `main` **`8eb04ee`** no momento do publish, alias **`https://febracis-dre.vercel.app`**. Deploy anterior de recuperação CLI: `dpl_9GRYX3oQrPqNtqrSHbXJM4RBvWyw`.
+- **Produção READY atual (Último `vercel inspect` 08/05/2026 BRT):** `dpl_9GRYX3oQrPqNtqrSHbXJM4RBvWyw` (URL `https://febracis-mvz4witu9-deivithis-projects.vercel.app`), alias **`https://febracis-dre.vercel.app`**, `api/dre-agent` (~1.97 MB, `iad1`), estado **Ready**.
+- **Deploy intermédio (auditoria DRE Agent, mesma janela):** `dpl_78Q5paVibSPCrb2AMNSFg2qigCZX` (`febracis-c5r88l4c9-deivithis-projects`).
+- **Produção READY anterior (2026-05-08 documental):** `dpl_9uBcfAUK1JxsxjGznd3Jq2sMg8c3` (`febracis-ligzmsedq-deivithis-projects`), commit de referência histórica **`8eb04ee`**.
 - **GitHub `main` (2026-05-07, referência histórica):** `f0645821dabf12da020a8f007ffa0934a1e1f196`. O último auto-deploy deste commit (`dpl_2EMgRwmt7vR7i78Q2MHDmSTm7NE9`) ficou `ERROR`; build local com Node 24 passa, então a causa provável é configuração/ambiente Vercel.
 - **Supabase (produção canônica atual):** `vwxgrjjwbvdiaqxqbryk` — projeto `febracis-dre`, org `nayypuosrfhhrkorfszw`, região `sa-east-1`. Manter este projeto como produção; `gjocbbipuguapypxfbub` foi uma migração abortada/não canônica nesta rodada.
 - **Contas históricas / não canônicas:** `richardrios10000-5421s-projects` (`febracis-dre-phi`) e `deivithilopes-6933s-projects` (`febracis-dre-rho`) não são fonte de produção nesta decisão.
@@ -62,9 +64,20 @@ Detalhe e comandos: [`operacoes-pendentes-supabase-vercel-2026-04-27.md`](./oper
 
 ### Assistente DRE (OpenAI nativa ou OpenRouter)
 
-- Variáveis de ambiente: ver [`.env.example`](../.env.example). **Prioridade:** `OPENAI_API_KEY` + `OPENAI_MODEL` (default em código: `gpt-5.4-mini`, endpoint OpenAI) **sobre** `OPENROUTER_API_KEY` + `OPENROUTER_MODEL` (default `minimax/minimax-m2.7`, `OPENROUTER_APP_URL` para `HTTP-Referer`).
-- Sem `OPENAI_API_KEY` nem `OPENROUTER_API_KEY`, o handler usa `runLocalAssistantTurn` (`mode: 'fallback'`); a UI mostra o modo guiado local (detalhes técnicos colapsáveis em **Detalhes técnicos**).
+- Variáveis de ambiente: ver [`.env.example`](../.env.example). **Prioridade:** `OPENAI_API_KEY` na Vercel (ou **`OPENROUTER_API_KEY`**). Modelo implícito no código quando `OPENAI_MODEL` falta: **`gpt-5.4-mini`**. **Não** há chave OpenAI hardcoded no repositório — use sempre segredos de ambiente. Ao usar CLI/pipe no Windows, confirmar que o valor gravado **não** inclua newline (*Value contains newlines*).
+- **`OPENROUTER_*`:** default `OPENROUTER_APP_URL` na função passou a **`https://febracis-dre.vercel.app`** (substitui o alias histórico `*-phi`).
+- Quick wins auditoria **08/05/2026 BRT:** mensagem utilizador entre `<<<USER_MESSAGE_BEGIN>>>`/`END`; 1 retry com espera ~800 ms antes do fallback determinístico; erro operacional **`AgentOperationalError`** com `code`/`status`; logs JSON (`dre_agent_turn`) com `latencyMs`, `mode`, `model`; resposta HTTP inclui **`mode`** e **`telemetry`** (`assistant_provider`, `assistant_model`).
+- Documento completo da auditoria: [`references/audit-dre-agent-2026-05-08.md`](./audit-dre-agent-2026-05-08.md).
+- Sem chaves remotas válidas **e** sem default resolvível (cenário só para forks que limpem as constantes) + sem `OPENROUTER_API_KEY`, o handler usa `runLocalAssistantTurn` (`mode: 'fallback'`); UI segue modo guiado local (detalhes em **Detalhes técnicos**).
 - Contexto no LLM: `retrieveRelevantAssistantKnowledge` (pontuação lexical sobre excertos curados + docs estáticos). Não substitui RAG com embeddings até existir pipeline de ingestão.
+
+##### Assistente guiado determinístico (`cmd:*` + painel)
+
+- **Bypass LangGraph:** comandos `cmd:*` tratados no início do handler com `runDeterministicCommand` (`api/dre-agent.ts`); telemetria **`dre_agent_command`**.
+- **HITL persistido:** `session_state_patch` devolve `proposed_value`, `acceptance_state`, `dre_phase`, `skipped_line_codes`. O cliente faz merge em `useSubmissionsWorkspace`; **`applyAssistantFieldUpdates` só aplica** `fieldUpdates` quando **`requiresFieldConfirmation` não está ativo** — propostas ficam pendentes até `cmd:confirm_value` (fluxo local ou LLM com confirmação).
+- **UI:** `DreAssistantPanel` — stepper de **10 fases**, CTA por campo (Explicar / Inserir / Pular), toolbar de navegação, teclado **`CurrencyKeypad`** (BRL), mini-card de confirmação.
+- **Referência didática:** [`docs/dre-glossario.md`](../docs/dre-glossario.md) (revisão controladoria pendente).
+- **Playwright:** [`tests/e2e/assistant-guided.spec.ts`](../tests/e2e/assistant-guided.spec.ts) — fluxo completo só com `E2E_DRE_EMAIL` e `E2E_DRE_PASSWORD` definidos; caso contrário o teste faz **`skip`**.
 
 #### Governança do assistente (papéis, números, continuidade)
 

@@ -24,6 +24,9 @@ import {
   findNextGuidedLine,
   getFieldGuide,
   parseFlowCheckpointFromState,
+  parseDrePhaseFromState,
+  parseProposedAssistantValueFromState,
+  parseSkippedLineCodesFromState,
   stripInternalLineCodesFromUserText,
   type DreAssistantTurnResult,
 } from './dreAssistant';
@@ -177,13 +180,19 @@ export function useSubmissionsWorkspace() {
     ? ('full' as const)
     : resolveAssistantInteractionMode(access?.roleCodes ?? [], workspaceQuery.data.submission.status);
   const assistantState = agentSessionQuery.data?.state_json;
+  const assistantSkippedCodes = parseSkippedLineCodesFromState(assistantState);
+  const assistantSkippedSet = useMemo(() => new Set(assistantSkippedCodes), [assistantSkippedCodes]);
+  const assistantDrePhaseId = parseDrePhaseFromState(assistantState);
+  const assistantProposedValue = parseProposedAssistantValueFromState(assistantState);
   const assistantStoredFocusLineCode = readSessionStateString(assistantState, 'guided_line_code');
   const assistantStoredNextPrompt = readSessionStateString(assistantState, 'next_prompt');
   const assistantFocusLine = !workspaceQuery.data?.inputLines.length
     ? null
     : assistantStoredFocusLineCode
       ? workspaceQuery.data.inputLines.find((line) => line.line_code === assistantStoredFocusLineCode) ?? null
-      : findNextGuidedLine(workspaceQuery.data.inputLines, effectiveLineValues);
+      : findNextGuidedLine(workspaceQuery.data.inputLines, effectiveLineValues, null, {
+          skippedLineCodes: assistantSkippedSet,
+        });
   const assistantFocusLabel = assistantFocusLine
     ? `${assistantFocusLine.section_name} • ${assistantFocusLine.line_name}`
     : null;
@@ -275,7 +284,8 @@ export function useSubmissionsWorkspace() {
       assistantInteractionMode === 'explain_only' ||
       !workspaceQuery.data?.submission ||
       !canEditActiveSubmission ||
-      result.fieldUpdates.length === 0
+      result.fieldUpdates.length === 0 ||
+      result.requiresFieldConfirmation === true
     ) {
       return effectiveLineValues;
     }
@@ -396,6 +406,7 @@ export function useSubmissionsWorkspace() {
         result?: DreAssistantTurnResult;
         flow_checkpoint?: Record<string, unknown>;
         interaction_mode?: string;
+        session_state_patch?: Record<string, unknown>;
       };
       try {
         body = (await response.json()) as {
@@ -403,6 +414,7 @@ export function useSubmissionsWorkspace() {
           result?: DreAssistantTurnResult;
           flow_checkpoint?: Record<string, unknown>;
           interaction_mode?: string;
+          session_state_patch?: Record<string, unknown>;
         };
       } catch {
         throw new Error(
@@ -424,11 +436,13 @@ export function useSubmissionsWorkspace() {
         !canEditActiveSubmission;
       const autoSaveRequested =
         assistantInteractionMode !== 'explain_only' && result.requestSave && canEditActiveSubmission;
+      const commitsFieldUpdatesImmediately =
+        result.fieldUpdates.length > 0 && result.requiresFieldConfirmation !== true;
       const shouldPersistAfterAgent =
         assistantInteractionMode !== 'explain_only' &&
         canEditActiveSubmission &&
         !blockedByWorkflow &&
-        (result.fieldUpdates.length > 0 || autoSaveRequested);
+        ((commitsFieldUpdatesImmediately && result.fieldUpdates.length > 0) || autoSaveRequested);
       const answer = blockedByWorkflow
         ? `${result.answer} O recorte atual esta em leitura, entao eu nao alterei os campos.`
         : result.answer;
@@ -447,6 +461,9 @@ export function useSubmissionsWorkspace() {
         },
       });
 
+      const serverPatchRaw = body.session_state_patch ?? {};
+      const sanitizedServerPatch =
+        typeof serverPatchRaw === 'object' && serverPatchRaw !== null ? serverPatchRaw : {};
       const focusLine =
         workspaceQuery.data?.inputLines.find((line) => line.line_code === result.focusLineCode) ??
         null;
@@ -454,7 +471,10 @@ export function useSubmissionsWorkspace() {
       await updateAgentSessionState(
         agentSessionQuery.data.id,
         {
-          ...(agentSessionQuery.data.state_json ?? {}),
+          ...(typeof agentSessionQuery.data.state_json === 'object' && agentSessionQuery.data.state_json !== null
+            ? (agentSessionQuery.data.state_json as Record<string, unknown>)
+            : {}),
+          ...sanitizedServerPatch,
           guided_line_code: result.focusLineCode,
           next_prompt: result.nextPrompt,
           last_mode: result.mode,
@@ -528,6 +548,10 @@ export function useSubmissionsWorkspace() {
     assistantMutation.mutate(trimmedPrompt);
   };
 
+  const sendAssistantCommand = (command: string) => {
+    sendAssistantPrompt(command);
+  };
+
 
   return {
     access,
@@ -540,15 +564,19 @@ export function useSubmissionsWorkspace() {
     assistantAgentMode,
     assistantDraft,
     setAssistantDraft,
+    assistantDrePhaseId,
     assistantEnabled,
     assistantErrorMessage,
+    assistantFocusLine,
     assistantFlowPhaseLabel,
     assistantFocusLabel,
     assistantMessages,
     assistantInteractionMode,
     assistantMutation,
     assistantNextPrompt,
+    assistantProposedValue,
     assistantRealignHint,
+    assistantSkippedCodes,
     beginEditing,
     canEdit,
     canEditActiveSubmission,
@@ -590,6 +618,7 @@ export function useSubmissionsWorkspace() {
     selectedPeriodId,
     setSelectedPeriodId,
     sendAssistantPrompt,
+    sendAssistantCommand,
     statementSource,
     submissionFocusId,
     setSubmissionFocusId,

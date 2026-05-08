@@ -1205,3 +1205,282 @@
   }
 }
 
+.btn--compact {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-xs);
+  min-height: 36px;
+}
+
+.dre-assistant__phase-stepper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+}
+
+.dre-assistant__phase-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 4px var(--space-2);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background var(--transition-fast), color var(--transition-fast);
+}
+
+.dre-assistant__phase-chip:hover:not(:disabled) {
+  border-color: var(--border-accent);
+  color: var(--text-primary);
+}
+
+.dre-assistant__phase-chip--current {
+  border-color: var(--accent-gold-strong, #c9a227);
+  background: rgba(201, 162, 39, 0.12);
+  color: var(--text-primary);
+}
+
+.dre-assistant__phase-chip-id {
+  opacity: 0.85;
+}
+
+.dre-assistant__phase-chip-meta {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+  font-size: 10px;
+}
+
+.dre-assistant__cta-card {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-4);
+  margin: 0 0 var(--space-3);
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.dre-assistant__cta-title {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+}
+
+.dre-assistant__cta-help {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: var(--leading-relaxed);
+}
+
+.dre-assistant__cta-micro {
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  line-height: var(--leading-relaxed);
+}
+
+.dre-assistant__cta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.dre-assistant__cta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.dre-assistant__cta-next {
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.dre-assistant__keypad-wrap {
+  margin-top: var(--space-3);
+}
+
+.dre-assistant__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  position: sticky;
+  bottom: 0;
+  padding: var(--space-2) 0;
+  margin: 0 0 var(--space-2);
+  border-top: 1px solid var(--border-subtle);
+  background: linear-gradient(to top, rgba(10, 14, 26, 0.95), rgba(10, 14, 26, 0.72));
+  backdrop-filter: blur(6px);
+  z-index: 2;
+}
+
+.dre-assistant__hitl-card {
+  border: 1px solid rgba(46, 123, 246, 0.45);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-4);
+  margin: 0 0 var(--space-3);
+  background: rgba(46, 123, 246, 0.08);
+}
+
+.dre-assistant__hitl-text {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+}
+
+.dre-assistant__hitl-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.dre-assistant__code-snippet {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.85em;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.dre-assistant__glossary-details {
+  margin-top: var(--space-2);
+}
+
+.dre-assistant__glossary-excerpt pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  margin: var(--space-2) 0 0;
+}
+
+.dre-assistant__glossary-hint {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin: var(--space-2) 0 0;
+}
+
+.currency-keypad {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
+  background: var(--bg-surface, #0f1422);
+}
+
+.currency-keypad__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.currency-keypad__title {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.currency-keypad__title strong {
+  display: block;
+  font-size: var(--text-sm);
+}
+
+.currency-keypad__subtitle {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.currency-keypad__close {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+}
+
+.currency-keypad__close:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.currency-keypad__preview {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: var(--space-3) 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.currency-keypad__preview-label {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.currency-keypad__preview-value {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+.currency-keypad__digits {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.currency-keypad__key {
+  min-height: 44px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.currency-keypad__key:hover:not(:disabled) {
+  border-color: var(--border-accent);
+}
+
+.currency-keypad__key--icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.currency-keypad__shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+}
+
+.currency-keypad__shortcuts-label {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-right: var(--space-1);
+}
+
+.currency-keypad__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+

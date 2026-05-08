@@ -21,6 +21,16 @@ export interface DreAssistantTurnResult {
   requestSave: boolean;
   requestSubmit: boolean;
   mode: 'fallback' | 'llm';
+  /**
+   * Quando true, o cliente só aplica `fieldUpdates` após `cmd:confirm_value`.
+   * Proposta fica também em `state_json.proposed_value` (persistência).
+   */
+  requiresFieldConfirmation?: boolean;
+  /** Opcional — preenchido pelo handler `api/dre-agent.ts` para telemetria e smoke (`model`/provider real). */
+  telemetry?: {
+    assistant_provider: string;
+    assistant_model: string;
+  };
 }
 
 export interface DreAssistantFieldGuide {
@@ -36,7 +46,7 @@ const FIELD_GUIDES: Record<string, Omit<DreAssistantFieldGuide, 'lineCode' | 'la
   gross_revenue: {
     aliases: ['rbv', 'receita bruta', 'receita bruta de vendas', 'faturamento'],
     question: 'Qual foi a Receita Bruta de Vendas (RBV) desta unidade no periodo?',
-    help: 'Use o total bruto vendido no periodo, antes das deducoes. Esse campo e a base de toda a DRE.',
+    help: 'Use o total bruto vendido no periodo, antes das deducoes. Esse campo e a base de toda a DRE. Ver glossario: docs/dre-glossario.md (revisao controladoria).',
     example: 'Exemplo: 560000 ou 560 mil.',
   },
   discounts_returns: {
@@ -160,6 +170,215 @@ const FIELD_GUIDES: Record<string, Omit<DreAssistantFieldGuide, 'lineCode' | 'la
     example: 'Exemplo: 18000.',
   },
 };
+
+/** Fases guiadas (UI + comandos): 10 passos conforme fluxo oficial Febracis / IFRS BRC. */
+export const DRE_PHASE_COUNT = 10;
+
+export interface DreAssistantPhaseMeta {
+  id: number;
+  title: string;
+  /** Filtro: linhas de entrada desta fase (por line_code quando definido). */
+  lineCodes?: string[];
+}
+
+export interface ProposedAssistantValue {
+  line_code: string;
+  amount: number;
+}
+
+export type AssistantAcceptanceState = 'none' | 'pending' | 'accepted';
+
+export const KNOWN_AGENT_COMMAND_NAMES = [
+  'start',
+  'explain_field',
+  'next_field',
+  'prev_field',
+  'skip_field',
+  'phase_summary',
+  'list_phase',
+  'where_am_i',
+  'propose_value',
+  'confirm_value',
+  'reject_value',
+  'save_draft',
+  'restart',
+] as const;
+
+export type AgentCommandName = (typeof KNOWN_AGENT_COMMAND_NAMES)[number];
+
+export type ParsedAgentMessage =
+  | { kind: 'free'; raw: string }
+  | { kind: 'cmd'; name: AgentCommandName; args: string[] };
+
+export interface DeterministicCommandSessionPatch {
+  dre_phase?: number | null;
+  proposed_value?: ProposedAssistantValue | null;
+  acceptance_state?: AssistantAcceptanceState;
+  skipped_line_codes?: string[];
+}
+
+export interface RunDeterministicCommandResult {
+  result: DreAssistantTurnResult;
+  sessionPatch: DeterministicCommandSessionPatch;
+}
+
+const PHASE_DEFINITIONS: readonly DreAssistantPhaseMeta[] = [
+  { id: 1, title: 'Receita bruta', lineCodes: undefined },
+  { id: 2, title: 'Deduções RBV', lineCodes: undefined },
+  { id: 3, title: 'Despesas de evento', lineCodes: undefined },
+  { id: 4, title: 'Despesas variáveis', lineCodes: undefined },
+  { id: 5, title: 'Marketing', lineCodes: undefined },
+  { id: 6, title: 'Inadimplência', lineCodes: undefined },
+  { id: 7, title: 'Folha CLT', lineCodes: ['people_total'] },
+  {
+    id: 8,
+    title: 'Estrutura / Adm.',
+    lineCodes: ['cto_total', 'utilities_services_total', 'general_expenses_total'],
+  },
+  { id: 9, title: 'Impostos', lineCodes: ['taxes'] },
+  { id: 10, title: 'MC2 · EBITDA · Encerramento', lineCodes: undefined },
+];
+
+export function getDrePhaseMetas(): readonly DreAssistantPhaseMeta[] {
+  return PHASE_DEFINITIONS;
+}
+
+export function phaseTitle(phaseId: number): string {
+  return PHASE_DEFINITIONS.find((phase) => phase.id === phaseId)?.title ?? `Fase ${phaseId}`;
+}
+
+/**
+ * Mapa editorial 1–10: RBV → … → resultado.
+ * Para fases que partilham section_code (`structure`), usa line_code para segmentar Folha vs demais custos estruturais.
+ */
+export function mapLineToPhase(line: DreInputCatalogLine): number {
+  switch (line.section_code) {
+    case 'rbv':
+      return 1;
+    case 'deductions':
+      return 2;
+    case 'event_expenses':
+      return 3;
+    case 'variable_expenses':
+      return 4;
+    case 'marketing':
+      return 5;
+    case 'default':
+      return 6;
+    case 'structure': {
+      if (line.line_code === 'people_total') {
+        return 7;
+      }
+      return 8;
+    }
+    case 'taxes':
+      return 9;
+    case 'result':
+      return 10;
+    default:
+      return Math.min(
+        10,
+        Math.max(1, Math.round(line.section_order / 10)),
+      );
+  }
+}
+
+export function getPhaseProgress(
+  phaseId: number,
+  lines: DreInputCatalogLine[],
+  currentValues: Record<string, string>,
+  skippedLineCodes?: Set<string>,
+): { filled: number; total: number } {
+  const targetLines = lines.filter((line) => mapLineToPhase(line) === phaseId);
+  const guided = targetLines.filter((line) => line.input_mode === 'currency');
+  const countable = guided.filter((line) => {
+    const raw = currentValues[line.line_code] ?? '';
+    const numeric = raw.trim().length > 0;
+    const skipped = skippedLineCodes?.has(line.line_code);
+    return numeric || skipped;
+  });
+  return { filled: countable.length, total: Math.max(guided.length, 1) };
+}
+
+export function listLinesInPhase(phaseId: number, lines: DreInputCatalogLine[]): DreInputCatalogLine[] {
+  return lines.filter((line) => mapLineToPhase(line) === phaseId);
+}
+
+export function findFirstLineOfPhase(
+  phaseId: number,
+  lines: DreInputCatalogLine[],
+  currentValues: Record<string, string>,
+  skippedLineCodes?: Set<string>,
+): DreInputCatalogLine | null {
+  const inPhase = listLinesInPhase(phaseId, lines);
+  return (
+    inPhase.find((line) => {
+      if (skippedLineCodes?.has(line.line_code)) {
+        return false;
+      }
+      return (currentValues[line.line_code] ?? '').trim().length === 0;
+    }) ?? inPhase[0] ?? null
+  );
+}
+
+/**
+ * Extrai comandos determinísticos `cmd:*` (UI e testes).
+ */
+export function parseAgentCommand(rawMessage: string): ParsedAgentMessage {
+  const trimmed = rawMessage.trim();
+  if (!/^cmd:/i.test(trimmed)) {
+    return { kind: 'free', raw: trimmed };
+  }
+
+  const rest = trimmed.slice(4).trim();
+  if (rest.length === 0) {
+    return { kind: 'free', raw: trimmed };
+  }
+
+  const tokens = rest.split(/\s+/).filter(Boolean);
+  const head = tokens[0]?.toLowerCase() ?? '';
+  const normalizedName = head.replace(/-/g, '_');
+  const isKnown = (KNOWN_AGENT_COMMAND_NAMES as readonly string[]).includes(normalizedName);
+
+  if (!isKnown) {
+    return { kind: 'free', raw: trimmed };
+  }
+
+  return {
+    kind: 'cmd',
+    name: normalizedName as AgentCommandName,
+    args: tokens.slice(1),
+  };
+}
+
+const FALLBACK_KNOWLEDGE_SNIPPET: DreAssistantCitation[] = [
+  {
+    title: 'Fluxo oficial da DRE',
+    source: 'docs/logica-da-dre-e-do-workflow.md',
+    excerpt:
+      'O dado nasce em Submissoes, e a unidade preenche somente as linhas editaveis. O sistema recalcula DRE e KPIs antes de envio e revisao.',
+  },
+];
+
+function emptyPack(
+  overrides: Partial<DreAssistantTurnResult>,
+  sessionPatch: DeterministicCommandSessionPatch = {},
+): RunDeterministicCommandResult {
+  return {
+    result: {
+      answer: '',
+      citations: FALLBACK_KNOWLEDGE_SNIPPET,
+      fieldUpdates: [],
+      focusLineCode: null,
+      nextPrompt: null,
+      requestSave: false,
+      requestSubmit: false,
+      mode: 'fallback',
+      ...overrides,
+    },
+    sessionPatch,
+  };
+}
 
 /** Texto fixo para o franqueado — sem códigos internos. */
 export const ASSISTANT_REPLY_FORMAT_HINT =
@@ -362,7 +581,9 @@ export function findNextGuidedLine(
   lines: DreInputCatalogLine[],
   currentValues: Record<string, string>,
   currentLineCode?: string | null,
+  options?: { skippedLineCodes?: Set<string> },
 ) {
+  const skipped = options?.skippedLineCodes;
   const currentIndex = currentLineCode
     ? lines.findIndex((line) => line.line_code === currentLineCode)
     : -1;
@@ -373,6 +594,9 @@ export function findNextGuidedLine(
 
   return (
     orderedLines.find((line) => {
+      if (skipped?.has(line.line_code)) {
+        return false;
+      }
       const rawValue = currentValues[line.line_code] ?? '';
       return rawValue.trim().length === 0;
     }) ??
@@ -381,9 +605,477 @@ export function findNextGuidedLine(
   );
 }
 
+/** Linha imediatamente anterior na ordem do catálogo (roteiro oficial). */
+export function findPreviousGuidedLine(
+  lines: DreInputCatalogLine[],
+  currentLineCode?: string | null,
+): DreInputCatalogLine | null {
+  if (!currentLineCode || lines.length === 0) {
+    return null;
+  }
+  const idx = lines.findIndex((line) => line.line_code === currentLineCode);
+  if (idx <= 0) {
+    return null;
+  }
+  return lines[idx - 1] ?? null;
+}
+
 export function buildQuestionForLine(line: DreInputCatalogLine) {
   const guide = getFieldGuide(line);
   return `${guide.question} ${guide.example} ${ASSISTANT_REPLY_FORMAT_HINT}`;
+}
+
+export interface DeterministicCommandInput {
+  cmd: ParsedAgentMessage & { kind: 'cmd' };
+  lines: DreInputCatalogLine[];
+  currentValues: Record<string, string>;
+  currentLineCode: string | null;
+  explainOnly: boolean;
+  skippedLineCodes: readonly string[];
+  proposedValueFromSession: ProposedAssistantValue | null;
+  drePhaseFromSession: number | null;
+}
+
+function citationForLine(line: DreInputCatalogLine): DreAssistantCitation {
+  const guide = getFieldGuide(line);
+  return {
+    title: guide.label,
+    source: `${line.section_name} • ${line.line_code}`,
+    excerpt: guide.help,
+  };
+}
+
+function formatMoneyBr(amount: number): string {
+  return `R$ ${amount.toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+/** Executa comandos `cmd:*` sem LLM. */
+export function runDeterministicCommand(input: DeterministicCommandInput): RunDeterministicCommandResult {
+  const { cmd, lines, currentValues } = input;
+  const skipped = new Set(input.skippedLineCodes);
+  const skipOpts = { skippedLineCodes: skipped };
+
+  const focusFromSession =
+    input.currentLineCode !== null ? lines.find((line) => line.line_code === input.currentLineCode) ?? null : null;
+
+  switch (cmd.name) {
+    case 'start': {
+      const focus =
+        findNextGuidedLine(lines, currentValues, input.currentLineCode, skipOpts) ?? lines[0] ?? null;
+      const phase = focus ? mapLineToPhase(focus) : null;
+      return {
+        result: {
+          answer: explainStartMessage(input.explainOnly),
+          citations: FALLBACK_KNOWLEDGE_SNIPPET,
+          fieldUpdates: [],
+          focusLineCode: focus?.line_code ?? null,
+          nextPrompt: focus ? buildQuestionForLine(focus) : null,
+          requestSave: false,
+          requestSubmit: false,
+          mode: 'fallback',
+        },
+        sessionPatch: {
+          dre_phase: phase,
+          acceptance_state: 'none',
+          proposed_value: null,
+        },
+      };
+    }
+
+    case 'explain_field': {
+      const focus =
+        focusFromSession ??
+        findNextGuidedLine(lines, currentValues, null, skipOpts) ??
+        lines[0] ??
+        null;
+      if (!focus) {
+        return emptyPack({
+          answer: 'Sem catálogo de linhas neste contexto.',
+        });
+      }
+      const guide = getFieldGuide(focus);
+      return {
+        result: {
+          answer: `${guide.help} ${guide.example} (${focus.section_name} — campo “${guide.label}”.)`,
+          citations: [citationForLine(focus)],
+          fieldUpdates: [],
+          focusLineCode: focus.line_code,
+          nextPrompt: input.explainOnly
+            ? 'Quer explicação sobre outro campo ou avançar com “cmd:next_field”?'
+            : buildQuestionForLine(focus),
+          requestSave: false,
+          requestSubmit: false,
+          mode: 'fallback',
+        },
+        sessionPatch: { dre_phase: mapLineToPhase(focus) },
+      };
+    }
+
+    case 'next_field': {
+      const focus =
+        findNextGuidedLine(lines, currentValues, input.currentLineCode, skipOpts) ?? lines[0] ?? null;
+      if (!focus) {
+        return emptyPack({ answer: 'Não há próximo campo vazio neste roteiro.' });
+      }
+      return {
+        result: {
+          answer: `Seguimos com “${focus.line_name}” (${focus.section_name}).`,
+          citations: [citationForLine(focus)],
+          fieldUpdates: [],
+          focusLineCode: focus.line_code,
+          nextPrompt: input.explainOnly ? null : buildQuestionForLine(focus),
+          requestSave: false,
+          requestSubmit: false,
+          mode: 'fallback',
+        },
+        sessionPatch: { dre_phase: mapLineToPhase(focus) },
+      };
+    }
+
+    case 'prev_field': {
+      const anchor = focusFromSession;
+      const prev =
+        anchor ? findPreviousGuidedLine(lines, anchor.line_code) : lines[Math.max(lines.length - 1, 0)];
+      if (!prev) {
+        return emptyPack({ answer: 'Já estamos na primeira linha do roteiro.' });
+      }
+      return {
+        result: {
+          answer: `Retrocedemos para “${prev.line_name}” (${prev.section_name}).`,
+          citations: [citationForLine(prev)],
+          fieldUpdates: [],
+          focusLineCode: prev.line_code,
+          nextPrompt: buildQuestionForLine(prev),
+          requestSave: false,
+          requestSubmit: false,
+          mode: 'fallback',
+        },
+        sessionPatch: { dre_phase: mapLineToPhase(prev) },
+      };
+    }
+
+    case 'skip_field': {
+      if (input.explainOnly) {
+        return emptyPack({
+          answer:
+            'No modo orientação não marco saltos na submissão. Peça ao operador para pular pela conversa com perfil de edição ou use apenas “cmd:next_field” para estudar outro campo.',
+        });
+      }
+      const focus =
+        focusFromSession ?? findNextGuidedLine(lines, currentValues, null, skipOpts) ?? lines[0] ?? null;
+      if (!focus) {
+        return emptyPack({ answer: 'Não há campo em foco para pular.' });
+      }
+      const nextSkipped = Array.from(new Set([...skipped, focus.line_code]));
+      const nextLine = findNextGuidedLine(
+        lines,
+        currentValues,
+        focus.line_code,
+        { skippedLineCodes: new Set(nextSkipped) },
+      );
+      return {
+        result: {
+          answer: `Campo “${focus.line_name}” fica marcado como pulado nesta sessão. ${nextLine ? `Próximo: “${nextLine.line_name}”.` : 'Não há outro campo vazio na ordem — pode usar “Salvar rascunho” no painel.'}`,
+          citations: [citationForLine(focus)],
+          fieldUpdates: [],
+          focusLineCode: nextLine?.line_code ?? null,
+          nextPrompt: nextLine ? buildQuestionForLine(nextLine) : null,
+          requestSave: false,
+          requestSubmit: false,
+          mode: 'fallback',
+        },
+        sessionPatch: {
+          skipped_line_codes: nextSkipped,
+          dre_phase: nextLine ? mapLineToPhase(nextLine) : input.drePhaseFromSession,
+          proposed_value: null,
+          acceptance_state: 'none',
+        },
+      };
+    }
+
+    case 'phase_summary': {
+      const rawArg = cmd.args[0]?.trim();
+      const defaultPhase = focusFromSession
+        ? mapLineToPhase(focusFromSession)
+        : lines[0]
+          ? mapLineToPhase(lines[0])
+          : 1;
+      const phaseIdNum = rawArg ? parseInt(rawArg, 10) : Number(input.drePhaseFromSession ?? defaultPhase);
+      const phaseId = Number.isFinite(phaseIdNum) ? phaseIdNum : defaultPhase;
+      if (!Number.isFinite(phaseId) || phaseId < 1 || phaseId > DRE_PHASE_COUNT) {
+        return emptyPack({ answer: `Fase inválida. Informe um número entre 1 e ${DRE_PHASE_COUNT} (cmd:phase_summary <n>).` });
+      }
+      const inPhase = listLinesInPhase(phaseId, lines);
+      if (inPhase.length === 0) {
+        return emptyPack({
+          answer: `Fase ${phaseId} (${phaseTitle(phaseId)}): não há linhas neste catálogo.`,
+        });
+      }
+      const rows = inPhase.map((line) => {
+        const raw = currentValues[line.line_code] ?? '';
+        const amt = raw.trim().length === 0 ? '— vazio —' : raw;
+        return `• ${line.line_name}: ${amt}`;
+      });
+      const prog = getPhaseProgress(phaseId, lines, currentValues, skipped);
+      return {
+        result: {
+          answer: `${phaseTitle(phaseId)} — progresso nesta fase: ${prog.filled}/${prog.total}.\n${rows.join('\n')}`,
+          citations: FALLBACK_KNOWLEDGE_SNIPPET,
+          fieldUpdates: [],
+          focusLineCode: focusFromSession?.line_code ?? inPhase[0]?.line_code ?? null,
+          nextPrompt: focusFromSession ? buildQuestionForLine(focusFromSession) : null,
+          requestSave: false,
+          requestSubmit: false,
+          mode: 'fallback',
+        },
+        sessionPatch: { dre_phase: phaseId },
+      };
+    }
+
+    case 'list_phase': {
+      const rawArg = cmd.args[0]?.trim();
+      const basePhase = lines[0] ? mapLineToPhase(lines[0]) : 1;
+      const phaseIdNum = rawArg ? parseInt(rawArg, 10) : Number(input.drePhaseFromSession ?? basePhase);
+      const phaseId = Number.isFinite(phaseIdNum) ? phaseIdNum : basePhase;
+      if (!Number.isFinite(phaseId) || phaseId < 1 || phaseId > DRE_PHASE_COUNT) {
+        return emptyPack({ answer: `Fase inválida (${phaseId}).` });
+      }
+      const inPhase = listLinesInPhase(phaseId, lines);
+      const table = inPhase.map((line) => `${line.line_name} (${line.section_name})`).join(' | ');
+      return {
+        result: {
+          answer: `${phaseTitle(phaseId)} — campos ordenados nesta etapa:\n${table}`,
+          citations: FALLBACK_KNOWLEDGE_SNIPPET,
+          fieldUpdates: [],
+          focusLineCode: focusFromSession?.line_code ?? null,
+          nextPrompt: null,
+          requestSave: false,
+          requestSubmit: false,
+          mode: 'fallback',
+        },
+        sessionPatch: { dre_phase: phaseId },
+      };
+    }
+
+    case 'where_am_i': {
+      const focus =
+        focusFromSession ?? findNextGuidedLine(lines, currentValues, null, skipOpts) ?? lines[0] ?? null;
+      const total = Math.max(lines.length, 1);
+      const filled = countFilledInputs(lines, currentValues);
+      const pct = Math.round((filled / total) * 100);
+      const phase = focus ? mapLineToPhase(focus) : null;
+      return {
+        result: {
+          answer: focus
+            ? `Fase ${phase}: ${phaseTitle(phase ?? 1)} · Campo em foco “${focus.line_name}” · Globo: ${filled}/${total} preenchidos (~${pct}%).`
+            : `Sem campo em foco · ${filled}/${total} preenchidos (~${pct}%).`,
+          citations: FALLBACK_KNOWLEDGE_SNIPPET,
+          fieldUpdates: [],
+          focusLineCode: focus?.line_code ?? null,
+          nextPrompt: focus ? buildQuestionForLine(focus) : null,
+          requestSave: false,
+          requestSubmit: false,
+          mode: 'fallback',
+        },
+        sessionPatch: { dre_phase: phase },
+      };
+    }
+
+    case 'propose_value': {
+      if (input.explainOnly) {
+        return emptyPack({
+          answer: 'Modo orientação: não aplico valores. Use apenas explicações ou navegação até alguém com permissão de edição propor o número.',
+        });
+      }
+      const lineCode = cmd.args[0]?.trim();
+      const amountJoined = cmd.args.slice(1).join(' ').trim();
+      if (!lineCode || !amountJoined) {
+        return emptyPack({
+          answer: 'Uso: cmd:propose_value <line_code> <valor em reais> (ex.: cmd:propose_value gross_revenue 50000).',
+        });
+      }
+      const line = lines.find((row) => row.line_code === lineCode) ?? null;
+      if (!line) {
+        return emptyPack({
+          answer: `Não encontramos a linha “${lineCode}” nesta submissão.`,
+        });
+      }
+      const parsed = parseAssistantCurrencyReply(amountJoined);
+      if (parsed === null) {
+        return emptyPack({
+          answer: 'Não consegui ler o valor. Use só números (ex.: 50000 ou 1.234,56).',
+        });
+      }
+      const nextFocus =
+        findNextGuidedLine(
+          lines,
+          { ...currentValues, [lineCode]: parsed.toLocaleString('pt-BR') },
+          lineCode,
+          skipOpts,
+        ) ?? focusFromSession ?? line;
+      return {
+        result: {
+          answer: `Proposta: ${formatMoneyBr(parsed)} em “${line.line_name}”. Confirme com “cmd:confirm_value”, edite com “cmd:reject_value” ou ajuste pelo teclado numérico.`,
+          citations: [citationForLine(line)],
+          fieldUpdates: [
+            {
+              lineCode: line.line_code,
+              valueCurrency: parsed,
+              label: line.line_name,
+            },
+          ],
+          focusLineCode: nextFocus.line_code,
+          nextPrompt: buildQuestionForLine(nextFocus),
+          requestSave: false,
+          requestSubmit: false,
+          mode: 'fallback',
+          requiresFieldConfirmation: true,
+        },
+        sessionPatch: {
+          proposed_value: { line_code: line.line_code, amount: parsed },
+          acceptance_state: 'pending',
+          dre_phase: mapLineToPhase(line),
+        },
+      };
+    }
+
+    case 'confirm_value': {
+      if (input.explainOnly) {
+        return emptyPack({ answer: 'Modo orientação: não há valores a confirmar.' });
+      }
+      const proposal = input.proposedValueFromSession;
+      if (!proposal) {
+        return emptyPack({
+          answer: 'Não há proposta pendente — use primeiro “cmd:propose_value” ou aguarde o assistente propor um valor.',
+        });
+      }
+      const line = lines.find((row) => row.line_code === proposal.line_code) ?? null;
+      if (!line) {
+        return emptyPack(
+          {
+            answer: `A proposta refere-se à linha “${proposal.line_code}”, ausente nesta submissão. Use “cmd:reject_value”.`,
+          },
+          {
+            proposed_value: null,
+            acceptance_state: 'none',
+          },
+        );
+      }
+      const simulated = {
+        ...currentValues,
+        [proposal.line_code]: proposal.amount.toLocaleString('pt-BR', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }),
+      };
+      const nextLine = findNextGuidedLine(lines, simulated, proposal.line_code, skipOpts);
+      return {
+        result: {
+          answer: `Confirmado ${formatMoneyBr(proposal.amount)} para “${line.line_name}”. ${nextLine ? `Próximo: “${nextLine.line_name}”.` : ''}`,
+          citations: [citationForLine(line)],
+          fieldUpdates: [
+            {
+              lineCode: line.line_code,
+              valueCurrency: proposal.amount,
+              label: line.line_name,
+            },
+          ],
+          focusLineCode: nextLine?.line_code ?? null,
+          nextPrompt: nextLine ? buildQuestionForLine(nextLine) : null,
+          requestSave: false,
+          requestSubmit: false,
+          mode: 'fallback',
+          requiresFieldConfirmation: false,
+        },
+        sessionPatch: {
+          proposed_value: null,
+          acceptance_state: 'accepted',
+          dre_phase: nextLine ? mapLineToPhase(nextLine) : mapLineToPhase(line),
+        },
+      };
+    }
+
+    case 'reject_value': {
+      const focus =
+        focusFromSession ?? findNextGuidedLine(lines, currentValues, null, skipOpts) ?? lines[0] ?? null;
+      return {
+        result: {
+          answer: `Proposta descartada. ${focus ? `Continuamos com “${focus.line_name}” — use Explicar, Inserir valor ou cmd:next_field.` : ''}`,
+          citations: FALLBACK_KNOWLEDGE_SNIPPET,
+          fieldUpdates: [],
+          focusLineCode: focus?.line_code ?? null,
+          nextPrompt: focus ? buildQuestionForLine(focus) : null,
+          requestSave: false,
+          requestSubmit: false,
+          mode: 'fallback',
+          requiresFieldConfirmation: false,
+        },
+        sessionPatch: {
+          proposed_value: null,
+          acceptance_state: 'none',
+        },
+      };
+    }
+
+    case 'save_draft': {
+      return {
+        result: {
+          answer:
+            'Quando você estiver editando esta submissão, use também o botão “Salvar rascunho” no painel à direita — confirmo aqui como lembrete operacional.',
+          citations: FALLBACK_KNOWLEDGE_SNIPPET,
+          fieldUpdates: [],
+          focusLineCode: input.currentLineCode,
+          nextPrompt: null,
+          requestSave: !input.explainOnly,
+          requestSubmit: false,
+          mode: 'fallback',
+        },
+        sessionPatch: {},
+      };
+    }
+
+    case 'restart': {
+      const focus =
+        findNextGuidedLine(lines, currentValues, null, {
+          skippedLineCodes: new Set(),
+        }) ?? lines[0] ?? null;
+      return {
+        result: {
+          answer:
+            'Fluxo guiado reiniciado: limpei saltos apenas na memória da sessão; os valores na planilha permanecem exatamente como estavam. Seguimos a partir da próxima linha recomendada.',
+          citations: FALLBACK_KNOWLEDGE_SNIPPET,
+          fieldUpdates: [],
+          focusLineCode: focus?.line_code ?? null,
+          nextPrompt: focus ? buildQuestionForLine(focus) : null,
+          requestSave: false,
+          requestSubmit: false,
+          mode: 'fallback',
+        },
+        sessionPatch: {
+          skipped_line_codes: [],
+          proposed_value: null,
+          acceptance_state: 'none',
+          dre_phase: focus ? mapLineToPhase(focus) : null,
+        },
+      };
+    }
+
+    default: {
+      return emptyPack({
+        answer: `Comando “${cmd.name}” não implementado nesta versão local.`,
+      });
+    }
+  }
+}
+
+function explainStartMessage(explainOnly: boolean): string {
+  if (explainOnly) {
+    return 'Olá! Modo orientação: explico campos na ordem da DRE oficial (Lei das S.A., NBC TG 26, IFRS alinhamento operacional nas unidades de franquia). Quem pode editar valores é só o perfil com operação — daqui navego com comandos determinísticos e sem alterar dados.';
+  }
+  return 'Olá! Você está guiado passo-a-passo: um perguntas por vez, sempre em reais. O sistema recalcula MC1/M2/EBITDA após você confirmar valores com “Confirmar”.';
 }
 
 /** Lista ordenada (planilha / catálogo) para o prompt do modelo — sem expor line_code ao utilizador final. */
@@ -600,6 +1292,59 @@ export function parseFlowCheckpointFromState(state: unknown): FlowCheckpoint | n
     total_inputs: totalInputs,
     last_user_intent: lastUserIntent as FlowCheckpointUserIntent,
   };
+}
+
+export function parseProposedAssistantValueFromState(state: unknown): ProposedAssistantValue | null {
+  if (!state || typeof state !== 'object') {
+    return null;
+  }
+  const raw = (state as Record<string, unknown>).proposed_value;
+  if (!raw || typeof raw !== 'object') {
+    return null;
+  }
+  const payload = raw as Record<string, unknown>;
+  const lineCode = payload.line_code;
+  const amount = payload.amount;
+  if (typeof lineCode !== 'string' || typeof amount !== 'number' || !Number.isFinite(amount)) {
+    return null;
+  }
+  return { line_code: lineCode, amount };
+}
+
+export function parseSkippedLineCodesFromState(state: unknown): string[] {
+  if (!state || typeof state !== 'object') {
+    return [];
+  }
+  const raw = (state as Record<string, unknown>).skipped_line_codes;
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  return raw.filter((code): code is string => typeof code === 'string');
+}
+
+export function parseDrePhaseFromState(state: unknown): number | null {
+  if (!state || typeof state !== 'object') {
+    return null;
+  }
+  const value = (state as Record<string, unknown>).dre_phase;
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return null;
+  }
+  if (value < 1 || value > DRE_PHASE_COUNT) {
+    return null;
+  }
+  return value;
+}
+
+export function parseAssistantAcceptanceStateFromState(state: unknown): AssistantAcceptanceState {
+  if (!state || typeof state !== 'object') {
+    return 'none';
+  }
+  const value = (state as Record<string, unknown>).acceptance_state;
+  if (value === 'pending' || value === 'accepted' || value === 'none') {
+    return value;
+  }
+  return 'none';
 }
 
 export function validateAssistantFieldUpdates(
@@ -975,10 +1720,7 @@ export function runLocalAssistantTurn(input: {
     }, valueTargetLine.line_code);
 
     return {
-      answer: `Registrei ${valueTargetLine.line_name} como R$ ${parsedValue.toLocaleString('pt-BR', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })}. O sistema já pode recalcular MC1, MC2 e EBITDA com esse número — não preciso somar nada manualmente aqui. Quando quiser, seguimos para o próximo item.`,
+      answer: `Proposta: ${formatMoneyBr(parsedValue)} em “${valueTargetLine.line_name}”. Confirme no mini-card (“Confirmar”) ou envie cmd:confirm_value quando estiver de acordo. O sistema recalcula MC1, MC2 e EBITDA após a confirmação.`,
       citations: [
         {
           title: valueTargetLine.line_name,
@@ -998,6 +1740,7 @@ export function runLocalAssistantTurn(input: {
       requestSave: false,
       requestSubmit: false,
       mode: 'fallback',
+      requiresFieldConfirmation: true,
     };
   }
 
