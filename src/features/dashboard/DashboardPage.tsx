@@ -62,27 +62,27 @@ function buildFranchiseKpis(snapshot: DashboardSnapshot): KpiCardModel[] {
 
   return [
     {
-      label: 'Receita Bruta (RBV)',
+      label: 'Receita Bruta de Vendas',
       value: formatCurrency(current.gross_revenue),
-      percent: '100,0% da RBV',
+      percent: 'Total faturado pela unidade',
       trend: formatDelta(calculateDelta(current.gross_revenue, previous?.gross_revenue ?? null)),
       trendUp: isPositiveDelta(calculateDelta(current.gross_revenue, previous?.gross_revenue ?? null)),
       variant: 'gold',
       icon: DollarSign,
     },
     {
-      label: 'Margem MC1',
+      label: 'Margem de contribuição 1',
       value: formatCurrency(current.mc1),
-      percent: `${formatPercent(current.mc1_pct)} da RBV`,
+      percent: `${formatPercent(current.mc1_pct)} da receita bruta`,
       trend: formatDelta(calculateDelta(current.mc1, previous?.mc1 ?? null)),
       trendUp: isPositiveDelta(calculateDelta(current.mc1, previous?.mc1 ?? null)),
       variant: 'default',
       icon: BarChart3,
     },
     {
-      label: 'Margem MC2',
+      label: 'Margem de contribuição 2',
       value: formatCurrency(current.mc2),
-      percent: `${formatPercent(current.mc2_pct)} da RBV`,
+      percent: `${formatPercent(current.mc2_pct)} da receita bruta`,
       trend: formatDelta(calculateDelta(current.mc2, previous?.mc2 ?? null)),
       trendUp: isPositiveDelta(calculateDelta(current.mc2, previous?.mc2 ?? null)),
       variant: 'default',
@@ -91,7 +91,7 @@ function buildFranchiseKpis(snapshot: DashboardSnapshot): KpiCardModel[] {
     {
       label: 'EBITDA 2',
       value: formatCurrency(current.ebitda_2),
-      percent: `${formatPercent(current.ebitda2_pct)} da RBV`,
+      percent: `${formatPercent(current.ebitda2_pct)} da receita bruta`,
       trend: formatDelta(calculateDelta(current.ebitda_2, previous?.ebitda_2 ?? null)),
       trendUp: isPositiveDelta(calculateDelta(current.ebitda_2, previous?.ebitda_2 ?? null)),
       variant: 'success',
@@ -110,7 +110,7 @@ function buildRegionalKpis(snapshot: DashboardSnapshot): KpiCardModel[] {
 
   return [
     {
-      label: 'Receita Regional',
+      label: 'Receita da regional',
       value: formatCurrency(current.total_gross_revenue),
       percent: `${formatInteger(current.total_franchises)} franquias na carteira`,
       trend: formatDelta(
@@ -123,9 +123,9 @@ function buildRegionalKpis(snapshot: DashboardSnapshot): KpiCardModel[] {
       icon: DollarSign,
     },
     {
-      label: 'EBITDA 2 Regional',
+      label: 'EBITDA 2 da regional',
       value: formatCurrency(current.total_ebitda_2),
-      percent: `${formatPercent(current.avg_ebitda2_pct)} margem média`,
+      percent: `${formatPercent(current.avg_ebitda2_pct)} de margem média`,
       trend: formatDelta(
         calculateDelta(current.total_ebitda_2, previous?.total_ebitda_2 ?? null),
       ),
@@ -136,18 +136,18 @@ function buildRegionalKpis(snapshot: DashboardSnapshot): KpiCardModel[] {
       icon: TrendingUp,
     },
     {
-      label: 'Aprovadas',
+      label: 'DREs aprovadas',
       value: formatInteger(current.approved_count),
-      percent: `${formatInteger(current.approved_count)}/${formatInteger(current.total_franchises)} unidades`,
+      percent: `${formatInteger(current.approved_count)} de ${formatInteger(current.total_franchises)} unidades`,
       trend: formatDelta(calculateDelta(current.approved_count, previous?.approved_count ?? null)),
       trendUp: isPositiveDelta(calculateDelta(current.approved_count, previous?.approved_count ?? null)),
       variant: 'default',
       icon: CheckCircle2,
     },
     {
-      label: 'Pendências',
+      label: 'Em ajuste',
       value: formatInteger(current.pending_count),
-      percent: `${formatPercent(current.avg_default_pct)} inadimplência média`,
+      percent: `${formatPercent(current.avg_default_pct)} de inadimplência média`,
       trend: formatDelta(calculateDelta(current.pending_count, previous?.pending_count ?? null)),
       trendUp: !isPositiveDelta(calculateDelta(current.pending_count, previous?.pending_count ?? null)),
       variant: 'warning',
@@ -166,9 +166,9 @@ function buildNetworkKpis(snapshot: DashboardSnapshot): KpiCardModel[] {
 
   return [
     {
-      label: 'Receita Consolidada',
+      label: 'Receita consolidada da rede',
       value: formatCurrency(current.total_gross_revenue),
-      percent: `${formatInteger(current.total_regionals)} regionais na rede`,
+      percent: `${formatInteger(current.total_regionals)} regionais consolidadas`,
       trend: formatDelta(
         calculateDelta(current.total_gross_revenue, previous?.total_gross_revenue ?? null),
       ),
@@ -179,9 +179,9 @@ function buildNetworkKpis(snapshot: DashboardSnapshot): KpiCardModel[] {
       icon: DollarSign,
     },
     {
-      label: 'EBITDA 2 Rede',
+      label: 'EBITDA 2 da rede',
       value: formatCurrency(current.total_ebitda_2),
-      percent: `${formatPercent(current.avg_ebitda2_pct)} margem média`,
+      percent: `${formatPercent(current.avg_ebitda2_pct)} de margem média`,
       trend: formatDelta(
         calculateDelta(current.total_ebitda_2, previous?.total_ebitda_2 ?? null),
       ),
@@ -192,18 +192,18 @@ function buildNetworkKpis(snapshot: DashboardSnapshot): KpiCardModel[] {
       icon: TrendingUp,
     },
     {
-      label: 'Aprovadas',
+      label: 'DREs aprovadas',
       value: formatInteger(current.approved_count),
-      percent: `${formatInteger(current.approved_count)}/${formatInteger(current.total_franchises)} franquias`,
+      percent: `${formatInteger(current.approved_count)} de ${formatInteger(current.total_franchises)} franquias`,
       trend: formatDelta(calculateDelta(current.approved_count, previous?.approved_count ?? null)),
       trendUp: isPositiveDelta(calculateDelta(current.approved_count, previous?.approved_count ?? null)),
       variant: 'default',
       icon: ShieldCheck,
     },
     {
-      label: 'Fila / Atrasos',
+      label: 'Aguardando ação',
       value: formatInteger(current.pending_count),
-      percent: `Pior margem: ${formatPercent(current.min_ebitda2_pct)}`,
+      percent: `Pior margem hoje: ${formatPercent(current.min_ebitda2_pct)}`,
       trend: formatDelta(calculateDelta(current.pending_count, previous?.pending_count ?? null)),
       trendUp: !isPositiveDelta(calculateDelta(current.pending_count, previous?.pending_count ?? null)),
       variant: 'warning',
@@ -295,13 +295,13 @@ function KpiCards({ items }: { items: KpiCardModel[] }) {
 function getScopeNarrative(scope: string) {
   switch (scope) {
     case 'controladoria':
-      return 'Priorize a fila, valide pendências e sustente a governança do fechamento.';
+      return 'Quem precisa de ação agora, o que falta validar e o ritmo do fechamento da rede.';
     case 'holding':
-      return 'Acompanhe o consolidado da rede, o ranking de margem e os pontos críticos.';
+      return 'Resultado consolidado da rede, ranking de margem e unidades que precisam de atenção.';
     case 'regional':
-      return 'Compare franquias da carteira, identifique desvios e cobre aderência de envio.';
+      return 'Compare as franquias da sua carteira, veja quem está acima ou abaixo da meta e cobre envios em atraso.';
     default:
-      return 'Leia a DRE oficial da unidade, acompanhe o status do período e prepare ajustes.';
+      return 'A DRE oficial da sua unidade, o status do período corrente e os próximos passos.';
   }
 }
 
@@ -329,17 +329,17 @@ function DashboardHero({
       }
     : {
         to: '/app/submissions',
-        label: 'Ir para submissões',
+        label: 'Abrir Submissões',
       };
 
   const secondaryAction = accessProfile.canManageReview
-    ? { to: '/app/workflow', label: 'Abrir fila de revisão' }
+    ? { to: '/app/workflow', label: 'Abrir fila de aprovações' }
     : { to: '/app/dashboard', label: 'Atualizar leitura' };
 
   const flow = [
-    'Input oficial da franquia',
-    'Revisão da controladoria',
-    'Consolidação executiva',
+    'A franquia preenche e envia',
+    'A controladoria revisa e aprova',
+    'O consolidado chega à diretoria',
   ];
 
   return (
@@ -348,10 +348,10 @@ function DashboardHero({
         <div className="dashboard-hero__copy">
           <span className="badge badge--gold">{getDashboardScopeLabel(accessProfile.dashboardScope)}</span>
           <h1 className="page-container__title dashboard-hero__title">
-            Resultado por franquia com trilha de governança visível.
+            O resultado da rede em uma página.
           </h1>
           <p className="page-container__subtitle dashboard-hero__subtitle">
-            {getScopeNarrative(accessProfile.dashboardScope)} Período atual: {currentPeriod}.
+            {getScopeNarrative(accessProfile.dashboardScope)} Competência atual: {currentPeriod}.
           </p>
 
           <div className="dashboard-hero__flow">
@@ -367,21 +367,21 @@ function DashboardHero({
         <div className="dashboard-hero__panel glass">
           <div className="dashboard-hero__panel-header">
             <Sparkles size={16} />
-            <span>Estado atual do portal</span>
+            <span>O que está acontecendo agora</span>
           </div>
 
           <div className="dashboard-hero__metrics">
             <div>
               <strong>{formatInteger(snapshot.currentSubmissions.length)}</strong>
-              <span>submissões correntes</span>
+              <span>DREs em andamento</span>
             </div>
             <div>
               <strong>{formatInteger(snapshot.pendingReviews.length)}</strong>
-              <span>itens na fila de revisão</span>
+              <span>aguardando revisão</span>
             </div>
             <div>
               <strong>{currentPeriod}</strong>
-              <span>competência em foco</span>
+              <span>competência atual</span>
             </div>
           </div>
 
@@ -398,8 +398,8 @@ function DashboardHero({
 
           {!hasOperationalData && (
             <div className="inline-message">
-              O dashboard já está ligado ao Supabase. O próximo passo é popular o ambiente demo
-              para ativar a leitura executiva.
+              Ainda não há DREs registradas no seu escopo. Quando a primeira submissão entrar, este painel passa a
+              mostrar os números do período automaticamente.
             </div>
           )}
         </div>
@@ -413,14 +413,14 @@ function RecentSubmissionsCard({ rows }: { rows: CurrentSubmissionRow[] }) {
     return (
       <div className="card">
         <div className="card__header">
-          <h3 className="card__title">Últimas submissões</h3>
+          <h3 className="card__title">Últimas DREs do período</h3>
         </div>
         <div className="card__body">
           <div className="empty-state">
             <div className="empty-state__icon">
               <ClipboardList />
             </div>
-            <p className="empty-state__description">Nenhuma submissão encontrada até agora.</p>
+            <p className="empty-state__description">Nenhuma DRE registrada até o momento.</p>
           </div>
         </div>
       </div>
@@ -430,7 +430,7 @@ function RecentSubmissionsCard({ rows }: { rows: CurrentSubmissionRow[] }) {
   return (
     <div className="card">
       <div className="card__header">
-        <h3 className="card__title">Últimas submissões</h3>
+        <h3 className="card__title">Últimas DREs do período</h3>
       </div>
       <div className="card__body">
         <div className="list-stack">
@@ -460,13 +460,13 @@ function PendingReviewsCard({ rows }: { rows: PendingReviewRow[] }) {
   return (
     <div className="card">
       <div className="card__header">
-        <h3 className="card__title">Fila de revisão</h3>
+        <h3 className="card__title">Fila de aprovações</h3>
         <span className="badge badge--warning">{formatInteger(rows.length)}</span>
       </div>
       <div className="card__body">
         {rows.length === 0 ? (
           <div className="inline-message inline-message--success">
-            Nenhuma submissão aguardando revisão neste momento.
+            Nenhuma DRE aguardando aprovação neste momento.
           </div>
         ) : (
           <div className="table-shell">
@@ -511,9 +511,9 @@ function FranchiseDashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
         <div className="empty-state__icon">
           <DollarSign />
         </div>
-        <h3 className="empty-state__title">Sem dados de DRE disponíveis</h3>
+        <h3 className="empty-state__title">Sem DRE neste período</h3>
         <p className="empty-state__description">
-          Assim que a primeira submissão for registrada, este painel passa a mostrar a DRE consolidada.
+          Quando a unidade enviar a primeira DRE, ela aparece aqui automaticamente, com a leitura consolidada do período.
         </p>
       </div>
     );
@@ -525,7 +525,7 @@ function FranchiseDashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
         <div className="card card--accent">
           <div className="card__header">
             <div>
-              <h3 className="card__title">Demonstração de Resultado (DRE)</h3>
+              <h3 className="card__title">DRE oficial do período</h3>
               <p className="card__subtitle">{current.franchise_name}</p>
             </div>
             <span className="badge badge--primary">{formatPeriodLabel(current.period_label)}</span>
@@ -537,7 +537,7 @@ function FranchiseDashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
                   <tr>
                     <th>Linha</th>
                     <th className="align-right">Valor</th>
-                    <th className="align-right">% RBV</th>
+                    <th className="align-right">% da receita</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -625,9 +625,9 @@ function RegionalDashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
         <div className="empty-state__icon">
           <Building2 />
         </div>
-        <h3 className="empty-state__title">Sem dados regionais disponíveis</h3>
+        <h3 className="empty-state__title">Ainda não há números da regional</h3>
         <p className="empty-state__description">
-          O consolidado regional aparece automaticamente quando houver franquias com submissões na sua carteira.
+          Quando as franquias da sua carteira começarem a enviar DREs, o consolidado da regional aparece aqui.
         </p>
       </div>
     );
@@ -717,7 +717,7 @@ function RegionalDashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
 
           <div className="card">
             <div className="card__header">
-              <h3 className="card__title">Top 5 EBITDA 2</h3>
+              <h3 className="card__title">Top 5 unidades por margem</h3>
             </div>
             <div className="card__body">
               <div className="list-stack">
@@ -755,9 +755,9 @@ function ControladoriaDashboardView({ snapshot }: { snapshot: DashboardSnapshot 
         <div className="card">
           <div className="card__header">
             <div>
-              <h3 className="card__title">Franquias com menor margem EBITDA 2</h3>
+              <h3 className="card__title">Unidades com menor margem (EBITDA 2)</h3>
               <p className="card__subtitle">
-                Priorize revisão em unidades com baixa margem e maior quantidade de pendências.
+                Priorize a revisão de quem está com margem baixa ou pendências em aberto.
               </p>
             </div>
           </div>
@@ -784,20 +784,20 @@ function ControladoriaDashboardView({ snapshot }: { snapshot: DashboardSnapshot 
         <div className="dashboard__side">
           <div className="card">
             <div className="card__header">
-              <h3 className="card__title">Resumo da fila</h3>
+              <h3 className="card__title">Resumo da fila de aprovações</h3>
             </div>
             <div className="card__body">
               <div className="detail-list">
                 <div className="detail-list__item">
-                  <span className="detail-list__label">Submissões pendentes</span>
+                  <span className="detail-list__label">DREs aguardando aprovação</span>
                   <span className="detail-list__value">{formatInteger(snapshot.pendingReviews.length)}</span>
                 </div>
                 <div className="detail-list__item">
-                  <span className="detail-list__label">Franquias aprovadas</span>
+                  <span className="detail-list__label">DREs aprovadas</span>
                   <span className="detail-list__value">{formatInteger(current?.approved_count ?? 0)}</span>
                 </div>
                 <div className="detail-list__item">
-                  <span className="detail-list__label">Pendências abertas</span>
+                  <span className="detail-list__label">Pontos abertos</span>
                   <span className="detail-list__value">
                     {formatInteger(
                       snapshot.pendingReviews.reduce(
@@ -842,8 +842,8 @@ export function DashboardPage() {
       <div className="page-stack">
         <div className="page-container__title-bar">
           <div>
-            <h1 className="page-container__title">Dashboard</h1>
-            <p className="page-container__subtitle">Carregando visão executiva do período...</p>
+            <h1 className="page-container__title">Painel executivo</h1>
+            <p className="page-container__subtitle">Carregando os números da rede…</p>
           </div>
         </div>
         <div className="kpi-grid">
@@ -859,7 +859,7 @@ export function DashboardPage() {
   if (accessProfileQuery.error || !accessProfileQuery.data) {
     return (
       <div className="inline-message inline-message--danger">
-        Não foi possível identificar o perfil de acesso do usuário.
+        Não conseguimos identificar o seu perfil de acesso. Atualize a página ou peça ao administrador para revisar a sua conta.
       </div>
     );
   }
@@ -867,7 +867,7 @@ export function DashboardPage() {
   if (dashboardQuery.error || !dashboardQuery.data) {
     return (
       <div className="inline-message inline-message--danger">
-        Não foi possível carregar o dashboard com dados reais do Supabase.
+        Não foi possível carregar os números da rede neste momento. Tente novamente em alguns instantes.
       </div>
     );
   }
@@ -886,9 +886,9 @@ export function DashboardPage() {
     <div className="dashboard page-stack">
       <div className="page-container__title-bar">
         <div>
-          <h1 className="page-container__title">Dashboard</h1>
+          <h1 className="page-container__title">Painel executivo</h1>
           <p className="page-container__subtitle">
-            Visão {getDashboardScopeLabel(accessProfile.dashboardScope).toLowerCase()} do período{' '}
+            Leitura {getDashboardScopeLabel(accessProfile.dashboardScope).toLowerCase()} da competência{' '}
             {currentPeriodLabel}
           </p>
         </div>

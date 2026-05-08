@@ -1,6 +1,14 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, ClipboardCheck, Eye, ShieldCheck, Undo2 } from 'lucide-react';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ClipboardCheck,
+  Eye,
+  ShieldCheck,
+  Undo2,
+  XCircle,
+} from 'lucide-react';
 import {
   fetchPendingReviews,
   fetchSubmissionWorkspace,
@@ -13,8 +21,21 @@ import {
   formatInteger,
   formatPeriodLabel,
   formatStatusLabel,
+  formatValidationStatusLabel,
+  getValidationSeverity,
+  type ValidationSeverity,
 } from '../../utils/formatters';
 import './WorkflowPage.css';
+
+function ValidationIcon({ severity }: { severity: ValidationSeverity }) {
+  if (severity === 'pass') {
+    return <CheckCircle2 size={18} aria-hidden />;
+  }
+  if (severity === 'fail') {
+    return <XCircle size={18} aria-hidden />;
+  }
+  return <AlertTriangle size={18} aria-hidden />;
+}
 
 export function WorkflowPage() {
   const queryClient = useQueryClient();
@@ -52,7 +73,7 @@ export function WorkflowPage() {
   });
 
   const currentError = reviewMutation.error
-    ? formatApiError(reviewMutation.error, 'Não foi possível concluir a ação da controladoria.')
+    ? formatApiError(reviewMutation.error, 'Não conseguimos concluir a ação. Tente novamente em instantes.')
     : null;
 
   if (workflowQuery.isLoading) {
@@ -62,7 +83,7 @@ export function WorkflowPage() {
   if (workflowQuery.error || !workflowQuery.data) {
     return (
       <div className="inline-message inline-message--danger">
-        Não foi possível carregar a fila de revisão da controladoria.
+        Não foi possível carregar a fila de aprovações. Tente novamente em instantes.
       </div>
     );
   }
@@ -77,7 +98,7 @@ export function WorkflowPage() {
         <div>
           <h1 className="page-container__title">Aprovações</h1>
           <p className="page-container__subtitle">
-            Mesa operacional da controladoria para assumir revisão, aprovar e devolver submissões.
+            Mesa de trabalho da controladoria: assuma a revisão, aprove ou devolva DREs para ajuste.
           </p>
         </div>
       </div>
@@ -90,27 +111,27 @@ export function WorkflowPage() {
       <div className="kpi-grid">
         <div className="kpi-card kpi-card--warning">
           <div className="kpi-card__header">
-            <span className="kpi-card__label">Pendentes</span>
+            <span className="kpi-card__label">Aguardando ação</span>
             <div className="kpi-card__icon">
               <ClipboardCheck />
             </div>
           </div>
           <div className="kpi-card__value">{formatInteger(rows.length)}</div>
           <div className="kpi-card__footer">
-            <span className="kpi-card__percent">Submissões aguardando ação</span>
+            <span className="kpi-card__percent">DREs prontas para revisão da controladoria</span>
           </div>
         </div>
 
         <div className="kpi-card">
           <div className="kpi-card__header">
-            <span className="kpi-card__label">Pendências abertas</span>
+            <span className="kpi-card__label">Pontos abertos</span>
             <div className="kpi-card__icon">
               <AlertTriangle />
             </div>
           </div>
           <div className="kpi-card__value">{formatInteger(issueCount)}</div>
           <div className="kpi-card__footer">
-            <span className="kpi-card__percent">Itens sinalizados para ajuste</span>
+            <span className="kpi-card__percent">Itens marcados para ajuste pelas franquias</span>
           </div>
         </div>
       </div>
@@ -118,7 +139,10 @@ export function WorkflowPage() {
       <div className="workflow-layout">
         <div className="card">
           <div className="card__header">
-            <h3 className="card__title">Fila da controladoria</h3>
+            <div>
+              <h3 className="card__title">Fila de aprovações</h3>
+              <p className="card__subtitle">Toque numa linha para abrir o painel de decisão à direita.</p>
+            </div>
           </div>
           <div className="card__body card__body--compact">
             {rows.length === 0 ? (
@@ -126,10 +150,10 @@ export function WorkflowPage() {
                 <div className="empty-state__icon">
                   <ClipboardCheck />
                 </div>
-                <h3 className="empty-state__title">Fila vazia</h3>
+                <h3 className="empty-state__title">Tudo em dia</h3>
                 <p className="empty-state__description">
-                  Não há submissões aguardando ação da controladoria neste momento. Quando uma franquia enviar uma
-                  versão para revisão, ela aparecerá aqui automaticamente.
+                  Nenhuma DRE aguardando aprovação neste momento. Quando uma franquia enviar uma versão para revisão,
+                  ela aparece aqui automaticamente.
                 </p>
               </div>
             ) : (
@@ -139,11 +163,11 @@ export function WorkflowPage() {
                     <tr>
                       <th>Franquia</th>
                       <th>Regional</th>
-                      <th>Período</th>
-                      <th className="align-right">RBV</th>
+                      <th>Competência</th>
+                      <th className="align-right">Receita</th>
                       <th className="align-right">EBITDA 2</th>
-                      <th className="align-right">Pendências</th>
-                      <th>Enviado em</th>
+                      <th className="align-right">Pontos abertos</th>
+                      <th>Enviada em</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -183,7 +207,7 @@ export function WorkflowPage() {
                       <span className="detail-list__value">{selectedRow.franchise_name}</span>
                     </div>
                     <div className="detail-list__item">
-                      <span className="detail-list__label">Período</span>
+                      <span className="detail-list__label">Competência</span>
                       <span className="detail-list__value">{formatPeriodLabel(selectedRow.period_label)}</span>
                     </div>
                     <div className="detail-list__item">
@@ -193,14 +217,14 @@ export function WorkflowPage() {
                   </div>
 
                   <div className="form-group workflow-sidebar__notes">
-                    <label className="form-label" htmlFor="review-reason">Justificativa da análise</label>
+                    <label className="form-label" htmlFor="review-reason">Parecer da controladoria</label>
                     <textarea
                       id="review-reason"
                       data-testid="workflow-review-reason"
                       className="form-input workflow-sidebar__textarea"
                       value={reviewReason}
                       onChange={(event) => setReviewReason(event.target.value)}
-                      placeholder="Registre o parecer da controladoria ou o motivo do retorno para ajuste."
+                      placeholder="Registre o parecer da revisão ou explique por que a DRE volta para ajuste."
                     />
                   </div>
 
@@ -213,7 +237,7 @@ export function WorkflowPage() {
                       disabled={reviewMutation.isPending}
                     >
                       <Eye size={18} />
-                      Marcar em revisão
+                      Assumir a revisão
                     </button>
                     <button
                       type="button"
@@ -223,7 +247,7 @@ export function WorkflowPage() {
                       disabled={reviewMutation.isPending}
                     >
                       <ShieldCheck size={18} />
-                      Aprovar submissão
+                      Aprovar a DRE
                     </button>
                     <button
                       type="button"
@@ -238,14 +262,19 @@ export function WorkflowPage() {
                   </div>
                 </>
               ) : (
-                <div className="inline-message">Selecione uma submissão na fila para abrir a decisão.</div>
+                <div className="inline-message">Escolha uma DRE da fila para abrir o painel de decisão.</div>
               )}
             </div>
           </div>
 
           <div className="card">
             <div className="card__header">
-              <h3 className="card__title">Leitura detalhada</h3>
+              <div>
+                <h3 className="card__title">O que precisa de atenção</h3>
+                <p className="card__subtitle">
+                  Verificações automáticas que comparam a DRE com o histórico e os limites da rede.
+                </p>
+              </div>
             </div>
             <div className="card__body">
               {workspaceQuery.isLoading ? (
@@ -254,11 +283,11 @@ export function WorkflowPage() {
                 <>
                   <div className="detail-list">
                     <div className="detail-list__item">
-                      <span className="detail-list__label">Validações</span>
+                      <span className="detail-list__label">Verificações executadas</span>
                       <span className="detail-list__value">{formatInteger(workspaceQuery.data.validationResults.length)}</span>
                     </div>
                     <div className="detail-list__item">
-                      <span className="detail-list__label">Pendências</span>
+                      <span className="detail-list__label">Pontos em aberto</span>
                       <span className="detail-list__value">{formatInteger(workspaceQuery.data.issues.length)}</span>
                     </div>
                     <div className="detail-list__item">
@@ -268,23 +297,39 @@ export function WorkflowPage() {
                   </div>
 
                   {workspaceQuery.data.validationResults.length ? (
-                    <div className="list-stack workflow-sidebar__stack">
-                      {workspaceQuery.data.validationResults.map((result) => (
-                        <div key={result.id} className="list-row">
-                          <div>
-                            <div className="list-row__title">{result.rule_name}</div>
-                            <div className="list-row__meta">{result.message ?? 'Sem observações.'}</div>
+                    <div className="validation-checklist" role="list">
+                      {workspaceQuery.data.validationResults.map((result) => {
+                        const severity = getValidationSeverity(result.status);
+                        return (
+                          <div
+                            key={result.id}
+                            className={`validation-checklist__item validation-checklist__item--${severity}`}
+                            role="listitem"
+                          >
+                            <span className={`validation-checklist__icon validation-checklist__icon--${severity}`}>
+                              <ValidationIcon severity={severity} />
+                            </span>
+                            <div className="validation-checklist__body">
+                              <span className="validation-checklist__title">{result.rule_name}</span>
+                              <span className="validation-checklist__message">
+                                {result.message?.trim().length
+                                  ? result.message
+                                  : `Resultado: ${formatValidationStatusLabel(result.status)}`}
+                              </span>
+                            </div>
                           </div>
-                          <div className="list-row__value">{formatStatusLabel(result.status)}</div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
-                    <div className="inline-message">Nenhuma validação registrada ainda para esta submissão.</div>
+                    <div className="inline-message">
+                      Ainda não há verificações registradas para esta DRE — elas rodam após a controladoria iniciar a
+                      revisão.
+                    </div>
                   )}
                 </>
               ) : (
-                <div className="inline-message">Selecione uma submissão da fila para ver o detalhe.</div>
+                <div className="inline-message">Escolha uma DRE da fila para ver o detalhe.</div>
               )}
             </div>
           </div>

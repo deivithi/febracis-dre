@@ -11,6 +11,7 @@ import './styles/components/card.css';
 import './styles/components/input.css';
 import './styles/components/layout.css';
 import './styles/components/module-pages.css';
+import './styles/components/validation-checklist.css';
 
 function mount() {
   const rootEl = document.getElementById('root');

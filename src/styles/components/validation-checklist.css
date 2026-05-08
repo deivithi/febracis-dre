@@ -1,0 +1,74 @@
+/* =========================================================
+   FEBRACIS DRE | Validation Checklist
+   =========================================================
+   Lista de regras de auditoria com severidade calma e
+   linguagem PT-BR (passa, atenção, falhou).
+   Usada em Submissões (rail) e Aprovações (Workflow).
+   ========================================================= */
+
+.validation-checklist {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.validation-checklist__item {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: var(--space-3);
+  align-items: flex-start;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: rgba(14, 19, 31, 0.32);
+}
+
+.validation-checklist__item--pass {
+  border-color: rgba(74, 222, 128, 0.25);
+  background: rgba(74, 222, 128, 0.05);
+}
+
+.validation-checklist__item--warn {
+  border-color: rgba(240, 183, 62, 0.35);
+  background: rgba(240, 183, 62, 0.06);
+}
+
+.validation-checklist__item--fail {
+  border-color: rgba(248, 113, 113, 0.4);
+  background: rgba(248, 113, 113, 0.06);
+}
+
+.validation-checklist__icon {
+  margin-top: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.validation-checklist__icon--pass {
+  color: rgba(74, 222, 128, 0.95);
+}
+
+.validation-checklist__icon--warn {
+  color: var(--accent-gold, #f0b73e);
+}
+
+.validation-checklist__icon--fail {
+  color: rgba(248, 113, 113, 0.95);
+}
+
+.validation-checklist__body {
+  display: grid;
+  gap: 2px;
+}
+
+.validation-checklist__title {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+
+.validation-checklist__message {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  line-height: var(--leading-relaxed);
+}

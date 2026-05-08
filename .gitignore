@@ -32,6 +32,7 @@ supabase/.temp/
 test-results/
 output/
 .cursor/
+tests/e2e/__screenshots__/
 
 # Dumps / ferramentas locais (nao versionar)
 cloud-dump-schema.sql

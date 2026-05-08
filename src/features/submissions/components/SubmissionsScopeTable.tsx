@@ -17,10 +17,10 @@ type SubmissionsScopeTableProps = {
 export function SubmissionsScopeTable({ rows, activeSubmissionId, onSelectRow, getAssistantHref }: SubmissionsScopeTableProps) {
   return (
     <details className="submission-details">
-      <summary className="submission-details__summary">Todas as submissões no seu escopo</summary>
+      <summary className="submission-details__summary">Todas as DREs no seu acesso</summary>
       <p className="submission-details__meta">
-        Clique numa linha para abrir essa franquia e competência. Recolha esta secção para focar no assistente e no
-        painel lateral.
+        Toque numa linha para abrir aquela franquia e competência no painel principal. Recolha esta seção quando
+        quiser focar só na DRE em edição.
       </p>
       <div className="submission-details__body submission-details__body--flush">
         <div className="card__body card__body--compact">
@@ -29,9 +29,9 @@ export function SubmissionsScopeTable({ rows, activeSubmissionId, onSelectRow, g
               <div className="empty-state__icon">
                 <FileSpreadsheet />
               </div>
-              <h3 className="empty-state__title">Nenhuma submissão encontrada</h3>
+              <h3 className="empty-state__title">Nenhuma DRE encontrada</h3>
               <p className="empty-state__description">
-                Quando houver uma submissão salva ou enviada dentro do seu escopo, ela aparecerá aqui.
+                Assim que uma franquia gravar ou enviar uma DRE dentro do seu acesso, ela aparece aqui.
               </p>
             </div>
           ) : (
@@ -40,11 +40,11 @@ export function SubmissionsScopeTable({ rows, activeSubmissionId, onSelectRow, g
                 <thead>
                   <tr>
                     <th>Franquia</th>
-                    <th>Período</th>
+                    <th>Competência</th>
                     <th>Regional</th>
                     <th className="align-center">Versão</th>
                     <th>Status</th>
-                    <th>Submetido em</th>
+                    <th>Enviada em</th>
                     {getAssistantHref ? <th className="align-right">Assistente</th> : null}
                   </tr>
                 </thead>
