@@ -10,9 +10,14 @@ Duração sugerida: 8–12 minutos. Ambiente: produção ou staging com dados de
 ## 2. Papel franqueado (3–4 min)
 
 - Login como unidade com permissão de operação.
-- Abrir **Submissões** → coligada + competência → rascunho.
+- Abrir **Assistente** na sidebar (hub com **Dúvidas** / **Começar a DRE**) **ou** **Submissões** → botão **Assistente DRE** (mesmo fluxo; `?submission=` sincroniza o recorte).
+- Coligada + competência → rascunho quando necessário.
 - Mostrar **preview** RBV / MC1 / MC2 / EBITDA a atualizar com o rascunho.
-- No **Assistente DRE**: “Olá” → um valor em reais → **Salvar rascunho** e confirmar que totais batem com o painel.
+- No painel do assistente (em **Começar a DRE**): “Olá” → um valor em reais → **Salvar rascunho** e confirmar que totais batem com o painel.
+
+### Modo Dúvidas (rápido)
+
+- No hub **Assistente**, alternar para **Dúvidas**: mensagens **não** gravam valores pelo chat (orientação e glossário).
 
 ## 3. Papel leitura (2–3 min)
 

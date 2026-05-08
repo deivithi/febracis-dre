@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import {
   BookOpenText,
+  Bot,
   Building2,
   ClipboardCheck,
   FileSpreadsheet,
@@ -33,6 +34,12 @@ export const navigationSections: NavigationSection[] = [
         to: '/app/submissions',
         icon: FileSpreadsheet,
         label: 'Submissões',
+        allowedRoles: ['franchise_user', 'regional_manager', 'finance_controller', 'executive', 'system_admin'],
+      },
+      {
+        to: '/app/assistant',
+        icon: Bot,
+        label: 'Assistente',
         allowedRoles: ['franchise_user', 'regional_manager', 'finance_controller', 'executive', 'system_admin'],
       },
       {

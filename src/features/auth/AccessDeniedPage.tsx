@@ -10,6 +10,7 @@ export interface AccessDeniedState {
 
 const ROUTE_LABELS: Record<string, string> = {
   '/app/submissions': 'Submissões',
+  '/app/assistant': 'Assistente',
   '/app/workflow': 'Aprovações',
   '/app/franchises': 'Franquias',
   '/app/audit': 'Auditoria',

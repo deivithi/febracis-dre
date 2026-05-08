@@ -1,6 +1,8 @@
 # Cockpit Executivo e Assistente DRE - 2026-03-28
 
-> **2026-04-28:** Documento da rodada de março/2026. Referências a `https://febracis-dre.vercel.app` abaixo são **histórico** (team legado `deivithis-projects`). Produção atual: **`https://febracis-dre-phi.vercel.app`** — ver [`references/project-context.md`](../references/project-context.md).
+> **2026-04-28:** Documento da rodada de março/2026 — complementar ao estado atual em [`references/project-context.md`](../references/project-context.md).
+>
+> **2026-05-08:** Hub **Assistente** na rota **`/app/assistant`** (sidebar), modos **Dúvidas** (`explain_only` via API) e **Começar a DRE**; âncora `?submission=` alinhada a Submissões. Produção canónica: **`https://febracis-dre.vercel.app`** (team `deivithis-projects`).
 
 ## Objetivo
 
@@ -51,10 +53,13 @@ Arquivos principais:
 
 Arquivos principais:
 
+- `src/features/submissions/AssistantPage.tsx` + `AssistantPage.css` — hub `/app/assistant`
 - `src/features/submissions/DreAssistantPanel.tsx`
 - `src/features/submissions/dreAssistant.ts`
+- `src/features/submissions/useSubmissionsWorkspace.ts`
 - `src/features/submissions/SubmissionsPage.tsx`
 - `src/features/submissions/SubmissionsPage.css`
+- `src/layouts/app/navigation.ts`
 - `api/dre-agent.ts`
 
 ## Persistencia e Supabase

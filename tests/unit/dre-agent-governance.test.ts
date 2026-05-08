@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   canAssistantMutateSubmission,
   resolveAssistantInteractionMode,
+  shouldAssistantExplainOnly,
 } from '../../src/features/submissions/agentPermissions';
 import {
   buildFlowCheckpoint,
@@ -46,6 +47,22 @@ describe('canAssistantMutateSubmission / resolveAssistantInteractionMode', () =>
   it('bloqueia franchise_user quando submissão não é editável', () => {
     expect(canAssistantMutateSubmission(['franchise_user'], 'submitted')).toBe(false);
     expect(resolveAssistantInteractionMode(['franchise_user'], 'submitted')).toBe('explain_only');
+  });
+});
+
+describe('shouldAssistantExplainOnly', () => {
+  it('força orientação só leitura no modo produto «Dúvidas» mesmo com permissão de escrita', () => {
+    expect(shouldAssistantExplainOnly(true, 'duvidas')).toBe(true);
+  });
+
+  it('permite escritas na API quando o perfil permite e não é modo Dúvidas', () => {
+    expect(shouldAssistantExplainOnly(true, 'preencher')).toBe(false);
+    expect(shouldAssistantExplainOnly(true, undefined)).toBe(false);
+  });
+
+  it('mantém bloqueio quando não pode escrever na submissão', () => {
+    expect(shouldAssistantExplainOnly(false, 'preencher')).toBe(true);
+    expect(shouldAssistantExplainOnly(false, undefined)).toBe(true);
   });
 });
 

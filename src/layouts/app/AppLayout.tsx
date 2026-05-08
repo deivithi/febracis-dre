@@ -102,18 +102,18 @@ export function AppLayout() {
 
   return (
     <div className="app-layout">
-      <aside className="sidebar" id="sidebar">
+      <aside
+        className="sidebar"
+        id="sidebar"
+        aria-label="Febracis — Portal gerencial"
+      >
         <div className="sidebar__logo">
           <div className="sidebar__logo-mark">
             <img
               src={`${import.meta.env.BASE_URL}images/logo-febracis.png`}
-              alt="Febracis"
+              alt="Febracis Escola de Negócios — inteligência emocional, liderança e gestão"
               className="sidebar__logo-image"
             />
-          </div>
-          <div className="sidebar__logo-copy">
-            <span className="sidebar__logo-text">FEBRACIS</span>
-            <span className="sidebar__logo-subtitle">Portal gerencial</span>
           </div>
         </div>
 

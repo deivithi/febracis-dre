@@ -18,7 +18,7 @@ import {
   updateAgentSessionState,
 } from '../shared/portal.api';
 import { formatCurrencyInput, parseCurrencyInput } from './currencyInput';
-import { resolveAssistantInteractionMode } from './agentPermissions';
+import { resolveAssistantInteractionMode, type AssistantProductTab } from './agentPermissions';
 import {
   buildQuestionForLine,
   findNextGuidedLine,
@@ -43,7 +43,14 @@ function readSessionStateString(state: Record<string, unknown> | undefined, key:
   return typeof value === 'string' ? value : null;
 }
 
-export function useSubmissionsWorkspace() {
+export interface SubmissionsWorkspaceOptions {
+  /** Abre franquia/período quando a rota inclui `/app/assistant?submission=<uuid>` */
+  routeSubmissionId?: string | null;
+  /** Hub do assistente: **Dúvidas** obriga apenas orientação (API + UI) */
+  assistantProductTab?: AssistantProductTab;
+}
+
+export function useSubmissionsWorkspace(opts?: SubmissionsWorkspaceOptions) {
   const queryClient = useQueryClient();
   const { session } = useAuth();
   const accessProfileQuery = useAccessProfile();
@@ -71,6 +78,24 @@ export function useSubmissionsWorkspace() {
     queryFn: () => fetchCurrentSubmissions(access!),
     enabled: Boolean(access),
   });
+
+  useEffect(() => {
+    const submissionIdFromRoute = opts?.routeSubmissionId?.trim();
+    if (!submissionIdFromRoute || !submissionsQuery.data?.length) {
+      return;
+    }
+    const row = submissionsQuery.data.find((submission) => submission.submission_id === submissionIdFromRoute);
+    if (!row) {
+      return;
+    }
+    queueMicrotask(() => {
+      setSelectedFranchiseId(row.franchise_id);
+      setSelectedPeriodId(row.reporting_period_id);
+      setSubmissionFocusId(row.submission_id);
+      setEditingSubmissionId(null);
+      setSelectedEventId('');
+    });
+  }, [opts?.routeSubmissionId, submissionsQuery.data]);
 
   const resolvedFranchiseId = selectedFranchiseId || franchisesQuery.data?.[0]?.id || '';
   const defaultPeriod = periodsQuery.data?.find((period) => period.status === 'open' || period.status === 'reopened') ?? periodsQuery.data?.[0] ?? null;
@@ -178,7 +203,9 @@ export function useSubmissionsWorkspace() {
   const assistantEnabled = Boolean(activeSubmissionId && workspaceQuery.data?.submission);
   const assistantInteractionMode = !workspaceQuery.data?.submission
     ? ('full' as const)
-    : resolveAssistantInteractionMode(access?.roleCodes ?? [], workspaceQuery.data.submission.status);
+    : opts?.assistantProductTab === 'duvidas'
+      ? ('explain_only' as const)
+      : resolveAssistantInteractionMode(access?.roleCodes ?? [], workspaceQuery.data.submission.status);
   const assistantState = agentSessionQuery.data?.state_json;
   const assistantSkippedCodes = parseSkippedLineCodesFromState(assistantState);
   const assistantSkippedSet = useMemo(() => new Set(assistantSkippedCodes), [assistantSkippedCodes]);
@@ -387,6 +414,7 @@ export function useSubmissionsWorkspace() {
             sessionId: agentSessionQuery.data.id,
             submissionId: activeSubmissionId,
             message: trimmedPrompt,
+            ...(opts?.assistantProductTab === 'duvidas' ? { assistantProductTab: 'duvidas' as const } : {}),
           }),
           signal: AbortSignal.timeout(ASSISTANT_FETCH_TIMEOUT_MS),
         });

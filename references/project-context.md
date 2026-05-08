@@ -1,6 +1,6 @@
 # Febracis DRE — contexto do projeto (fonte de verdade operacional)
 
-Última revisão documental: 2026-05-08. Validar sempre contra Vercel/GitHub/Supabase antes de mudar papéis, RLS ou deploy.
+Última revisão documental: 2026-05-08 (protocolo de encerramento obrigatório acrescentado). Validar sempre contra Vercel/GitHub/Supabase antes de mudar papéis, RLS ou deploy.
 
 ## Raiz e URLs
 
@@ -37,9 +37,29 @@ Detalhe e comandos: [`operacoes-pendentes-supabase-vercel-2026-04-27.md`](./oper
 
 - **Quando:** ao **fechar um bloco de implementação** no `febracis-dre` que deva refletir em produção (frontend, `api/*`, ou qualquer ficheiro que entre no build/deploy), **sem esperar pedido explícito** do usuário.
 - **Como:** na raiz do repositório, após `npm run build` (e `npm run test` quando houver alterações no assistente ou regras críticas), executar **`npx vercel --prod --yes`** somente com a CLI ligada ao team `deivithis-projects` (ou dashboard/MCP dessa conta). Confirmar no output o alias **`https://febracis-dre.vercel.app`**. Se a CLI estiver em `deivithilopes-6933` ou outra conta, não publica na produção correta.
-- **Git:** se o usuário quiser o remoto atualizado, fazer **commit + push** para o branch acordado (ex.: `main`) **além** do deploy.
+- **Git:** no **protocolo de encerramento** pós-implementação, **commit + push** para `main`/`origin` é **obrigatório** sempre que código ou docs da app mudarem — ver secção abaixo. Fora desse ciclo, só faz push se houve contribuições a integrar no remoto.
 - **Exceções:** usuário pediu para **não** publicar; sessão **só leitura/planejamento** sem mudanças de código; falta de rede ou CLI não autenticada — comunicar e não assumir que o deploy correu.
 - **Sincronização com o workspace global:** o `AGENTS.md` da raiz do monorepo/workspace do utilizador **aponta para este ficheiro** como fonte de verdade operacional do portal DRE (evita duplicar regras longas lá).
+
+### Protocolo de encerramento obrigatório (pós-implementação no `febracis-dre`)
+
+**Decisão do produto:** após qualquer implantação, criação, ajuste ou correção nesta aplicação, o ciclo fecha **nesta ordem**, sem esperar novo pedido do utilizador — exceto quando o utilizador declarar sessão só leitura, “não publicar” ou faltar rede/CLI autenticada.
+
+1. **Documentação no repositório do portal** (`<raiz>/febracis-dre`): atualizar sempre que o comportamento, rotas ou contratos mudarem:
+   - `references/project-context.md` (fonte de verdade operacional; deploy, assistente, rotas).
+   - `references/demo-ceo-roteiro.md` quando a narrativa de demo mudar.
+   - `febracis-dre/AGENTS.md` quando o fluxo de agente ou comandos de validação mudarem.
+   - Outros `docs/*.md` apenas se a alteração tocar nesse domínio (ex.: glossário, segurança).
+2. **Skills e regras no workspace** (monorepo Cursor em que o portal está versionado):
+   - `.cursor/skills/stack-febracis-dre/SKILL.md` — checkpoint e protocolo resumido.
+   - `.cursor/rules/stack-febracis-dre.mdc` — ponteiro ao protocolo e ao `project-context.md`.
+3. **Skill global no PC** (retomada entre sessões / Codex): `C:\Users\PC\.codex\skills\febracis-dre-especialista\SKILL.md` — alinhar ao mesmo protocolo e à data do último deploy quando houver publicação.
+4. **Raiz do monorepo:** se a política for transversal a todos os projetos, atualizar o `AGENTS.md` da raiz (secção febracis-dre); caso contrário basta o passo 1–3.
+5. **Git:** `git status` na raiz do clone do portal; **commit** com mensagem clara (Conventional Commits); **push** para `origin/main` (ou branch acordado).
+6. **Vercel produção:** na raiz do portal, `npm run build` e `npm run test` quando houver mudança no assistente, API `api/*`, auth ou regras críticas; depois **`npx vercel --prod --yes`** no team `deivithis-projects`; confirmar alias `https://febracis-dre.vercel.app`. Opcional: `SMOKE_STRICT=1 npm run smoke:prod`.
+7. **Registo neste ficheiro:** após deploy bem-sucedido, atualizar na secção **Raiz e URLs** o último `dpl_*` / estado Ready quando relevante (linha de produção READY).
+
+**Exceções:** utilizador pediu explicitamente para não fazer push ou não deploy; apenas documentação interna sem impacto em código; impossibilidade técnica — comunicar o bloqueio e o que ficou pendente.
 
 #### Incidentes de deploy (referência)
 
@@ -67,6 +87,7 @@ Detalhe e comandos: [`operacoes-pendentes-supabase-vercel-2026-04-27.md`](./oper
 - Variáveis de ambiente: ver [`.env.example`](../.env.example). **Prioridade:** `OPENAI_API_KEY` na Vercel (ou **`OPENROUTER_API_KEY`**). Modelo implícito no código quando `OPENAI_MODEL` falta: **`gpt-5.4-mini`**. **Não** há chave OpenAI hardcoded no repositório — use sempre segredos de ambiente. Ao usar CLI/pipe no Windows, confirmar que o valor gravado **não** inclua newline (*Value contains newlines*).
 - **`OPENROUTER_*`:** default `OPENROUTER_APP_URL` na função passou a **`https://febracis-dre.vercel.app`** (substitui o alias histórico `*-phi`).
 - Quick wins auditoria **08/05/2026 BRT:** mensagem utilizador entre `<<<USER_MESSAGE_BEGIN>>>`/`END`; 1 retry com espera ~800 ms antes do fallback determinístico; erro operacional **`AgentOperationalError`** com `code`/`status`; logs JSON (`dre_agent_turn`) com `latencyMs`, `mode`, `model`; resposta HTTP inclui **`mode`** e **`telemetry`** (`assistant_provider`, `assistant_model`).
+- Payload opcional **`assistantProductTab`**: `"duvidas"` força comportamento **`explain_only`** no turno mesmo quando o papel poderia gravar valores (hub **Assistente**); omitido ou `"preencher"` preserva regra por papel/status.
 - Documento completo da auditoria: [`references/audit-dre-agent-2026-05-08.md`](./audit-dre-agent-2026-05-08.md).
 - Sem chaves remotas válidas **e** sem default resolvível (cenário só para forks que limpem as constantes) + sem `OPENROUTER_API_KEY`, o handler usa `runLocalAssistantTurn` (`mode: 'fallback'`); UI segue modo guiado local (detalhes em **Detalhes técnicos**).
 - Contexto no LLM: `retrieveRelevantAssistantKnowledge` (pontuação lexical sobre excertos curados + docs estáticos). Não substitui RAG com embeddings até existir pipeline de ingestão.
@@ -99,6 +120,7 @@ Detalhe e comandos: [`operacoes-pendentes-supabase-vercel-2026-04-27.md`](./oper
 - Painel **Assistente DRE**: thread com bolhas (paleta Febracis: azul / dourado / âmbar), área de mensagens com fundo “canvas” e **compositor fixo** (dock) com foco visível, autoaltura do campo de texto e **Enter** envia / **Shift+Enter** nova linha.
 - Atalhos tipo **Olá** e chips ghost; `prefers-reduced-motion` desliga animações de entrada, brilho pendente e rotação do ícone de carregamento.
 - Tokens CSS: prefixo `--chat-*` em [`src/styles/tokens.css`](../src/styles/tokens.css); estilos em [`SubmissionsPage.css`](../src/features/submissions/SubmissionsPage.css).
+- **Hub Assistente** (`/app/assistant`): entrada na sidebar; modos fixos **Dúvidas** (query `tab=duvidas`; corpo opcional **`assistantProductTab: "duvidas"`** na API — força `explain_only`) e **Começar a DRE**; deep link **`?submission=<uuid>`** alinha franquia/período ao mesmo estado que **Submissões**. Botão **Assistente DRE** na página Submissões e coluna Abrir na tabela de âmbito quando o utilizador está no hub.
 
 ## Comandos de validação
 
@@ -139,6 +161,7 @@ Rotas públicas: `/`, `/login`.
 | `/app/dashboard` | Todos autenticados | Leitura (+ ações do hero conforme papel) |
 | `/app/guide` | Todos autenticados | Leitura |
 | `/app/submissions` | `franchise_user`, `regional_manager`, `finance_controller`, `executive`, `system_admin` | Operacional / leitura conforme `canOperateSubmission` |
+| `/app/assistant` | `franchise_user`, `regional_manager`, `finance_controller`, `executive`, `system_admin` | Hub Assistente DRE: modos **Dúvidas** (`tab=duvidas`, API `assistantProductTab: "duvidas"` → `explain_only`) e **Começar a DRE**; `?submission=<uuid>` como âncora |
 | `/app/workflow` | `finance_controller`, `executive`, `system_admin` | Revisão |
 | `/app/franchises` | `regional_manager`, `finance_controller`, `executive`, `system_admin` | Lista / governo |
 | `/app/audit` | `finance_controller`, `executive`, `system_admin` | Leitura auditoria |
@@ -158,7 +181,7 @@ Rotas públicas: `/`, `/login`.
 | Shell | [`src/layouts/app/AppLayout.tsx`](../src/layouts/app/AppLayout.tsx), [`navigation.ts`](../src/layouts/app/navigation.ts) |
 | Landing / login | [`src/features/auth/LoginPage.tsx`](../src/features/auth/LoginPage.tsx), [`LoginPage.css`](../src/features/auth/LoginPage.css) |
 | Dashboard | [`src/features/dashboard/DashboardPage.tsx`](../src/features/dashboard/DashboardPage.tsx), [`HoldingCockpitView.tsx`](../src/features/dashboard/HoldingCockpitView.tsx) |
-| Submissões + assistente | [`src/features/submissions/SubmissionsPage.tsx`](../src/features/submissions/SubmissionsPage.tsx), [`DreAssistantPanel.tsx`](../src/features/submissions/DreAssistantPanel.tsx), [`api/dre-agent.ts`](../api/dre-agent.ts) |
+| Submissões + assistente | [`SubmissionsPage.tsx`](../src/features/submissions/SubmissionsPage.tsx), [`AssistantPage.tsx`](../src/features/submissions/AssistantPage.tsx) (rota `/app/assistant`), [`DreAssistantPanel.tsx`](../src/features/submissions/DreAssistantPanel.tsx), [`useSubmissionsWorkspace.ts`](../src/features/submissions/useSubmissionsWorkspace.ts), [`api/dre-agent.ts`](../api/dre-agent.ts) |
 | API portal | [`src/features/shared/portal.api.ts`](../src/features/shared/portal.api.ts) |
 | Design tokens | [`src/styles/tokens.css`](../src/styles/tokens.css), componentes em [`src/styles/components/`](../src/styles/components/) |
 

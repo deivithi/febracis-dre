@@ -3,7 +3,7 @@ import { ChatOpenAI } from '@langchain/openai';
 import { Annotation, END, START, StateGraph } from '@langchain/langgraph';
 import { createClient } from '@supabase/supabase-js';
 import type { AgentMessageRow, AgentSessionRow, DreInputCatalogLine } from '../src/features/shared/portal.types.js';
-import { canAssistantMutateSubmission } from '../src/features/submissions/agentPermissions.js';
+import { canAssistantMutateSubmission, shouldAssistantExplainOnly } from '../src/features/submissions/agentPermissions.js';
 import {
   AGENT_MESSAGE_HISTORY_LIMIT,
   buildConversationSummaryFromMessages,
@@ -79,10 +79,14 @@ interface AgentApiResponse {
   };
 }
 
+const assistantProductTabSchema = z.enum(['duvidas', 'preencher']).optional();
+
 const requestSchema = z.object({
   sessionId: z.string().uuid(),
   submissionId: z.string().uuid(),
   message: z.string().min(1).max(AGENT_USER_MESSAGE_MAX_LENGTH),
+  /** Hub Assistente: `duvidas` força `explain_only` mesmo para utilizadores que podem editar a submissão. */
+  assistantProductTab: assistantProductTabSchema,
 });
 
 const turnResultSchema = z.object({
@@ -697,7 +701,7 @@ export default async function handler(req: AgentApiRequest, res: AgentApiRespons
         : null;
 
     const writeAllowed = canAssistantMutateSubmission(context.roleCodes, context.submissionStatus);
-    const explainOnly = !writeAllowed;
+    const explainOnly = shouldAssistantExplainOnly(writeAllowed, parsedBody.data.assistantProductTab);
 
     const skippedSeed = parseSkippedLineCodesFromState(context.session.state_json);
     const skippedOpts = { skippedLineCodes: new Set(skippedSeed) };

@@ -23,3 +23,17 @@ export function resolveAssistantInteractionMode(
 ): AssistantInteractionMode {
   return canAssistantMutateSubmission(roleCodes, submissionStatus) ? 'full' : 'explain_only';
 }
+
+/** Produto hub: modo Dúvidas força apenas orientação (espelho API + UI). */
+export type AssistantProductTab = 'duvidas' | 'preencher';
+
+/**
+ * `true` quando o servidor não deve devolver/aplicar `fieldUpdates`.
+ * Replica a regra usada na API `/api/dre-agent` quando `assistantProductTab === 'duvidas'`.
+ */
+export function shouldAssistantExplainOnly(
+  writeAllowed: boolean,
+  productTab?: AssistantProductTab,
+): boolean {
+  return !writeAllowed || productTab === 'duvidas';
+}

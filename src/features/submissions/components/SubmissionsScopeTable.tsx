@@ -1,4 +1,5 @@
 import { FileSpreadsheet } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import type { CurrentSubmissionRow } from '../../shared/portal.types';
 import { formatDateTime, formatPeriodLabel, formatStatusLabel, getStatusVariant } from '../../../utils/formatters';
 
@@ -6,12 +7,14 @@ type SubmissionsScopeTableProps = {
   rows: CurrentSubmissionRow[];
   activeSubmissionId: string | null;
   onSelectRow: (row: CurrentSubmissionRow) => void;
+  /** Deep link para o hub `/app/assistant` (coluna opcional). */
+  getAssistantHref?: (row: CurrentSubmissionRow) => string;
 };
 
 /**
  * Lista colapsável de todas as submissões no escopo do utilizador.
  */
-export function SubmissionsScopeTable({ rows, activeSubmissionId, onSelectRow }: SubmissionsScopeTableProps) {
+export function SubmissionsScopeTable({ rows, activeSubmissionId, onSelectRow, getAssistantHref }: SubmissionsScopeTableProps) {
   return (
     <details className="submission-details">
       <summary className="submission-details__summary">Todas as submissões no seu escopo</summary>
@@ -42,6 +45,7 @@ export function SubmissionsScopeTable({ rows, activeSubmissionId, onSelectRow }:
                     <th className="align-center">Versão</th>
                     <th>Status</th>
                     <th>Submetido em</th>
+                    {getAssistantHref ? <th className="align-right">Assistente</th> : null}
                   </tr>
                 </thead>
                 <tbody>
@@ -65,6 +69,13 @@ export function SubmissionsScopeTable({ rows, activeSubmissionId, onSelectRow }:
                         </span>
                       </td>
                       <td>{formatDateTime(row.submitted_at)}</td>
+                      {getAssistantHref ? (
+                        <td className="align-right" onClick={(event) => event.stopPropagation()}>
+                          <Link className="assistant-scope-link" to={getAssistantHref(row)}>
+                            Abrir
+                          </Link>
+                        </td>
+                      ) : null}
                     </tr>
                   ))}
                 </tbody>

@@ -33,6 +33,10 @@ const SubmissionsPage = lazy(async () => ({
   default: (await import('./features/submissions/SubmissionsPage')).SubmissionsPage,
 }));
 
+const AssistantPage = lazy(async () => ({
+  default: (await import('./features/submissions/AssistantPage')).AssistantPage,
+}));
+
 const WorkflowPage = lazy(async () => ({
   default: (await import('./features/workflow/WorkflowPage')).WorkflowPage,
 }));
@@ -91,6 +95,16 @@ function App() {
                       allowedRoles={['franchise_user', 'regional_manager', 'finance_controller', 'executive', 'system_admin']}
                     >
                       <SubmissionsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="assistant"
+                  element={
+                    <ProtectedRoute
+                      allowedRoles={['franchise_user', 'regional_manager', 'finance_controller', 'executive', 'system_admin']}
+                    >
+                      <AssistantPage />
                     </ProtectedRoute>
                   }
                 />

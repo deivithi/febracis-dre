@@ -1484,3 +1484,14 @@
   margin-top: var(--space-2);
 }
 
+.assistant-scope-link {
+  font-weight: 600;
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.assistant-scope-link:hover {
+  opacity: 0.85;
+}
+

@@ -1,16 +1,65 @@
-import { FileSpreadsheet } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Bot } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { AssistantDock } from './components/AssistantDock';
-import { DreStatementSection } from './components/DreStatementSection';
 import { SubmissionKpiSection } from './components/SubmissionKpiSection';
 import { SubmissionToolbar } from './components/SubmissionToolbar';
-import { SubmissionWorkbenchRail } from './components/SubmissionWorkbenchRail';
 import { SubmissionsScopeTable } from './components/SubmissionsScopeTable';
 import { useSubmissionsWorkspace } from './useSubmissionsWorkspace';
+import type { AssistantProductTab } from './agentPermissions';
+import { formatPeriodLabel } from '../../utils/formatters';
 import './SubmissionsPage.css';
+import './AssistantPage.css';
 
-export function SubmissionsPage() {
-  const w = useSubmissionsWorkspace();
+function parseProductTab(searchParams: URLSearchParams): AssistantProductTab {
+  return searchParams.get('tab') === 'duvidas' ? 'duvidas' : 'preencher';
+}
+
+export function AssistantPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const submissionFromUrl = searchParams.get('submission');
+  const productTab = parseProductTab(searchParams);
+
+  const setProductTab = (next: AssistantProductTab) => {
+    setSearchParams(
+      (prev) => {
+        const p = new URLSearchParams(prev);
+        if (next === 'preencher') {
+          p.delete('tab');
+        } else {
+          p.set('tab', 'duvidas');
+        }
+        return p;
+      },
+      { replace: true },
+    );
+  };
+
+  const clearSubmissionParam = () => {
+    setSearchParams(
+      (prev) => {
+        const p = new URLSearchParams(prev);
+        p.delete('submission');
+        return p;
+      },
+      { replace: true },
+    );
+  };
+
+  const setSubmissionParam = (submissionId: string) => {
+    setSearchParams(
+      (prev) => {
+        const p = new URLSearchParams(prev);
+        p.set('submission', submissionId);
+        return p;
+      },
+      { replace: true },
+    );
+  };
+
+  const w = useSubmissionsWorkspace({
+    routeSubmissionId: submissionFromUrl,
+    assistantProductTab: productTab,
+  });
 
   if (
     w.accessProfileQuery.isLoading ||
@@ -34,7 +83,7 @@ export function SubmissionsPage() {
     return (
       <div className="page-stack">
         <div className="inline-message inline-message--danger">
-          Não foi possível carregar o workspace de submissões. Verifique a conexão e tente atualizar a página.
+          Não foi possível carregar o assistente. Verifique a conexão e tente atualizar a página.
         </div>
       </div>
     );
@@ -45,24 +94,8 @@ export function SubmissionsPage() {
       <div className="page-stack submissions-page-root">
         <div className="page-container__title-bar">
           <div>
-            <h1 className="page-container__title">Submissões</h1>
-            <p className="page-container__subtitle">
-              A unidade escolhe a competência, preenche a DRE e envia a versão oficial para revisão.
-            </p>
-          </div>
-        </div>
-        <div className="card">
-          <div className="card__body">
-            <div className="empty-state">
-              <div className="empty-state__icon">
-                <FileSpreadsheet />
-              </div>
-              <h3 className="empty-state__title">Nenhuma franquia disponível no seu escopo</h3>
-              <p className="empty-state__description">
-                O seu utilizador não tem franquias associadas ou o acesso ainda não foi configurado. Peça ao
-                administrador para validar o vínculo da coligada ou da regional no painel de configurações.
-              </p>
-            </div>
+            <h1 className="page-container__title">Assistente DRE</h1>
+            <p className="page-container__subtitle">Nenhuma franquia disponível no seu escopo.</p>
           </div>
         </div>
       </div>
@@ -75,25 +108,48 @@ export function SubmissionsPage() {
     ['submitted', 'under_review', 'pending_adjustment'].includes(row.status),
   ).length;
 
+  const franchiseLabel = w.selectedFranchise?.trade_name ?? 'Franquia';
+  const periodLabel = w.selectedPeriod ? formatPeriodLabel(w.selectedPeriod.label) : 'Período';
+
   return (
-    <div className="page-stack submissions-page-root">
+    <div className="page-stack submissions-page-root assistant-hub-page">
       <div className="page-container__title-bar">
         <div>
-          <h1 className="page-container__title">Submissões</h1>
+          <h1 className="page-container__title">
+            <Bot className="assistant-hub-page__title-icon" size={28} aria-hidden />
+            Assistente DRE
+          </h1>
           <p className="page-container__subtitle">
-            Escolha franquia e competência, preencha com o assistente e envie para revisão — o painel à direita mostra o
-            preview e as ações.
+            Dois modos fixos: orientação sem gravar pelo chat, ou preenchimento guiado sincronizado com Submissões.
           </p>
         </div>
-        <div className="page-container__actions">
-          <Link
-            className="btn btn--secondary"
-            to={w.activeSubmissionId ? `/app/assistant?submission=${w.activeSubmissionId}` : '/app/assistant'}
-          >
-            Assistente DRE
-          </Link>
-        </div>
       </div>
+
+      <div className="assistant-hub-segment" role="group" aria-label="Modo do assistente">
+        <button
+          type="button"
+          data-active={productTab === 'duvidas' ? 'true' : 'false'}
+          className={`assistant-hub-segment__btn${productTab === 'duvidas' ? ' assistant-hub-segment__btn--active' : ''}`}
+          onClick={() => setProductTab('duvidas')}
+        >
+          Dúvidas
+        </button>
+        <button
+          type="button"
+          data-active={productTab === 'preencher' ? 'true' : 'false'}
+          className={`assistant-hub-segment__btn${productTab === 'preencher' ? ' assistant-hub-segment__btn--active' : ''}`}
+          onClick={() => setProductTab('preencher')}
+        >
+          Começar a DRE
+        </button>
+      </div>
+
+      <p className="assistant-hub-context" role="status">
+        <strong>Contexto:</strong> {franchiseLabel} · {periodLabel}
+        {productTab === 'duvidas'
+          ? ' · só orientação (o chat não altera valores da DRE).'
+          : ' · chat pode propor valores como na página Submissões; confirme e grave o rascunho quando pedido.'}
+      </p>
 
       <SubmissionToolbar
         resolvedFranchiseId={w.resolvedFranchiseId}
@@ -110,12 +166,14 @@ export function SubmissionsPage() {
           w.setSubmissionFocusId(null);
           w.setEditingSubmissionId(null);
           w.setSelectedEventId('');
+          clearSubmissionParam();
         }}
         onPeriodChange={(id) => {
           w.setSelectedPeriodId(id);
           w.setSubmissionFocusId(null);
           w.setEditingSubmissionId(null);
           w.setSelectedEventId('');
+          clearSubmissionParam();
         }}
         onEventChange={w.setSelectedEventId}
         onCreateDraft={() => w.createDraftMutation.mutate()}
@@ -137,39 +195,9 @@ export function SubmissionsPage() {
         <div className="inline-message inline-message--danger">{w.assistantErrorMessage}</div>
       ) : null}
 
-      <div className="submission-mobile-tabs" role="tablist" aria-label="Secções do workspace de submissão">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={w.mobileWorkspaceTab === 'chat'}
-          className="submission-mobile-tabs__btn"
-          onClick={() => w.setMobileWorkspaceTab('chat')}
-        >
-          Conversa
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={w.mobileWorkspaceTab === 'panel'}
-          className="submission-mobile-tabs__btn"
-          onClick={() => w.setMobileWorkspaceTab('panel')}
-        >
-          Painel
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={w.mobileWorkspaceTab === 'dre'}
-          className="submission-mobile-tabs__btn"
-          onClick={() => w.setMobileWorkspaceTab('dre')}
-        >
-          DRE
-        </button>
-      </div>
-
-      <div className="submission-workbench" data-testid="submission-workbench">
+      <div className="submission-workbench" data-testid="assistant-hub-workbench">
         <AssistantDock
-          mobileWorkspaceTab={w.mobileWorkspaceTab}
+          mobileWorkspaceTab="chat"
           activeSubmissionId={w.activeSubmissionId}
           canEdit={w.canEdit}
           submissionStatus={w.workspaceQuery.data?.submission?.status}
@@ -210,46 +238,33 @@ export function SubmissionsPage() {
             submitPending: w.submitMutation.isPending,
           }}
         />
-
-        <SubmissionWorkbenchRail
-          mobileWorkspaceTab={w.mobileWorkspaceTab}
-          selectedFranchise={w.selectedFranchise}
-          selectedPeriod={w.selectedPeriod}
-          workspaceBody={w.workspaceQuery.data}
-          effectiveNotes={w.effectiveNotes}
-          onNotesChange={w.setSubmissionNotes}
-          beginEditing={w.beginEditing}
-          canEditActiveSubmission={w.canEditActiveSubmission}
-          activeSubmissionId={w.activeSubmissionId}
-          saveDraftMutation={w.saveDraftMutation}
-          submitMutation={w.submitMutation}
-          saveActionLabel={w.saveActionLabel}
-          submitActionLabel={w.submitActionLabel}
-          draftValidation={w.draftValidation}
-          preview={w.preview}
-          activeSubmissionLocked={w.activeSubmissionLocked}
-          submissionLockMessage={w.submissionLockMessage}
-          canEdit={w.canEdit}
-        />
       </div>
-
-      <DreStatementSection
-        rows={w.resolvedStatementRows}
-        source={w.statementSource}
-        mobileWorkspaceTab={w.mobileWorkspaceTab}
-      />
 
       <SubmissionsScopeTable
         rows={currentRows}
         activeSubmissionId={w.activeSubmissionId}
+        getAssistantHref={(row) => {
+          const p = new URLSearchParams();
+          p.set('submission', row.submission_id);
+          if (productTab === 'duvidas') {
+            p.set('tab', 'duvidas');
+          }
+          return `/app/assistant?${p.toString()}`;
+        }}
         onSelectRow={(row) => {
           w.setSelectedFranchiseId(row.franchise_id);
           w.setSelectedPeriodId(row.reporting_period_id);
           w.setSubmissionFocusId(row.submission_id);
           w.setEditingSubmissionId(null);
           w.setSelectedEventId('');
+          setSubmissionParam(row.submission_id);
         }}
       />
+
+      <p className="assistant-hub-footer-hint">
+        O mesmo estado desta conversa aparece quando abre esta submissão em <strong>Submissões</strong> — um único fluxo na
+        base de dados e na API.
+      </p>
     </div>
   );
 }

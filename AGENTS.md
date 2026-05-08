@@ -8,13 +8,25 @@ Instruções **específicas** desta pasta; combinam com o @AGENTS.md na raiz do 
 
 ## Deploy e contexto
 
-- Política de deploy Vercel, Supabase e variáveis sensíveis estão descritas no @AGENTS.md raiz e, no clone completo do portal, em `references/project-context.md`.
-- Raiz canónica no disco pode ser `C:\Users\PC\Documents\VS CODE\febracis-dre` — ao comparar paths, validar qual pasta está aberta no Cursor.
+- Política de deploy Vercel, Supabase, variáveis sensíveis e **roteiros de demo** estão consolidados em **`references/project-context.md`** — sempre como primeira leitura após mexer neste projeto.
+- Raiz no disco pode ser `C:\Users\PC\Documents\VS CODE\febracis-dre` ou `...\OneDrive\...\febracis-dre`; validar com `git remote -v` (deve apontar para `deivithi/febracis-dre`).
+
+## Protocolo de encerramento (agentes IA — obrigatório)
+
+Ao **terminar** implementação ou ajustes que devam refletir no produto/repo remoto:
+
+1. Atualizar **`references/project-context.md`** e, quando couber, `references/demo-ceo-roteiro.md` ou `docs/*`.
+2. No monorepo Cursor: **`.cursor/skills/stack-febracis-dre/SKILL.md`** e **`.cursor/rules/stack-febracis-dre.mdc`**.
+3. Skill global **`C:\Users\PC\.codex\skills\febracis-dre-especialista\SKILL.md`** — manter mesmo protocolo/checkpoint de deploy.
+4. **Git:** `npm run build` + `npm run test` (se tocaram assistente, `api/*`, auth ou regras críticas) → commit → **`git push origin main`**.
+5. **Vercel:** `npx vercel --prod --yes` (team **`deivithis-projects`**); regressar ao `project-context.md` para nota do último `dpl_*` Ready.
+
+Lista completa e excepções na secção **“Protocolo de encerramento obrigatório”** do `references/project-context.md`.
 
 ## Comandos úteis
 
-- `npm run dev`, `npm run build`, `npm run lint`, `npm run test`, `npm run test:e2e`, scripts `validate:*` quando aplicável.
+- `npm run dev`, `npm run build`, `npm run lint`, `npm run test`, `npm run test:e2e`, `npm run smoke:prod`, scripts `validate:*` quando aplicável.
 
 ## Referências
 
-- Regras com glob: `.cursor/rules/stack-febracis-dre.mdc`
+- Regras com glob no monorepo: `.cursor/rules/stack-febracis-dre.mdc`
