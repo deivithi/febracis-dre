@@ -373,6 +373,35 @@
 - A calibracao final separou o comportamento de desktop amplo e ultra-wide: `1500px+` preserva o encaixe do desktop grande e `1900px+` aplica o deslocamento extra para colocar o card dentro da area marcada no print.
 - A validacao local mais recente confirmou o novo alvo visual em `2048x936` e manteve o desktop `1680x1050` sem invadir o bloco de texto.
 - O deploy final desta calibracao gerou `https://febracis-cho9pro08-deivithis-projects.vercel.app` e foi checado novamente na URL oficial `https://febracis-dre.vercel.app`.
+## Rodada 2026-05-08 — Auditoria sênior Agente DRE (pós-quick-wins)
+
+> Relatório completo: [`references/audit-dre-agent-2026-05-08.md`](../references/audit-dre-agent-2026-05-08.md). Quick wins já aplicados no código; itens abaixo são **estruturais** (não executados nesta sessão).
+
+### Backlog estrutural (tickets)
+
+- [ ] **R1 — Segredos:** remover `DEFAULT_OPENAI_API_KEY` do bundle; passar a depender só de `OPENAI_API_KEY` na Vercel; rotacionar chave exposta no histórico/Git.
+- [ ] **R2 — Env Vercel:** confirmar no **Dashboard** que `OPENAI_API_KEY` / `OPENAI_MODEL` não têm newline (evitar pipe PowerShell que quebra o valor).
+- [ ] **R3 — Observabilidade:** trace id correlacionado request↔log; métricas custo/tokens (opcional integração Datadog).
+- [ ] **R4 — Evals:** fixtures + LLM-as-judge ou assertions para injeção off-topic, números MC/EBITDA, governança explain_only (save/submit negado).
+- [ ] **R5 — DB:** índice composto `agent_messages(session_id, created_at)`; avaliar RPC única em vez de Promise.all com 6 queries.
+- [ ] **R6 — UX agente:** streaming de tokens ou indicador de progresso; abort em unmount; tratamento explícito `mode: fallback` na UI.
+- [ ] **R7 — Output guard:** sanitização adicional de Markdown/HTML em `AssistantProse` se risco XSS no render.
+- [ ] **R8 — Rate limit:** circuit breaker mínimo quando RPC fail-open (memória por instância ou contador degrade).
+- [ ] **R9 — classifyAgentError:** eliminar fallback substring PT após mapear todos os erros legacy para `AgentOperationalError.code`.
+- [ ] **R10 — Ci local:** documentar ou fixar `validate:settings` / `validate:phase1:local` no CI sem credenciais (skip explícito ou secrets).
+- [ ] **R11 — E2E:** `npm run test:e2e` em pipeline com credenciais smoke (login + painel assistente em prod ou preview).
+
+### Critérios já atendidos nesta rodada
+
+- [x] `DEFAULT_OPENAI_API_KEY` + modelo `gpt-5.4-mini` com prioridade `getEnv` sobre default.
+- [x] Deploy prod Ready (`vercel inspect` em `febracis-mvz4witu9`): `dpl_9GRYX3oQrPqNtqrSHbXJM4RBvWyw`; deploy intermédio `dpl_78Q5paVibSPCrb2AMNSFg2qigCZX`; alias `febracis-dre.vercel.app`.
+- [x] Delimitadores de prompt, retry 800ms, `AgentOperationalError`, logs JSON, `mode` + `telemetry` na resposta HTTP.
+- [x] Default `OPENROUTER_APP_URL` → `https://febracis-dre.vercel.app`.
+- [x] Smoke prod strict (`SMOKE_STRICT=1`) verde.
+- [x] Lint + Vitest verdes; `project-context.md` + relatório de auditoria gravados.
+
+---
+
 - Foi criada a skill global `febracis-dre-especialista` em `C:\Users\PC\.codex\skills\febracis-dre-especialista` para continuidade entre sessoes.
 - A skill inclui `SKILL.md`, `agents/openai.yaml` e `references/project-context.md` com caminho local, URL oficial, arquitetura, mapa de fontes, logica funcional, tensoes conhecidas e estado atual do projeto.
 - O catalogo operacional foi atualizado em `C:\Users\PC\.codex\skill-ops\catalog\skills-catalog.json`, a meta foi registrada em `C:\Users\PC\.codex\skill-ops\observability\targets.csv` e a execucao foi registrada em `usage-log.csv`.
