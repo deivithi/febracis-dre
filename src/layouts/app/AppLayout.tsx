@@ -80,6 +80,7 @@ export function AppLayout() {
     ['app', 'Portal'],
     ['forbidden', 'Acesso restrito'],
     ['submissions', 'Submissões'],
+    ['assistant', 'Assistente'],
     ['franchises', 'Franquias'],
     ['workflow', 'Aprovações'],
     ['audit', 'Auditoria'],
@@ -199,9 +200,15 @@ export function AppLayout() {
         </div>
 
         <div className="app-header__right">
-          <button className="app-header__icon-btn" id="btn-notifications" aria-label="Notificações">
-            <Bell />
-            <span className="app-header__notification-dot" />
+          <button
+            type="button"
+            className="app-header__icon-btn app-header__icon-btn--disabled"
+            id="btn-notifications"
+            disabled
+            title="Notificações em desenvolvimento"
+            aria-label="Notificações em desenvolvimento"
+          >
+            <Bell aria-hidden />
           </button>
         </div>
       </header>

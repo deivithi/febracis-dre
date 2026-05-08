@@ -159,6 +159,8 @@ npm run verify:dist
 
 E2E (após `npx playwright install`): `npm run test:e2e` — o `playwright.config.ts` injeta `VITE_SUPABASE_*` de placeholder no processo do `npm run dev` usado pelos testes, para o bundle não abortar em ambientes **sem** `.env.local` (smoke de UI; não valida ligação ao Supabase real).
 
+- **Auditoria lógica / RBAC / sincronização:** [`references/audit-app-logic-2026-05-08.md`](./audit-app-logic-2026-05-08.md) — matriz rotas/menu, chaves TanStack Query, contrato assistente, correções aplicadas, gates (`lint`, `build`, `test`, E2E) e checklist manual por papel.
+
 ## Linha do tempo e lições
 
 - Execução e critérios de aceite: [`tasks/todo.md`](../tasks/todo.md)

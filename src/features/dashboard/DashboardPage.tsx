@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   AlertTriangle,
   ArrowRight,
@@ -845,19 +845,6 @@ export function DashboardPage() {
 
   const snapshot = dashboardQuery.data;
   const profile = accessProfileQuery.data;
-
-  useEffect(() => {
-    if (profile?.dashboardScope !== 'holding' || !snapshot?.latestNetwork) {
-      return;
-    }
-    const periodLabel = snapshot.latestNetwork.period_label;
-    setHoldingFilters((prev) => {
-      if (prev.selectedPeriodLabel) {
-        return prev;
-      }
-      return { ...prev, selectedPeriodLabel: periodLabel };
-    });
-  }, [profile?.dashboardScope, snapshot?.latestNetwork?.period_label]);
 
   const holdingDerived = useMemo(() => {
     if (!snapshot || profile?.dashboardScope !== 'holding') {

@@ -536,6 +536,18 @@
   height: 20px;
 }
 
+.app-header__icon-btn--disabled,
+.app-header__icon-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.app-header__icon-btn--disabled:hover,
+.app-header__icon-btn:disabled:hover {
+  background: transparent;
+  color: var(--text-secondary);
+}
+
 .app-header__notification-dot {
   position: absolute;
   top: 6px;
