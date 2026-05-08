@@ -13,7 +13,7 @@ Instruções **específicas** desta pasta; combinam com o @AGENTS.md na raiz do 
 
 ## Protocolo de encerramento (agentes IA — obrigatório)
 
-Ao **terminar** implementação ou ajustes que devam refletir no produto/repo remoto:
+Ao **terminar** implementação ou ajustes que devam refletir no produto/repo remoto, **executar sempre a lista abaixo sem pedir confirmação** ao utilizador (salvo quando ele tiver declarado só leitura ou bloqueado publish).
 
 1. Atualizar **`references/project-context.md`** e, quando couber, `references/demo-ceo-roteiro.md` ou `docs/*`.
 2. No monorepo Cursor: **`.cursor/skills/stack-febracis-dre/SKILL.md`** e **`.cursor/rules/stack-febracis-dre.mdc`**.
