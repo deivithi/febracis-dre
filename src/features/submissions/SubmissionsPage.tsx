@@ -80,8 +80,8 @@ export function SubmissionsPage() {
         <div>
           <h1 className="page-container__title">Submissões</h1>
           <p className="page-container__subtitle">
-            Escolha franquia e competência, preencha os valores na grelha e envie para revisão. Orientação guiada pela
-            conversa fica na entrada <strong>Assistente</strong> no menu lateral.
+            Escolha franquia e competência, preencha a DRE e envie para revisão. Use o <strong>Assistente DRE</strong>{' '}
+            (entrada na barra lateral) para orientação guiada.
           </p>
         </div>
         <div className="page-container__actions">

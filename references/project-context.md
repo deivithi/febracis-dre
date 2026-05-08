@@ -119,7 +119,7 @@ Detalhe e comandos: [`operacoes-pendentes-supabase-vercel-2026-04-27.md`](./oper
 
 #### UX do chat e separação Submissões ↔ Assistente
 
-- **Submissões** (`/app/submissions`): grelha oficial, rail (notas, gravar, enviar), KPIs e tabela — **sem dock de conversa**. Em ecrã estreito as abas são só **Painel** e **DRE** (não há tab “Conversa”). Orientação guiada pelo chat: link **Assistente DRE** e entrada no menu lateral.
+- **Submissões** (`/app/submissions`): grelha oficial, rail (notas, gravar, enviar), KPIs e tabela — **sem dock de conversa**. Em ecrã estreito as abas são só **Painel** e **DRE** (não há tab “Conversa”). Subtítulo da página remete ao **Assistente DRE** na barra lateral para orientação guiada.
 - Painel **Assistente DRE** (só no hub `/app/assistant`): thread com bolhas (paleta Febracis: azul / dourado / âmbar), área de mensagens com fundo “canvas” e **compositor fixo** (dock) com foco visível, autoaltura do texto e **Enter** envia / **Shift+Enter** nova linha.
 - Atalhos tipo **Olá** e chips ghost; `prefers-reduced-motion` desliga animações de entrada, brilho pendente e rotação do ícone de carregamento.
 - Tokens CSS: prefixo `--chat-*` em [`src/styles/tokens.css`](../src/styles/tokens.css); estilos em [`SubmissionsPage.css`](../src/features/submissions/SubmissionsPage.css) (partilhados com o hub).
