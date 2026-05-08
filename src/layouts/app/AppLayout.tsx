@@ -1,6 +1,11 @@
 import { Bell, ChevronRight, LogOut } from 'lucide-react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { canAccessRoles, getDashboardScopeLabel, getScopeSummary } from '../../features/auth/access';
+import {
+  canAccessRoles,
+  getActiveScopeHeadline,
+  getDashboardScopeLabel,
+  getScopeSummary,
+} from '../../features/auth/access';
 import { useAccessProfile } from '../../features/auth/useAccessProfile';
 import { useAuth } from '../../features/auth/useAuth';
 import './AppLayout.css';
@@ -154,7 +159,7 @@ export function AppLayout() {
               </div>
             </div>
           </div>
-          <div className="sidebar__scope">{getScopeSummary(accessProfile)}</div>
+          <div className="sidebar__scope">{getActiveScopeHeadline(accessProfile)}</div>
           <button
             className="sidebar__item sidebar__item--logout"
             onClick={handleSignOut}
@@ -184,9 +189,12 @@ export function AppLayout() {
               </span>
             ))}
           </nav>
-          <div className="app-header__scope" title={getScopeSummary(accessProfile)}>
+          <div
+            className="app-header__scope"
+            title={`${getScopeSummary(accessProfile)} — modo ${getDashboardScopeLabel(accessProfile.dashboardScope)}`}
+          >
             <span className="app-header__scope-label">Escopo ativo</span>
-            <span className="app-header__scope-value">{getScopeSummary(accessProfile)}</span>
+            <span className="app-header__scope-value">{getActiveScopeHeadline(accessProfile)}</span>
           </div>
         </div>
 

@@ -69,30 +69,109 @@ function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
 
+/** Segurança PostgREST/Supabase: chunk em linhas até teto máximo por snapshot. */
+const DASHBOARD_PAGE_SIZE = 1000;
+const DASHBOARD_FRANCHISE_ROWS_CAP = 50_000;
+const DASHBOARD_REGIONAL_ROWS_CAP = 50_000;
+
+async function readVwFranchiseDashboard(access: AccessProfile): Promise<FranchiseDashboardRow[]> {
+  const multiEntityDashboard =
+    access.dashboardScope === 'holding' ||
+    access.dashboardScope === 'controladoria' ||
+    access.dashboardScope === 'regional';
+
+  const scopedBase = () => {
+    const q = supabase
+      .from('vw_franchise_dashboard')
+      .select('*')
+      .order('period_year', { ascending: false })
+      .order('period_month', { ascending: false })
+      .order('franchise_code', { ascending: true });
+
+    return applyScopedFilters(q, access);
+  };
+
+  if (!multiEntityDashboard) {
+    return readRows<FranchiseDashboardRow>(
+      asQueryResult(scopedBase().limit(96)),
+      'os dados de franquia do dashboard',
+    );
+  }
+
+  const result: FranchiseDashboardRow[] = [];
+  let offset = 0;
+
+  while (result.length < DASHBOARD_FRANCHISE_ROWS_CAP) {
+    const to = offset + DASHBOARD_PAGE_SIZE - 1;
+    const page = await readRows<FranchiseDashboardRow>(
+      asQueryResult(scopedBase().range(offset, to)),
+      'os dados de franquia do dashboard',
+    );
+
+    result.push(...page);
+
+    if (page.length < DASHBOARD_PAGE_SIZE) {
+      break;
+    }
+
+    offset += DASHBOARD_PAGE_SIZE;
+  }
+
+  return result;
+}
+
+async function readVwRegionalDashboard(access: AccessProfile): Promise<RegionalDashboardRow[]> {
+  const scopedBase = () => {
+    const q = supabase
+      .from('vw_regional_dashboard')
+      .select('*')
+      .order('period_year', { ascending: false })
+      .order('period_month', { ascending: false })
+      .order('regional_name', { ascending: true });
+
+    return applyScopedFilters(q, access, 'regional_id', 'regional_id');
+  };
+
+  const needsPagedRegional =
+    access.dashboardScope === 'regional' ||
+    access.dashboardScope === 'holding' ||
+    access.dashboardScope === 'controladoria';
+
+  if (!needsPagedRegional) {
+    return [];
+  }
+
+  const result: RegionalDashboardRow[] = [];
+  let offset = 0;
+
+  while (result.length < DASHBOARD_REGIONAL_ROWS_CAP) {
+    const to = offset + DASHBOARD_PAGE_SIZE - 1;
+    const page = await readRows<RegionalDashboardRow>(
+      asQueryResult(scopedBase().range(offset, to)),
+      'os dados regionais do dashboard',
+    );
+
+    result.push(...page);
+
+    if (page.length < DASHBOARD_PAGE_SIZE) {
+      break;
+    }
+
+    offset += DASHBOARD_PAGE_SIZE;
+  }
+
+  return result;
+}
+
 export async function fetchDashboardSnapshot(access: AccessProfile) {
-  let franchiseQuery = supabase
-    .from('vw_franchise_dashboard')
-    .select('*')
-    .order('period_year', { ascending: false })
-    .order('period_month', { ascending: false });
+  const franchiseRowsPromise = readVwFranchiseDashboard(access);
 
-  franchiseQuery = applyScopedFilters(franchiseQuery, access).limit(24);
-
-  const regionalQuery =
+  const regionalRowsPromise =
     access.dashboardScope === 'regional' ||
     access.dashboardScope === 'holding' ||
     access.dashboardScope === 'controladoria'
-      ? applyScopedFilters(
-          supabase
-            .from('vw_regional_dashboard')
-            .select('*')
-            .order('period_year', { ascending: false })
-            .order('period_month', { ascending: false }),
-          access,
-          'regional_id',
-          'regional_id',
-        ).limit(24)
-      : emptyRows<RegionalDashboardRow>();
+      ? readVwRegionalDashboard(access)
+      : Promise.resolve<RegionalDashboardRow[]>([]);
 
   const networkQuery =
     access.dashboardScope === 'holding' || access.dashboardScope === 'controladoria'
@@ -122,8 +201,8 @@ export async function fetchDashboardSnapshot(access: AccessProfile) {
 
   const [franchiseRows, regionalRows, networkRows, currentSubmissions, pendingReviews] =
     await Promise.all([
-      readRows<FranchiseDashboardRow>(asQueryResult(franchiseQuery), 'os dados de franquia do dashboard'),
-      readRows<RegionalDashboardRow>(asQueryResult(regionalQuery), 'os dados regionais do dashboard'),
+      franchiseRowsPromise,
+      regionalRowsPromise,
       readRows<NetworkDashboardRow>(asQueryResult(networkQuery), 'o consolidado da holding'),
       readRows<CurrentSubmissionRow>(asQueryResult(submissionsQuery), 'as submissões correntes'),
       readRows<PendingReviewRow>(asQueryResult(pendingReviewsQuery), 'a fila de revisão'),

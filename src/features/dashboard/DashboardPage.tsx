@@ -2,9 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
-  ArrowDownRight,
   ArrowRight,
-  ArrowUpRight,
   BarChart3,
   Building2,
   CheckCircle2,
@@ -42,19 +40,10 @@ import {
 } from '../../utils/formatters';
 import { HoldingCockpitView } from './HoldingCockpitView';
 import { buildHoldingTotals, deriveHoldingView, type HoldingFilterState } from './holdingDerivations';
+import { ExecutiveKpiGrid, type ExecutiveKpiItem } from './ExecutiveKpiGrid';
 import './DashboardPage.css';
 
-interface KpiCardModel {
-  label: string;
-  value: string;
-  percent: string;
-  trend: string;
-  trendUp: boolean;
-  variant: 'default' | 'gold' | 'success' | 'warning';
-  icon: typeof DollarSign;
-}
-
-function buildFranchiseKpis(snapshot: DashboardSnapshot): KpiCardModel[] {
+function buildFranchiseKpis(snapshot: DashboardSnapshot): ExecutiveKpiItem[] {
   if (!snapshot.latestFranchise) {
     return [];
   }
@@ -64,7 +53,7 @@ function buildFranchiseKpis(snapshot: DashboardSnapshot): KpiCardModel[] {
 
   return [
     {
-      label: 'Receita Bruta de Vendas',
+      label: 'Receita bruta',
       value: formatCurrency(current.gross_revenue),
       percent: 'Total faturado pela unidade',
       trend: formatDelta(calculateDelta(current.gross_revenue, previous?.gross_revenue ?? null)),
@@ -102,7 +91,7 @@ function buildFranchiseKpis(snapshot: DashboardSnapshot): KpiCardModel[] {
   ];
 }
 
-function buildRegionalKpis(snapshot: DashboardSnapshot): KpiCardModel[] {
+function buildRegionalKpis(snapshot: DashboardSnapshot): ExecutiveKpiItem[] {
   if (!snapshot.latestRegional) {
     return [];
   }
@@ -161,7 +150,7 @@ function buildRegionalKpis(snapshot: DashboardSnapshot): KpiCardModel[] {
 function buildHoldingFilteredKpis(
   currentRows: FranchiseDashboardRow[],
   previousRows: FranchiseDashboardRow[],
-): KpiCardModel[] {
+): ExecutiveKpiItem[] {
   const current = buildHoldingTotals(currentRows);
   const previous = buildHoldingTotals(previousRows);
 
@@ -205,7 +194,7 @@ function buildHoldingFilteredKpis(
   ];
 }
 
-function buildNetworkKpis(snapshot: DashboardSnapshot): KpiCardModel[] {
+function buildNetworkKpis(snapshot: DashboardSnapshot): ExecutiveKpiItem[] {
   if (!snapshot.latestNetwork) {
     return [];
   }
@@ -292,53 +281,12 @@ function getCriticalFranchises(rows: FranchiseDashboardRow[]) {
     .slice(0, 5);
 }
 
-function KpiCards({ items }: { items: KpiCardModel[] }) {
-  return (
-    <div className="kpi-grid">
-      {items.map((kpi) => {
-        const Icon = kpi.icon;
-        const cardClassName =
-          kpi.variant === 'default'
-            ? 'kpi-card'
-            : `kpi-card kpi-card--${kpi.variant}`;
-
-        return (
-          <div key={kpi.label} className={cardClassName}>
-            <div className="kpi-card__header">
-              <span className="kpi-card__label">{kpi.label}</span>
-              <div className="kpi-card__icon">
-                <Icon />
-              </div>
-            </div>
-
-            <div
-              className={`kpi-card__value ${
-                kpi.variant === 'gold'
-                  ? 'kpi-card__value--gold'
-                  : kpi.variant === 'success'
-                    ? 'kpi-card__value--success'
-                    : ''
-              }`}
-            >
-              {kpi.value}
-            </div>
-
-            <div className="kpi-card__footer">
-              <span className="kpi-card__percent">{kpi.percent}</span>
-              <span
-                className={`kpi-card__trend ${
-                  kpi.trendUp ? 'kpi-card__trend--up' : 'kpi-card__trend--down'
-                }`}
-              >
-                {kpi.trendUp ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-                {kpi.trend}
-              </span>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
+function formatSnapshotFreshness(updatedAtMs: number): string {
+  return new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'medium',
+    timeZone: 'America/Sao_Paulo',
+  }).format(new Date(updatedAtMs));
 }
 
 function getScopeNarrative(scope: string) {
@@ -992,13 +940,34 @@ export function DashboardPage() {
         </div>
       </div>
 
+      {dashboardQuery.dataUpdatedAt ? (
+        <p
+          className="page-container__subtitle page-container__subtitle--dashboard-freshness"
+          role="status"
+          aria-live="polite"
+        >
+          Leituras atualizadas em {formatSnapshotFreshness(dashboardQuery.dataUpdatedAt)} BRT.
+        </p>
+      ) : null}
+
       <DashboardHero
         accessProfile={accessProfile}
         snapshot={snapshot}
         isDashboardFetching={dashboardQuery.isFetching}
       />
 
-      <KpiCards items={kpis} />
+      <section
+        className="dashboard__section dashboard__section--kpis"
+        aria-labelledby="dashboard-kpis-heading"
+      >
+        <h2 id="dashboard-kpis-heading" className="dashboard__section-heading">
+          Situação na competência (resumo)
+        </h2>
+        <ExecutiveKpiGrid
+          items={kpis}
+          ariaLabel="Situação na competência — indicadores resumidos"
+        />
+      </section>
 
       {accessProfile.dashboardScope === 'franchise' && <FranchiseDashboardView snapshot={snapshot} />}
       {accessProfile.dashboardScope === 'regional' && <RegionalDashboardView snapshot={snapshot} />}

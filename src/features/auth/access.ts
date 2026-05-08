@@ -74,6 +74,21 @@ export function getDashboardScopeLabel(scope: DashboardScope) {
   }
 }
 
+/**
+ * Cobertura de dados (quem vê o quê) + modo do painel executivo quando relevante.
+ * Evita dissonância apenas com "Rede completa" quando o papel é rede/holding/controladoria.
+ */
+export function getActiveScopeHeadline(accessProfile: AccessProfile): string {
+  const coverage = getScopeSummary(accessProfile);
+  const mode = getDashboardScopeLabel(accessProfile.dashboardScope);
+
+  if (accessProfile.dashboardScope === 'holding' || accessProfile.dashboardScope === 'controladoria') {
+    return `${coverage} · ${mode}`;
+  }
+
+  return coverage;
+}
+
 export function getScopeSummary(accessProfile: AccessProfile) {
   if (accessProfile.isAdmin) {
     return 'Rede completa';
