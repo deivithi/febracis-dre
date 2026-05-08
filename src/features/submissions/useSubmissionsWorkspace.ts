@@ -35,6 +35,7 @@ import { calculateDrePreview } from './drePreview';
 import { invalidateSubmissionRelatedQueries } from './submissionQuerySync';
 import { isEditableSubmissionStatus, isLockedSubmissionStatus } from './submissionStatus';
 import { validateDraftInputs } from './submissionValidation';
+import { resolveDefaultReportingPeriod } from '../../utils/reportingPeriodResolve';
 
 const ASSISTANT_FETCH_TIMEOUT_MS = 55_000;
 
@@ -98,7 +99,7 @@ export function useSubmissionsWorkspace(opts?: SubmissionsWorkspaceOptions) {
   }, [opts?.routeSubmissionId, submissionsQuery.data]);
 
   const resolvedFranchiseId = selectedFranchiseId || franchisesQuery.data?.[0]?.id || '';
-  const defaultPeriod = periodsQuery.data?.find((period) => period.status === 'open' || period.status === 'reopened') ?? periodsQuery.data?.[0] ?? null;
+  const defaultPeriod = resolveDefaultReportingPeriod(periodsQuery.data ?? null);
   const resolvedPeriodId = selectedPeriodId || defaultPeriod?.id || '';
 
   const eventsQuery = useQuery({

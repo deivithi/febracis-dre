@@ -1,6 +1,6 @@
 # Febracis DRE — contexto do projeto (fonte de verdade operacional)
 
-Última revisão documental: 08/05/2026 BRT — **Auditoria lógica/RBAC:** [`references/audit-app-logic-2026-05-08.md`](./audit-app-logic-2026-05-08.md). Dashboard executivo (`/app/dashboard`): **benchmark UX executivo** em [`references/dashboard-ux-benchmark.md`](./dashboard-ux-benchmark.md); snapshots multi-entidade com **paginação** em `portal.api.ts`; **freshness** BRT; **`ExecutiveKpiGrid`**; **headline de escopo** (`getActiveScopeHeadline` + `AppLayout`). UX header: notificações explicitamente **em desenvolvimento** (botão desativado). Mantém: Visão rede, `holdingDerivations`, `invalidateQueries ['dashboard']`, matriz [`references/dashboard-scope-matrix.md`](./dashboard-scope-matrix.md). **Deploy produção:** `dpl_HE1M6vSi8h73wrZProPRSzS4Zo9P` (ver **Raiz e URLs**).
+Última revisão documental: **08/05/2026 BRT** — datas e competências alinhadas ao calendário civil em **America/Sao_Paulo** (`brazilTimezone.ts`, `resolveDefaultReportingPeriod`, `formatDate`/`formatDateTime` em `formatters.ts`); cockpit **Holding** deriva competência `YYYY-MM` do mês BRT quando existe no snapshot. Auditoria lógica anterior: [`references/audit-app-logic-2026-05-08.md`](./audit-app-logic-2026-05-08.md). Dashboard: [`references/dashboard-ux-benchmark.md`](./dashboard-ux-benchmark.md); **Produção READY** — ver linha mais recente em **Raiz e URLs** após deploy.
 
 ## Raiz e URLs
 
@@ -82,6 +82,19 @@ Detalhe e comandos: [`operacoes-pendentes-supabase-vercel-2026-04-27.md`](./oper
 - React 19 + Vite + TypeScript + React Router 7 + TanStack Query
 - Supabase (auth, dados, RPC/views)
 - API serverless: `api/dre-agent.ts` (assistente DRE; Vercel)
+
+### Datas, fuso e competência (BRT)
+
+- **Fuso canónico operacional:** `America/Sao_Paulo` — exposto como `BRAZIL_IANA_TIMEZONE` em [`src/utils/brazilTimezone.ts`](../src/utils/brazilTimezone.ts) (`getBrazilCalendarDateParts`, `formatBrazilYearMonthLabel`, etc.). `formatDate` / `formatDateTime` em [`src/utils/formatters.ts`](../src/utils/formatters.ts) usam o mesmo fuso, para que prazos e etiquetas não dependam do fuso do browser.
+- **Default do seletor “Competência” (Submissões / Assistente):** [`resolveDefaultReportingPeriod`](../src/utils/reportingPeriodResolve.ts) — (1) primeiro período `open` ou `reopened` cujo `year`/`month` coincide com o mês civil BRT; (2) senão o primeiro `open`/`reopened` da lista devolvida por `fetchReportingPeriods`; (3) senão o primeiro da lista (mais recente por ordenação actual da API).
+- **Dashboard escopo holding:** enquanto o estado do filtro `selectedPeriodLabel` estiver vazio e o snapshot tiver dados para o rótulo `YYYY-MM` do mês BRT, o cockpit deriva esse período em [`DashboardPage.tsx`](../src/features/dashboard/DashboardPage.tsx) (`holdingFiltersWithBrtDefault` + `deriveHoldingView`). O utilizador continua a poder mudar a competência no `<select>`; escolhas explícitas substituem a derivação.
+- **Testes automáticos:** [`tests/unit/brazil-timezone.test.ts`](../tests/unit/brazil-timezone.test.ts), [`tests/unit/reporting-period-resolve.test.ts`](../tests/unit/reporting-period-resolve.test.ts), [`tests/unit/formatters-brt.test.ts`](../tests/unit/formatters-brt.test.ts).
+
+#### Checklist manual (sign-off em homologação / produção)
+
+1. **OS em fuso ≠ BRT** (ex.: UTC ou US): abrir Admin (prazos), Submissões (competência default) e Holding; confirmar que datas e mês sugerido coincidem com o esperado para **São Paulo** no mesmo instante.
+2. **Virada de mês:** imediatamente antes/depois da meia-noite BRT (ou simular com alteração de relógio controlada), confirmar que `formatBrazilYearMonthLabel` e o default de competência batem com o dia civil correto.
+3. **Sem período para o mês BRT na base:** o portal deve cair no fallback `open`/`reopened` ou no mais recente, sem erro de UI.
 
 ### Rate limit do assistente (`api/dre-agent.ts`)
 

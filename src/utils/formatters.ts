@@ -1,3 +1,5 @@
+import { BRAZIL_IANA_TIMEZONE } from './brazilTimezone';
+
 const currencyFormatter = new Intl.NumberFormat('pt-BR', {
   style: 'currency',
   currency: 'BRL',
@@ -8,12 +10,14 @@ const currencyFormatter = new Intl.NumberFormat('pt-BR', {
 const integerFormatter = new Intl.NumberFormat('pt-BR');
 
 const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
+  timeZone: BRAZIL_IANA_TIMEZONE,
   day: '2-digit',
   month: '2-digit',
   year: 'numeric',
 });
 
 const dateTimeFormatter = new Intl.DateTimeFormat('pt-BR', {
+  timeZone: BRAZIL_IANA_TIMEZONE,
   day: '2-digit',
   month: '2-digit',
   year: 'numeric',

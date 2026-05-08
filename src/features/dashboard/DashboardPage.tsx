@@ -38,8 +38,14 @@ import {
   isPositiveDelta,
   toNumber,
 } from '../../utils/formatters';
+import { formatBrazilYearMonthLabel } from '../../utils/brazilTimezone';
 import { HoldingCockpitView } from './HoldingCockpitView';
-import { buildHoldingTotals, deriveHoldingView, type HoldingFilterState } from './holdingDerivations';
+import {
+  buildHoldingTotals,
+  deriveHoldingView,
+  getHoldingPeriodOptions,
+  type HoldingFilterState,
+} from './holdingDerivations';
 import { ExecutiveKpiGrid, type ExecutiveKpiItem } from './ExecutiveKpiGrid';
 import './DashboardPage.css';
 
@@ -846,12 +852,24 @@ export function DashboardPage() {
   const snapshot = dashboardQuery.data;
   const profile = accessProfileQuery.data;
 
+  const holdingFiltersWithBrtDefault = useMemo((): HoldingFilterState => {
+    if (!snapshot || profile?.dashboardScope !== 'holding') {
+      return holdingFilters;
+    }
+    if (holdingFilters.selectedPeriodLabel.trim() !== '') {
+      return holdingFilters;
+    }
+    const opts = getHoldingPeriodOptions(snapshot.franchiseRows);
+    const brtLabel = formatBrazilYearMonthLabel();
+    return opts.includes(brtLabel) ? { ...holdingFilters, selectedPeriodLabel: brtLabel } : holdingFilters;
+  }, [holdingFilters, profile?.dashboardScope, snapshot]);
+
   const holdingDerived = useMemo(() => {
     if (!snapshot || profile?.dashboardScope !== 'holding') {
       return null;
     }
-    return deriveHoldingView(snapshot, holdingFilters);
-  }, [snapshot, profile?.dashboardScope, holdingFilters]);
+    return deriveHoldingView(snapshot, holdingFiltersWithBrtDefault);
+  }, [snapshot, profile?.dashboardScope, holdingFiltersWithBrtDefault]);
 
   const kpis = useMemo(() => {
     if (!snapshot || !profile) {
