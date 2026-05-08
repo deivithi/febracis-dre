@@ -148,7 +148,7 @@ export function AssistantPage() {
         <strong>Contexto:</strong> {franchiseLabel} · {periodLabel}
         {productTab === 'duvidas'
           ? ' · só orientação (o chat não altera valores da DRE).'
-          : ' · chat pode propor valores como na página Submissões; confirme e grave o rascunho quando pedido.'}
+          : ' · o chat pode propor valores; confirme e grave o rascunho na mesma página ou finalize o preenchimento na grelha em Submissões.'}
       </p>
 
       <SubmissionToolbar
@@ -262,8 +262,8 @@ export function AssistantPage() {
       />
 
       <p className="assistant-hub-footer-hint">
-        O mesmo estado desta conversa aparece quando abre esta submissão em <strong>Submissões</strong> — um único fluxo na
-        base de dados e na API.
+        Os valores e o rascunho desta submissão são os mesmos em <strong>Submissões</strong> (grelha) e aqui —
+        uma única fonte na API; o chat guiado ficou neste hub.
       </p>
     </div>
   );

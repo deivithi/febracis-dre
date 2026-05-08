@@ -11,7 +11,7 @@ import {
 } from '../../../utils/formatters';
 import type { DrePreviewValues } from '../drePreview';
 
-type MobileTab = 'chat' | 'panel' | 'dre';
+type MobileTab = 'panel' | 'dre';
 
 type ValidationResultRow = {
   id: string;

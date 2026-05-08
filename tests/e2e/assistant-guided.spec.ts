@@ -10,7 +10,7 @@ test('assistência guiada: Olá → explicar → propor → confirmar → próxi
   page,
 }) => {
   test.skip(!hasCred, 'Defina E2E_DRE_EMAIL e E2E_DRE_PASSWORD para rodar este E2E com API real.');
-  await page.goto('/app/submissions');
+  await page.goto('/app/assistant');
 
   await expect(page.getByTestId('login-email')).toBeVisible();
   await page.getByTestId('login-email').fill(process.env.E2E_DRE_EMAIL!.trim());
@@ -23,7 +23,7 @@ test('assistência guiada: Olá → explicar → propor → confirmar → próxi
   const criarOuAbrir = page.getByRole('button', { name: /Criar rascunho|Abrir rascunho/i }).first();
   await criarOuAbrir.click({ timeout: 4000 }).catch(() => {});
 
-  await expect(page.getByTestId('submission-workbench')).toBeVisible({ timeout: 35_000 });
+  await expect(page.getByTestId('assistant-hub-workbench')).toBeVisible({ timeout: 35_000 });
 
   await page.getByRole('button', { name: 'Olá', exact: true }).click();
 

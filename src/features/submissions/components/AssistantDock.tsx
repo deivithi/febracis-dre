@@ -69,8 +69,8 @@ export function AssistantDock({
               <div>
                 <h3 className="card__title">Sua DRE neste período</h3>
                 <p className="card__subtitle">
-                  O preenchimento é feito só pela conversa com o assistente acima — na ordem da planilha oficial. Use
-                  “Salvar rascunho” à direita quando quiser gravar; a DRE calculada aparece abaixo após salvar.
+                  Pode preencher por esta conversa (ordem guiada da planilha) ou pela grelha em Submissões. Use “Salvar
+                  rascunho” nas ações quando quiser gravar; a DRE calculada aparece após guardar.
                 </p>
               </div>
               <span className={`status-badge status-badge--${getStatusVariant(submissionStatus ?? 'draft')}`}>

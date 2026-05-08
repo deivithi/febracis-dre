@@ -1,6 +1,5 @@
 import { FileSpreadsheet } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { AssistantDock } from './components/AssistantDock';
 import { DreStatementSection } from './components/DreStatementSection';
 import { SubmissionKpiSection } from './components/SubmissionKpiSection';
 import { SubmissionToolbar } from './components/SubmissionToolbar';
@@ -81,8 +80,8 @@ export function SubmissionsPage() {
         <div>
           <h1 className="page-container__title">Submissões</h1>
           <p className="page-container__subtitle">
-            Escolha franquia e competência, preencha com o assistente e envie para revisão — o painel à direita mostra o
-            preview e as ações.
+            Escolha franquia e competência, preencha os valores na grelha e envie para revisão. Orientação guiada pela
+            conversa fica na entrada <strong>Assistente</strong> no menu lateral.
           </p>
         </div>
         <div className="page-container__actions">
@@ -133,20 +132,7 @@ export function SubmissionsPage() {
         preview={w.preview}
       />
 
-      {w.assistantErrorMessage ? (
-        <div className="inline-message inline-message--danger">{w.assistantErrorMessage}</div>
-      ) : null}
-
       <div className="submission-mobile-tabs" role="tablist" aria-label="Secções do workspace de submissão">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={w.mobileWorkspaceTab === 'chat'}
-          className="submission-mobile-tabs__btn"
-          onClick={() => w.setMobileWorkspaceTab('chat')}
-        >
-          Conversa
-        </button>
         <button
           type="button"
           role="tab"
@@ -168,49 +154,6 @@ export function SubmissionsPage() {
       </div>
 
       <div className="submission-workbench" data-testid="submission-workbench">
-        <AssistantDock
-          mobileWorkspaceTab={w.mobileWorkspaceTab}
-          activeSubmissionId={w.activeSubmissionId}
-          canEdit={w.canEdit}
-          submissionStatus={w.workspaceQuery.data?.submission?.status}
-          activeSubmissionLocked={w.activeSubmissionLocked}
-          canEditActiveSubmission={w.canEditActiveSubmission}
-          submissionLockMessage={w.submissionLockMessage}
-          workspaceLoading={w.workspaceQuery.isLoading}
-          hasWorkspaceData={Boolean(w.workspaceQuery.data)}
-          panel={{
-            enabled: w.assistantEnabled,
-            loading: w.agentSessionQuery.isLoading || w.agentMessagesQuery.isLoading,
-            pending: w.assistantMutation.isPending,
-            focusLabel: w.assistantFocusLabel,
-            focusLine: w.assistantFocusLine,
-            catalogLines: w.workspaceQuery.data?.inputLines ?? [],
-            lineValueMap: w.effectiveLineValues,
-            drePhaseId: w.assistantDrePhaseId,
-            proposedValue: w.assistantProposedValue,
-            skippedLineCodes: w.assistantSkippedCodes,
-            canEditActiveSubmission: w.canEditActiveSubmission,
-            nextPrompt: w.assistantNextPrompt,
-            flowPhaseLabel: w.assistantFlowPhaseLabel,
-            realignHint: w.assistantRealignHint,
-            messages: w.assistantMessages,
-            draftValue: w.assistantDraft,
-            lastCitations: w.lastAssistantCitations,
-            lineCodes: w.inputLineCodes,
-            filledSteps: w.filledInputCount,
-            totalSteps: w.workspaceQuery.data?.inputLines.length ?? 0,
-            agentMode: w.assistantAgentMode,
-            interactionMode: w.assistantInteractionMode,
-            onDraftChange: w.setAssistantDraft,
-            onSend: () => w.sendAssistantPrompt(w.assistantDraft),
-            onCommand: w.sendAssistantCommand,
-            onSaveDraft: () => w.saveDraftMutation.mutate(),
-            onSubmitReview: () => w.submitMutation.mutate(),
-            savePending: w.saveDraftMutation.isPending,
-            submitPending: w.submitMutation.isPending,
-          }}
-        />
-
         <SubmissionWorkbenchRail
           mobileWorkspaceTab={w.mobileWorkspaceTab}
           selectedFranchise={w.selectedFranchise}

@@ -62,7 +62,7 @@ export function useSubmissionsWorkspace(opts?: SubmissionsWorkspaceOptions) {
   const [lineValues, setLineValues] = useState<Record<string, string>>({});
   const [submissionNotes, setSubmissionNotes] = useState('');
   const [assistantDraft, setAssistantDraft] = useState('');
-  const [mobileWorkspaceTab, setMobileWorkspaceTab] = useState<'chat' | 'panel' | 'dre'>('chat');
+  const [mobileWorkspaceTab, setMobileWorkspaceTab] = useState<'panel' | 'dre'>('panel');
   const access = accessProfileQuery.data ?? null;
 
   const franchisesQuery = useQuery({
@@ -134,7 +134,7 @@ export function useSubmissionsWorkspace(opts?: SubmissionsWorkspaceOptions) {
 
   useEffect(() => {
     queueMicrotask(() => {
-      setMobileWorkspaceTab('chat');
+      setMobileWorkspaceTab('panel');
     });
   }, [resolvedFranchiseId, resolvedPeriodId]);
 

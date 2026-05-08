@@ -99,7 +99,7 @@ Detalhe e comandos: [`operacoes-pendentes-supabase-vercel-2026-04-27.md`](./oper
 - **HITL persistido:** `session_state_patch` devolve `proposed_value`, `acceptance_state`, `dre_phase`, `skipped_line_codes`. O cliente faz merge em `useSubmissionsWorkspace`; **`applyAssistantFieldUpdates` só aplica** `fieldUpdates` quando **`requiresFieldConfirmation` não está ativo** — propostas ficam pendentes até `cmd:confirm_value` (fluxo local ou LLM com confirmação).
 - **UI:** `DreAssistantPanel` — stepper de **10 fases**, CTA por campo (Explicar / Inserir / Pular), toolbar de navegação, teclado **`CurrencyKeypad`** (BRL), mini-card de confirmação.
 - **Referência didática:** [`docs/dre-glossario.md`](../docs/dre-glossario.md) (revisão controladoria pendente).
-- **Playwright:** [`tests/e2e/assistant-guided.spec.ts`](../tests/e2e/assistant-guided.spec.ts) — fluxo completo só com `E2E_DRE_EMAIL` e `E2E_DRE_PASSWORD` definidos; caso contrário o teste faz **`skip`**.
+- **Playwright:** [`tests/e2e/assistant-guided.spec.ts`](../tests/e2e/assistant-guided.spec.ts) — navega para `/app/assistant`, fluxo completo só com `E2E_DRE_EMAIL` e `E2E_DRE_PASSWORD` definidos; caso contrário o teste faz **`skip`**.
 
 #### Governança do assistente (papéis, números, continuidade)
 
@@ -116,12 +116,13 @@ Detalhe e comandos: [`operacoes-pendentes-supabase-vercel-2026-04-27.md`](./oper
 - **Testes:** `npm run test` (Vitest) — `tests/unit/dre-agent-governance.test.ts`. Checklist manual pós-deploy: [`references/checklist-servidor-dre-agent.md`](./checklist-servidor-dre-agent.md).
 - **Demo executiva:** roteiro em [`references/demo-ceo-roteiro.md`](./demo-ceo-roteiro.md).
 
-#### UX do chat (Submissões)
+#### UX do chat e separação Submissões ↔ Assistente
 
-- Painel **Assistente DRE**: thread com bolhas (paleta Febracis: azul / dourado / âmbar), área de mensagens com fundo “canvas” e **compositor fixo** (dock) com foco visível, autoaltura do campo de texto e **Enter** envia / **Shift+Enter** nova linha.
+- **Submissões** (`/app/submissions`): grelha oficial, rail (notas, gravar, enviar), KPIs e tabela — **sem dock de conversa**. Em ecrã estreito as abas são só **Painel** e **DRE** (não há tab “Conversa”). Orientação guiada pelo chat: link **Assistente DRE** e entrada no menu lateral.
+- Painel **Assistente DRE** (só no hub `/app/assistant`): thread com bolhas (paleta Febracis: azul / dourado / âmbar), área de mensagens com fundo “canvas” e **compositor fixo** (dock) com foco visível, autoaltura do texto e **Enter** envia / **Shift+Enter** nova linha.
 - Atalhos tipo **Olá** e chips ghost; `prefers-reduced-motion` desliga animações de entrada, brilho pendente e rotação do ícone de carregamento.
-- Tokens CSS: prefixo `--chat-*` em [`src/styles/tokens.css`](../src/styles/tokens.css); estilos em [`SubmissionsPage.css`](../src/features/submissions/SubmissionsPage.css).
-- **Hub Assistente** (`/app/assistant`): entrada na sidebar; modos fixos **Dúvidas** (query `tab=duvidas`; corpo opcional **`assistantProductTab: "duvidas"`** na API — força `explain_only`) e **Começar a DRE**; deep link **`?submission=<uuid>`** alinha franquia/período ao mesmo estado que **Submissões**. Botão **Assistente DRE** na página Submissões e coluna Abrir na tabela de âmbito quando o utilizador está no hub.
+- Tokens CSS: prefixo `--chat-*` em [`src/styles/tokens.css`](../src/styles/tokens.css); estilos em [`SubmissionsPage.css`](../src/features/submissions/SubmissionsPage.css) (partilhados com o hub).
+- **Hub Assistente** (`/app/assistant`): modos fixos **Dúvidas** (query `tab=duvidas`; corpo opcional **`assistantProductTab: "duvidas"`** na API — força `explain_only`) e **Começar a DRE**; deep link **`?submission=<uuid>`** alinha franquia/período ao mesmo estado que **Submissões**. Botão **Assistente DRE** na página Submissões e coluna na tabela de âmbito quando o utilizador está no hub.
 
 ## Comandos de validação
 

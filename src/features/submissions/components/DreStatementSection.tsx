@@ -1,7 +1,7 @@
 import type { DreStatementRow } from '../../shared/portal.types';
 import { DreStatementTable } from '../DreStatementTable';
 
-type MobileWorkspaceTab = 'chat' | 'panel' | 'dre';
+type MobileWorkspaceTab = 'panel' | 'dre';
 
 export type DreStatementSectionProps = {
   rows: DreStatementRow[];
