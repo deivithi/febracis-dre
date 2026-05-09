@@ -4,7 +4,7 @@
   grid-template-columns: minmax(0, 1.05fr) minmax(360px, 430px);
   position: relative;
   overflow: hidden;
-  background: #060b18;
+  background: var(--shell-bg-base);
   isolation: isolate;
 }
 
@@ -69,10 +69,7 @@
 }
 
 .login-page__mesh {
-  background:
-    radial-gradient(circle at 14% 18%, rgba(240, 183, 62, 0.14), transparent 20%),
-    radial-gradient(circle at 72% 20%, rgba(96, 165, 250, 0.12), transparent 24%),
-    radial-gradient(circle at 50% 88%, rgba(46, 123, 246, 0.16), transparent 24%);
+  background: var(--shell-login-mesh);
 }
 
 .login-page__story,
@@ -82,7 +79,8 @@
 }
 
 .login-page__story {
-  padding: clamp(3rem, 6.5vh, 5.5rem) clamp(2.25rem, 4.8vw, 5rem) clamp(2.75rem, 5.5vh, 4.5rem);
+  padding: clamp(var(--space-12), 6.5vh, 5.5rem) clamp(var(--space-8), 4.8vw, var(--space-12))
+    clamp(var(--space-10), 5.5vh, 4.5rem);
   display: flex;
   align-items: center;
   min-height: 100vh;

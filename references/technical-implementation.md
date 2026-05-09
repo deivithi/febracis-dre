@@ -1,73 +1,98 @@
-# Febracis DRE — implementação técnica (contrato arquivo↔dados)
+# Referência técnica cruzada — PRD × código (`febracis-dre`)
 
-**Última revisão:** 09/05/2026 BRT.
+**Propósito:** mapeamento **implementação física** (rotas, módulos, hooks, migrações) referenciado pelo [`docs/PRD-canonical.md`](../docs/PRD-canonical.md). Este ficheiro **não** substitui [`references/project-context.md`](./project-context.md) para deploy/env/últimos `dpl_*`.
 
-Este doc consolida o que o [`PRD-canonical.md`](../docs/PRD-canonical.md) aponta como referência técnica cruzada: rotas SPA, migrações Supabase aplicáveis ao portal gerencial **DRE**, e políticas **RLS** nas tabelas centrais. A operação continuada (`deploy`, assistente, envs) continua centralizada em [`project-context.md`](./project-context.md).
+---
 
-## Projeto Supabase (produção canónica — referência)
+## 1. Rotas SPA (`src/App.tsx`)
 
-- **Projeto:** `febracis-dre`, ref **`vwxgrjjwbvdiaqxqbryk`**, detalhes em [`project-context.md`](./project-context.md).
+| Rota público | Componente lazy | Notas |
+|--------------|-----------------|-------|
+| `/`, `/login` | `LoginPage` | Entrada |
 
-## Índice de migrações (fonte código)
+| Rota sob `/app` | Componente | `allowedRoles` (quando aplicável) |
+|----------------|------------|-----------------------------------|
+| `dashboard` | `DashboardPage` | herdado shell |
+| `guide` | `GuidePage` | — |
+| `forbidden` | `AccessDeniedPage` | — |
+| `submissions` | `SubmissionsPage` | `franchise_user`, `regional_manager`, `finance_controller`, `executive`, `system_admin` |
+| `assistant` | `AssistantPage` | igual a `submissions` |
+| `workflow` | `WorkflowPage` | `finance_controller`, `executive`, `system_admin` |
+| `franchises` | `FranchisesPage` | `regional_manager`, `finance_controller`, `executive`, `system_admin` |
+| `audit` | `AuditPage` | `finance_controller`, `executive`, `system_admin` |
+| `admin` | `AdminPage` | `system_admin` apenas |
 
-Ordem esperada sob `supabase/migrations/` (prefixo lexical):
+Guarda genérica: `ProtectedRoute`, `AuthProvider`; layout `AppLayout`. **Papéis no React são UX** — RLS + API são verdade segurança (ver [`docs/security-review-2026-03-28.md`](../docs/security-review-2026-03-28.md)).
 
-| Ficheiro | Tema principal |
-|----------|----------------|
-| `001_foundation.sql` | Schema base: identidade, `reporting_periods`, `period_franchise_status`, catálogo DRE (`dre_lines`, …), `submissions`, auditoria (`audit_log`), índices. |
-| `002_rls_policies.sql` | RLS helpers (`is_admin`, `can_access_franchise`, `can_manage_review`, …); políticas iniciais. |
-| `003_seed_data.sql` … `014_*` | Motor, vistas, demos, workflows, sessões agente — ver comentários no topo de cada ficheiro. |
-| `015_agent_rate_limits.sql` | Rate limit assistente (`agent_rate_limits`, RLS, `fn_agent_rate_check`). Remoto registado como migração com timestamp próprio equivalente (`agent_rate_limits`). |
-| `016_harden_audit_log_insert.sql` | Remove política permissiva de INSERT em `audit_log`; `revoke insert` para `anon`/`authenticated`; INSERT só via triggers `security definer`. Remoto: `harden_audit_log_insert`. |
+*(O papel `executive` aparece nas rotas do código-fonte atual; narração de negócio em [`docs/modelo-de-acesso-e-permissoes.md`](../docs/modelo-de-acesso-e-permissoes.md) pode usar vocabulário ligeiramente diferente — alinhar em revisão Produto × Eng.)*
 
-**Reposição histórica:** o ficheiro duplicado `015_harden_audit_log_insert.sql` foi **removido do repositório** (conteúdo equivalente apenas em `016_*`) para não haver dois prefixos `015_` nem reaplicação ambígua em novos clones.
+---
 
-## RLS nas tabelas foco (`public`)
+## 2. Dashboard executivo (`PRD-canonical` §6 alto nível)
 
-Validação sob produção (**09/05/2026 BRT**): colunas dessas quatro entidades conferidas com [`001_foundation.sql`](../supabase/migrations/001_foundation.sql); políticas ativas conferidas na base remota (`pg_policies`).
+| Aspecto | Onde está |
+|---------|-----------|
+| Vista por papel (franchise / regional / holding / controladoria) | [`src/features/dashboard/DashboardPage.tsx`](../src/features/dashboard/DashboardPage.tsx) |
+| Cockpit Holding, filtros competência/regional/unidade | `HoldingCockpitView.tsx`, mesmo parent |
+| Derivação competência BRT com filtro vazio | `holdingFiltersWithBrtDefault` em **`DashboardPage.tsx`** (`useMemo`, sem `useEffect` de escrita em estado derivado para lint) |
+| Grid KPI executivo | `ExecutiveKpiGrid` (imports no `DashboardPage`) |
+| Frescor / headline escopo | funções/layout partilhadas no mesmo domínio `features/dashboard/` |
 
-### Funções helper (conceito)
+---
 
-| Função | Uso típico em RLS |
-|--------|-------------------|
-| `is_admin()` | Escrita/admin em catálogo, períodos, etc. |
-| `has_network_scope()` | Membro rede / escopo não-franquia singular. |
-| `can_access_franchise(uuid)` | Leitura e presença no escopo de uma franquia (franquia, regional ou rede). |
-| `can_manage_review()` | Controladoria / executivo com revisão (`finance_controller`, `executive`, `system_admin`). |
-| `can_operate_submission(uuid)` | Introduzida em **`010`** — apenas quem pode *operar* a submissão (ex.: franquia com papel `franchise_user`), não apenas `viewer`. |
+## 3. Submissões e cockpit unidade (`PRD` §6.2)
 
-### Matriz resumida (objeto → comando → condição principal)
+| Aspecto | Onde está |
+|---------|-----------|
+| Página workspace | [`src/features/submissions/SubmissionsPage.tsx`](../src/features/submissions/SubmissionsPage.tsx) |
+| Estado workspace (períodos, âncoras `submission`) | [`src/features/submissions/useSubmissionsWorkspace.ts`](../src/features/submissions/useSubmissionsWorkspace.ts) — `resolveDefaultReportingPeriod` para default competência |
+| Painel assistente incorporado | `DreAssistantPanel.tsx`, `dreAssistant.ts` |
+| KPIs topo / rail / progresso (`draft-validation`) | `SubmissionsPage` + CSS `SubmissionsPage.css` |
 
-Políticas correntes no remoto nas quatro superfícies:
+---
 
-| Objeto (`public`) | Comando | Condição (USING / WITH CHECK resumidos) |
-|-------------------|---------|----------------------------------------|
-| **`dre_lines`** | SELECT | `true` (qualquer autenticado lê catálogo). |
-| **`dre_lines`** | INSERT/UPDATE/DELETE (ALL) | `is_admin()` com WITH CHECK igual. |
-| **`submissions`** | SELECT | `can_access_franchise(franchise_id)`. |
-| **`submissions`** | INSERT | `can_operate_submission(franchise_id)`. |
-| **`submissions`** | UPDATE | `can_operate_submission(franchise_id) OR can_manage_review()`. |
-| **`reporting_periods`** | SELECT | `true` autenticado. |
-| **`reporting_periods`** | INSERT/UPDATE/DELETE (ALL) | `is_admin()`. |
-| **`audit_log`** | SELECT | `can_manage_review()` (**rota SPA** `/app/audit` mesmo recorte funcional). |
-| **`audit_log`** | INSERT | **Nenhuma** política a favor de `authenticated`/`anon`; triggers `SECURITY DEFINER` (migração **006**/ajustes **012**) inserem; ver **016**. |
+## 4. Hub Assistente (`PRD` §6.3)
 
-**Notas:**
+| Aspecto | Onde está |
+|---------|-----------|
+| Rota `/app/assistant` | `AssistantPage.tsx` |
+| Payload `assistantProductTab` modo dúvidas | contrato cliente → **`api/dre-agent.ts`** (servidor interpreta `explain_only`) |
 
-- Writes em `submission_input_values`, anexos, KPIs calculados e workflow seguem sempre a cadeia `submissions` + estados permitidos nos ficheiros **002** e **010**.
-- **`period_franchise_status`** (estado por competência × franquia) permanece sob `can_manage_review()` para escritas ALL em **002**; leituras por `can_access_franchise(franchise_id)`.
+---
 
-## Rotas SPA (mapa rápido)
+## 5. API serverless agente + motor DRE backend
 
-| Rota | Fonte principal |
-|------|----------------|
-| Landing / login | `src/features/auth/LoginPage.tsx` |
-| App shell / navegação | `src/layouts/app/AppLayout.tsx`, `navigation.ts` |
-| Guarda de papel | `src/router/ProtectedRoute.tsx`, `src/features/auth/access.ts` |
-| Submissões / assistente | `SubmissionsPage.tsx`, `AssistantPage.tsx`, `portal.api.ts` |
-| Auditoria (`/app/audit`) | `AuditPage.tsx` + `fetchAuditEntries` (`audit_log`). |
-| Workflow controladoria | `WorkflowPage` (área revisão); RPCs ver `portal.api.ts`. |
+| Artefacto | Caminho |
+|-----------|---------|
+| Handler POST assistente | [`api/dre-agent.ts`](../api/dre-agent.ts) |
+| Validações / governança (Zod, rate limit opcional RPC) | idem + migrations **`015_*`**, **`016_*`** conforme [`project-context`](./project-context.md) |
+| Edge admin provision usuários | `supabase/functions/admin-provision-user/` |
 
-## Advisors Supabase (security)
+---
 
-Rodar periodicamente **`get_advisors`** (tipo `security`) no projeto ligado — [documentação linter](https://supabase.com/docs/guides/database/database-linter). São comuns **avisos WARN** sobre `SECURITY DEFINER` exposta via PostgREST a `anon`/`authenticated`; corrigir com `REVOKE EXECUTE ... FROM anon` (e avaliação caso a caso) é backlog de endurecimento separado quando houver regressão garantida contra o cliente SPA e Edge Functions — **fora deste ciclo**, que focou reconciliação de migrações e matriz documental.
+## 6. Motor SQL e seeds (`PRD` §7)
+
+Definido sob `supabase/migrations/` — cadeia oficial em [`docs/logica-da-dre-e-do-workflow.md`](../docs/logica-da-dre-e-do-workflow.md).
+
+---
+
+## 7. Fuso BRT (`PRD` §12 — comportamento produto aqui ficam só ficheiros)
+
+| Utilidade | Caminho |
+|-----------|---------|
+| Constante IANA Brasil + partes de calendário | [`src/utils/brazilTimezone.ts`](../src/utils/brazilTimezone.ts) |
+| Resolver período relatório default | [`src/utils/reportingPeriodResolve.ts`](../src/utils/reportingPeriodResolve.ts) |
+| `formatDate` / `formatDateTime` TZ fixa | [`src/utils/formatters.ts`](../src/utils/formatters.ts) |
+| Testes regressão BRT | [`tests/unit/brazil-timezone.test.ts`](../tests/unit/brazil-timezone.test.ts), `reporting-period-resolve.test.ts`, `formatters-brt.test.ts` |
+
+---
+
+## 8. Evals agente (contrato comportamental YAML)
+
+Esqueleto e catálogo de falhas: [`docs/dre-agent-evals.yaml`](../docs/dre-agent-evals.yaml).
+
+Suite Vitest relacionada governance: exemplos sob `tests/unit/` (ex. `dre-agent-governance` citado na security-review).
+
+---
+
+*Última revisão técnica do índice: 09/02/2026 BRT — go-live/demo: [`go-live-trilha-a-checklist.md`](./go-live-trilha-a-checklist.md); UX/ondas PRD: [`ux-excellence-roadmap.md`](./ux-excellence-roadmap.md). Atualizar sempre que criar rota nova ou refactor pesado.*

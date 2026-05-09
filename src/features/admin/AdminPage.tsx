@@ -5,7 +5,7 @@ import {
   DatabaseZap,
   RefreshCcw,
   Settings,
-  Sparkles,
+  ShieldCheck,
   Workflow,
 } from 'lucide-react';
 import {
@@ -150,7 +150,7 @@ export function AdminPage() {
 
         <div className="admin-hero__panel glass">
           <div className="admin-hero__panel-header">
-            <Sparkles size={18} />
+            <ShieldCheck size={18} aria-hidden />
             <span>Ambiente de demonstração</span>
           </div>
           <p className="admin-hero__panel-text">

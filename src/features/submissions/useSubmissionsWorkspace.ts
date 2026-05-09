@@ -415,6 +415,7 @@ export function useSubmissionsWorkspace(opts?: SubmissionsWorkspaceOptions) {
             sessionId: agentSessionQuery.data.id,
             submissionId: activeSubmissionId,
             message: trimmedPrompt,
+            /* Paridade api/dre-agent.ts: omitir campo = fluxo preencher; só enviar em modo Dúvidas (Zod optional). */
             ...(opts?.assistantProductTab === 'duvidas' ? { assistantProductTab: 'duvidas' as const } : {}),
           }),
           signal: AbortSignal.timeout(ASSISTANT_FETCH_TIMEOUT_MS),
@@ -432,6 +433,7 @@ export function useSubmissionsWorkspace(opts?: SubmissionsWorkspaceOptions) {
 
       let body: {
         error?: string;
+        code?: string;
         result?: DreAssistantTurnResult;
         flow_checkpoint?: Record<string, unknown>;
         interaction_mode?: string;
@@ -440,6 +442,7 @@ export function useSubmissionsWorkspace(opts?: SubmissionsWorkspaceOptions) {
       try {
         body = (await response.json()) as {
           error?: string;
+          code?: string;
           result?: DreAssistantTurnResult;
           flow_checkpoint?: Record<string, unknown>;
           interaction_mode?: string;
@@ -454,7 +457,10 @@ export function useSubmissionsWorkspace(opts?: SubmissionsWorkspaceOptions) {
       }
 
       if (!response.ok || !body.result) {
-        throw new Error(body.error ?? 'Nao foi possivel processar a mensagem no assistente.');
+        const detail = body.error ?? 'Nao foi possivel processar a mensagem no assistente.';
+        const ref =
+          typeof body.code === 'string' && body.code.trim().length > 0 ? ` (ref: ${body.code.trim()})` : '';
+        throw new Error(`${detail}${ref}`);
       }
 
       const result = body.result;

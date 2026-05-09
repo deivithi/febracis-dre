@@ -74,6 +74,15 @@
   margin-top: var(--space-3);
 }
 
+.dashboard-hero__scope-badge {
+  max-width: min(100%, 28rem);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+  vertical-align: middle;
+}
+
 .dashboard-hero__subtitle {
   max-width: 640px;
   margin-bottom: 0;

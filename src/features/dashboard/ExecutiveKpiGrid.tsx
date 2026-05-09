@@ -19,15 +19,18 @@ type ExecutiveKpiGridProps = {
 export function ExecutiveKpiGrid({ items, ariaLabel = 'Indicadores do período' }: ExecutiveKpiGridProps) {
   return (
     <div className="kpi-grid" role="region" aria-label={ariaLabel}>
-      {items.map((kpi) => {
+      {items.map((kpi, index) => {
         const Icon = kpi.icon;
         const cardClassName =
           kpi.variant === 'default' ? 'kpi-card' : `kpi-card kpi-card--${kpi.variant}`;
+        const headingId = `dashboard-kpi-heading-${index}`;
 
         return (
-          <div key={kpi.label} className={cardClassName}>
+          <article key={headingId} className={cardClassName} aria-labelledby={headingId}>
             <div className="kpi-card__header">
-              <span className="kpi-card__label">{kpi.label}</span>
+              <span id={headingId} className="kpi-card__label">
+                {kpi.label}
+              </span>
               <div className="kpi-card__icon" aria-hidden="true">
                 <Icon />
               </div>
@@ -56,7 +59,7 @@ export function ExecutiveKpiGrid({ items, ariaLabel = 'Indicadores do período' 
                 {kpi.trend}
               </span>
             </div>
-          </div>
+          </article>
         );
       })}
     </div>

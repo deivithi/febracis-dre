@@ -15,7 +15,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { getDashboardScopeLabel } from '../auth/access';
+import { getActiveScopeHeadline, getDashboardScopeLabel } from '../auth/access';
 import type { AccessProfile } from '../auth/auth.types';
 import { useAccessProfile } from '../auth/useAccessProfile';
 import { fetchDashboardSnapshot } from '../shared/portal.api';
@@ -355,7 +355,12 @@ function DashboardHero({
     <div className="page-stack">
       <section className="dashboard-hero card card--gold">
         <div className="dashboard-hero__copy">
-          <span className="badge badge--gold">{getDashboardScopeLabel(accessProfile.dashboardScope)}</span>
+          <span
+            className="badge badge--gold dashboard-hero__scope-badge"
+            title={getActiveScopeHeadline(accessProfile)}
+          >
+            {getActiveScopeHeadline(accessProfile)}
+          </span>
           <h1 className="page-container__title dashboard-hero__title">Painel executivo</h1>
           <p className="page-container__subtitle dashboard-hero__subtitle">
             {getScopeNarrative(accessProfile.dashboardScope)}{' '}
@@ -847,6 +852,9 @@ export function DashboardPage() {
     ],
     queryFn: () => fetchDashboardSnapshot(accessProfileQuery.data!),
     enabled: Boolean(accessProfileQuery.data),
+    /** Cockpit: menos refetch redundante ao alternar rotas; alinha ao default global 5 min PRD §13 Fase 1. */
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 30,
   });
 
   const snapshot = dashboardQuery.data;
@@ -933,14 +941,13 @@ export function DashboardPage() {
       <div className="page-container__title-bar page-container__title-bar--dashboard">
         <div>
           <p className="page-container__subtitle page-container__subtitle--dashboard-title">
-            Leitura {getDashboardScopeLabel(accessProfile.dashboardScope).toLowerCase()} · competência{' '}
-            {currentPeriodLabel}
+            {getActiveScopeHeadline(accessProfile)} · competência {currentPeriodLabel}
           </p>
         </div>
         <div className="badge-row">
-          <span className="badge badge--gold">
-            {getDashboardScopeLabel(accessProfile.dashboardScope)}
-          </span>
+          {(accessProfile.dashboardScope === 'franchise' || accessProfile.dashboardScope === 'regional') ? (
+            <span className="badge badge--gold">{getDashboardScopeLabel(accessProfile.dashboardScope)}</span>
+          ) : null}
           <span className="badge badge--primary">{currentPeriodLabel}</span>
         </div>
       </div>

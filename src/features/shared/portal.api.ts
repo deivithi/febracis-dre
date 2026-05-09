@@ -69,7 +69,10 @@ function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
 
-/** Segurança PostgREST/Supabase: chunk em linhas até teto máximo por snapshot. */
+/**
+ * Segurança PostgREST/Supabase: chunk em linhas até teto máximo por snapshot.
+ * Cache do cockpit: staleTime/gcTime da leitura executiva ficam na useQuery em DashboardPage.tsx (não aqui).
+ */
 const DASHBOARD_PAGE_SIZE = 1000;
 const DASHBOARD_FRANCHISE_ROWS_CAP = 50_000;
 const DASHBOARD_REGIONAL_ROWS_CAP = 50_000;

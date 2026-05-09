@@ -9,8 +9,8 @@ import {
   Loader2,
   MapPin,
   RefreshCw,
+  ScrollText,
   SkipForward,
-  Sparkles,
   List,
 } from 'lucide-react';
 import type { AgentMessageRow, DreInputCatalogLine } from '../shared/portal.types';
@@ -190,6 +190,12 @@ export function DreAssistantPanel({
 
   return (
     <div className="card card--accent dre-assistant dre-assistant--hero">
+      {agentMode === 'fallback' ? (
+        <div className="inline-message inline-message--warning dre-assistant__mode-banner" role="status">
+          Modo guiado local ativo (sem chamada à API de modelo). As respostas seguem o catálogo e regras determinísticas;
+          quando a API voltar, o painel técnico mostrará «Assistente online».
+        </div>
+      ) : null}
       <div className="dre-assistant__hero-top dre-assistant__hero-top--compact">
         <div className="dre-assistant__hero-title-row">
           <span className="badge badge--gold">Assistente DRE</span>
@@ -230,12 +236,12 @@ export function DreAssistantPanel({
         {!enabled ? (
           <div className="dre-assistant__empty">
             <div className="dre-assistant__empty-icon">
-              <Sparkles />
+              <ScrollText aria-hidden />
             </div>
-            <h4>Abra um rascunho para ativar o assistente</h4>
+            <h4>Abra um rascunho para usar o painel de orientação</h4>
             <p>
-              Com uma submissão ativa, indico o próximo campo, o formato da resposta e mantenho o histórico desta
-              jornada.
+              Com uma submissão ativa, indico o próximo campo, o formato esperado e mantenho o histórico desta
+              submissão — em linha com o catálogo e as validações oficiais.
             </p>
           </div>
         ) : (

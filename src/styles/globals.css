@@ -12,7 +12,7 @@
    ================================================ */
 
 body {
-  background-color: var(--bg-primary);
+  background-color: var(--shell-bg-base);
   color: var(--text-primary);
   font-family: var(--font-body);
   font-size: var(--text-base);
@@ -31,7 +31,7 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg-primary);
+  background: var(--shell-bg-base);
 }
 
 ::-webkit-scrollbar-thumb {
@@ -47,7 +47,7 @@ body {
 /* Firefox */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--bg-elevated) var(--bg-primary);
+  scrollbar-color: var(--bg-elevated) var(--shell-bg-base);
 }
 
 /* ================================================

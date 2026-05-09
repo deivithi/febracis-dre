@@ -186,4 +186,30 @@
   --sidebar-collapsed:   72px;
   --header-height:       64px;
   --content-max-width:   1440px;
+
+  /* ================================================
+     APP SHELL — chrome institucional (contraste com cards/KPI)
+     ================================================ */
+  --shell-bg-base:           var(--bg-base);
+  --shell-bg-gradient:       radial-gradient(ellipse 115% 70% at 50% -18%, rgba(46, 123, 246, 0.085), transparent 52%),
+                              radial-gradient(ellipse 65% 48% at 100% 100%, rgba(240, 183, 62, 0.055), transparent 48%);
+  --shell-vignette:          radial-gradient(ellipse 98% 98% at 50% 48%, transparent 58%, rgba(6, 11, 24, 0.42) 100%);
+  --shell-edge-highlight:    rgba(240, 183, 62, 0.07);
+  --shell-sidebar-bg:        linear-gradient(180deg, rgba(15, 20, 32, 0.99) 0%, rgba(10, 14, 26, 0.96) 100%);
+  --shell-sidebar-overlay:   rgba(46, 123, 246, 0.025);
+  --shell-main-wash:         linear-gradient(180deg, rgba(46, 123, 246, 0.045) 0%, transparent 36%);
+  --shell-header-bg:         rgba(15, 20, 32, 0.76);
+  --shell-header-border:     rgba(30, 41, 59, 0.75);
+  /* Alinha hero/login ao mesmo vocabulário de mesh da marca (sem `--chat-canvas-mesh`). */
+  --shell-login-mesh:        radial-gradient(circle at 14% 18%, rgba(240, 183, 62, 0.14), transparent 22%),
+                              radial-gradient(circle at 72% 22%, rgba(96, 165, 250, 0.11), transparent 26%),
+                              radial-gradient(circle at 48% 88%, rgba(46, 123, 246, 0.14), transparent 26%);
+
+  /* ================================================
+     TOUCH & ELEVATION (WCAG 2.5 / camadas UI)
+     ================================================ */
+  --touch-target-min:    44px; /* mínimo recomendado alvos interativos */
+  --elevation-caption:   0 1px 0 rgba(255, 255, 255, 0.04);
+  --elevation-surface-1: var(--shadow-sm);
+  --elevation-surface-2: var(--shadow-md);
 }

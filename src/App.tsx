@@ -13,6 +13,7 @@ const queryClient = new QueryClient({
   },
 });
 
+/** Code-splitting: cada rota /app/* baixa o respetivo chunk (ver `references/dashboard-perf-notes.md`). */
 const LoginPage = lazy(async () => ({
   default: (await import('./features/auth/LoginPage')).LoginPage,
 }));

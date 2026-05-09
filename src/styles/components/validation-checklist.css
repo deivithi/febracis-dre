@@ -69,6 +69,7 @@
 
 .validation-checklist__message {
   font-size: var(--text-xs);
-  color: var(--text-muted);
+  /* Contraste AA em fundo escuro da checklist: um degrau acima de --text-muted */
+  color: var(--text-secondary);
   line-height: var(--leading-relaxed);
 }

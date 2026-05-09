@@ -1,4 +1,6 @@
-# TODO - 2026-03-28
+# TODO - workspace febracis-dre (histórico)
+
+> **SSOT operacional e deploy:** usar sempre **[`references/project-context.md`](references/project-context.md)** primeiro. Este ficheiro acumula notas por **rodada**; secções antigas podem citar URLs ou contas Vercel **descontinuadas** — não tomar decisões de produção só com base nelas sem cruzar o `project-context`.
 
 ## Rodada 2026-04-27 (encerramento) — Migração Vercel + deploy + doc
 
@@ -43,7 +45,7 @@
 
 ---
 
-> **URLs históricas:** secções abaixo que citam `https://febracis-dre.vercel.app` referem o **team legado** (`deivithis-projects`) antes da migração 2026-04-27. Produção operacional atual: **`https://febracis-dre-phi.vercel.app`** (`richardrios10000-5421s-projects`) — `references/project-context.md`.
+> **Conciliação produção canónica:** a decisão operacional atual está sempre em **`references/project-context.md`** (equipa **`deivithis-projects`**, alias **`https://febracis-dre.vercel.app`**). As rodadas **2026-04-27** abaixo que citam **`febracis-dre-phi`** ou contas **`richardrios*`** são **histórico** de migração experimentada/revertida — **não** substituir o SSOT sem rever o `project-context`.
 
 ## Rodada Atual - Cockpit Executivo e Assistente DRE
 

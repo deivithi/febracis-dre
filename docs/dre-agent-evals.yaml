@@ -469,6 +469,8 @@ scenarios:
 # =============================================================================
 ci_config:
   runner: "vitest + custom eval harness"
+  harness_tests_file: "tests/unit/dre-agent-eval-harness.test.ts"
+  phase_note: "Fase 1 — gate repo: sintaxe YAML + BC-01..07 + runner vitest; suite E2E de prompts permanece fora do Vitest."
   trigger:
     - "PR que altera api/dre-agent.ts"
     - "PR que altera prompts do agente"
