@@ -1,4 +1,5 @@
 import { ClipboardList } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Card } from '../../components/ui/card';
 import './DashboardPage.css';
 import type { DerivedHoldingView, HoldingFilterState } from './holdingDerivations';
@@ -12,6 +13,19 @@ import {
   getStatusVariant,
   toNumber,
 } from '../../utils/formatters';
+import { ScopeLayout } from './components/ScopeLayout';
+
+function useIsViewportMax767() {
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const apply = () => setNarrow(mq.matches);
+    apply();
+    mq.addEventListener('change', apply);
+    return () => mq.removeEventListener('change', apply);
+  }, []);
+  return narrow;
+}
 
 function getTopFranchises(rows: FranchiseDashboardRow[]) {
   return [...rows]
@@ -27,6 +41,7 @@ type Props = {
 };
 
 export function HoldingCockpitView({ derived, onPatchFilters, hideFilters = false }: Props) {
+  const isMobile = useIsViewportMax767();
   if (!derived) {
     return (
       <div className="dashboard__content page-stack">
@@ -61,10 +76,12 @@ export function HoldingCockpitView({ derived, onPatchFilters, hideFilters = fals
     summary,
   } = derived;
 
-  return (
-    <div className="dashboard__content page-stack">
-      {!hideFilters && (
-      <Card variant="hero" className="card--accent dashboard-filters" data-tour-id="holding-cockpit-filters">
+  const filterCard = (
+    <Card
+      variant="hero"
+      className="card--accent dashboard-filters dashboard-filters--sticky"
+      data-tour-id="holding-cockpit-filters"
+    >
         <div className="card__header">
           <div>
             <h3 className="card__title">Cockpit executivo da rede</h3>
@@ -125,9 +142,20 @@ export function HoldingCockpitView({ derived, onPatchFilters, hideFilters = fals
           </label>
         </div>
       </Card>
-      )}
+  );
 
-      <div className="content-grid content-grid--sidebar">
+  return (
+    <div className="dashboard__content page-stack">
+      {!hideFilters && isMobile ? (
+        <details className="holding-filters-mobile">
+          <summary>Filtros do cockpit</summary>
+          {filterCard}
+        </details>
+      ) : null}
+      {!hideFilters && !isMobile ? filterCard : null}
+
+      <ScopeLayout
+        primary={
         <Card variant="hero" className="card--accent" data-tour-id="holding-ranking">
           <div className="card__header">
             <div>
@@ -193,7 +221,8 @@ export function HoldingCockpitView({ derived, onPatchFilters, hideFilters = fals
             )}
           </div>
         </Card>
-
+        }
+        sidebar={
         <div className="dashboard__side">
           <Card variant="kpi">
             <div className="card__header">
@@ -278,7 +307,8 @@ export function HoldingCockpitView({ derived, onPatchFilters, hideFilters = fals
             </div>
           </Card>
         </div>
-      </div>
+        }
+      />
     </div>
   );
 }

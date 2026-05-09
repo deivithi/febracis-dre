@@ -358,6 +358,35 @@ Leitura **evidence-based** a partir de comentários e ficheiros no repositório 
 
 **Migrações recentes no arquivo (além de 015–016):** `017_log_export_audit.sql`, `018_kpi_history_function.sql`, `018_submission_line_comments.sql`, `019_submission_versions_index.sql`, `020_create_notifications.sql`, `020_dre_insight_cache.sql`, `020_saved_views.sql`, `021_dashboard_layouts.sql`, `021_get_franchise_metric_trend.sql`. Há **prefixo 018, 020 e 021 duplicados** no mesmo nível — a ordem efectiva depende do nome completo do ficheiro no `db push`; validar com `supabase migration list` / `npm run validate:migrations` antes de ambientes novos.
 
+### Política de prefixos (pós-auditoria pré-A2)
+
+- Cada ficheiro novo em `supabase/migrations/` deve usar **prefixo numérico único** `NNN_descricao.sql` (sem colisão com ficheiros existentes).
+- Se for inevitável repetir o número por merge paralelo, usar sufixo alfabético (`022b_...`). **Não** renomear migrations já aplicadas no remoto.
+- `supabase/rollbacks/*.down.sql`: cobertura parcial é documentada aqui e alinhada a `npm run validate:migrations` (relatório; não bloqueia).
+
+### Verificações remotas (operador — dashboard / CLI)
+
+[Verificação manual / fora do repo] Antes de demo A2: confirmar no Supabase (projeto `vwxgrjjwbvdiaqxqbryk` ou o project ref activo) que existem RPC `fn_agent_rate_check`, tabela `agent_rate_limits` e RLS coerente (migração 015). Na Vercel **Production**, envs: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `OPENROUTER_API_KEY` *ou* `OPENAI_API_KEY`, `AGENT_RATE_LIMIT_ENABLED=true`, `AGENT_RATE_LIMIT_PER_MINUTE`, `AGENT_RATE_LIMIT_WINDOW_SECONDS`, e **`AGENT_RATE_LIMIT_FAIL_CLOSED=true`** para encerrar em bloqueio se a RPC devolver payload inesperado.
+
+### Auditoria de login (backlog pós-demo)
+
+A migração 006 não cobre eventos de login. Para sprint seguinte: avaliar trigger/log em `auth.users`, Edge Function ou auditoria no cliente — não alterado na janela pré-A2 (risco).
+
+### Backlog P2 pós-A2 (registo)
+
+| Item | Nota |
+|------|------|
+| Observabilidade | Sentry no browser + redacção de PII nos logs do agente |
+| Schema morto | Campo `attachments` em `api/lib/dreAgentSchemas.ts` sem uso — remover ou ligar |
+| Performance | Subset de `@fontsource/*`; lazy-load `Tour` |
+| CI | `npm audit` bloqueante após resolver advisories |
+| Migrations | Ampliar `down.sql` para mais pares |
+| Segurança | CSP com `api.openai.com` se o browser passar a chamar OpenAI directamente |
+
+### Gate deploy A2 (operador)
+
+Validação local na preparação do release: `npm ci`, `npm run build`, `npm run lint`, `npm run test` (tudo verde). Pré/pós-promoção: `npx vercel build`, `npx vercel --prod --yes` (CLI autenticada + project link), `SMOKE_STRICT=1 npm run smoke:prod`, `npm run verify:security-headers` (opc. `VERIFY_HEADERS_URL`). Após deploy READY: registar o identificador de deployment / URL aqui ou em tags de release.
+
 **Verificado ausente no tree (pedidos de doc):** componente `DemoBanner`; `InlineAssistant` como símbolo; `shepherd`; uso de `framer-motion` em `src/`; variável `VITE_APP_MODE`. `cmdk` alimenta a paleta; `DataTable` em `src/components/ui/DataTable.tsx`; vistas gravadas: `supabase/migrations/020_saved_views.sql`, `src/hooks/useSavedViews.ts`, `src/features/saved-views/`.
 
 ## Escopos de dashboard (derivados do papel + escopos)

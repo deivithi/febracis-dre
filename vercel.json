@@ -8,6 +8,9 @@
   "functions": {
     "api/dre-agent.ts": {
       "maxDuration": 60
+    },
+    "api/dre-insights.ts": {
+      "maxDuration": 60
     }
   },
   "rewrites": [

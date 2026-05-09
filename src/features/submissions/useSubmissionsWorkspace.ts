@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/useAuth';
 import { useAccessProfile } from '../auth/useAccessProfile';
 import {
@@ -64,6 +65,8 @@ export interface SubmissionsWorkspaceOptions {
 
 export function useSubmissionsWorkspace(opts?: SubmissionsWorkspaceOptions) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const invalidDeepLinkRef = useRef(false);
   const { session, user } = useAuth();
   const accessProfileQuery = useAccessProfile();
   const [selectedFranchiseId, setSelectedFranchiseId] = useState('');
@@ -151,6 +154,25 @@ export function useSubmissionsWorkspace(opts?: SubmissionsWorkspaceOptions) {
       setSelectedEventId('');
     });
   }, [opts?.routeSubmissionId, submissionsQuery.data]);
+
+  useEffect(() => {
+    invalidDeepLinkRef.current = false;
+  }, [opts?.routeSubmissionId]);
+
+  useEffect(() => {
+    const submissionIdFromRoute = opts?.routeSubmissionId?.trim();
+    if (!submissionIdFromRoute || !submissionsQuery.isSuccess) {
+      return;
+    }
+    const data = submissionsQuery.data;
+    if (!data) return;
+    const row = data.find((submission) => submission.submission_id === submissionIdFromRoute);
+    if (row) return;
+    if (invalidDeepLinkRef.current) return;
+    invalidDeepLinkRef.current = true;
+    showAppToast({ title: 'Submissão não encontrada ou sem acesso.', variant: 'warning' });
+    navigate('/app/submissions', { replace: true });
+  }, [opts?.routeSubmissionId, submissionsQuery.data, submissionsQuery.isSuccess, navigate]);
 
   const resolvedFranchiseId = selectedFranchiseId || franchisesQuery.data?.[0]?.id || '';
   const defaultPeriod = resolveDefaultReportingPeriod(periodsQuery.data ?? null);
@@ -494,6 +516,7 @@ export function useSubmissionsWorkspace(opts?: SubmissionsWorkspaceOptions) {
       return persistDraftValues(effectiveLineValues, effectiveNotes);
     },
     onSuccess: async () => {
+      showAppToast({ title: 'Rascunho guardado', variant: 'success' });
       await refreshOperationalData();
       if (activeSubmissionId) {
         await reconcileDraftLineStringsAfterPersist(activeSubmissionId, editingSubmissionId);

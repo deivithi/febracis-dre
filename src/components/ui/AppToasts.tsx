@@ -18,10 +18,10 @@ export function AppToastsProvider({ children }: { children: React.ReactNode }) {
 function AppToastBridge() {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
-  const [variant, setVariant] = useState<'default' | 'success'>('default');
+  const [variant, setVariant] = useState<'default' | 'success' | 'warning'>('default');
   const [toastKey, setToastKey] = useState(0);
 
-  const show = useCallback((detail: AppToastDetail & { variant?: 'success' }) => {
+  const show = useCallback((detail: AppToastDetail & { variant?: 'default' | 'success' | 'warning' }) => {
     setTitle(detail.title);
     setVariant(detail.variant ?? 'default');
     setToastKey((k) => k + 1);
@@ -30,7 +30,7 @@ function AppToastBridge() {
 
   useEffect(() => {
     const handler = (event: Event) => {
-      const ce = event as CustomEvent<AppToastDetail & { variant?: 'success' }>;
+      const ce = event as CustomEvent<AppToastDetail & { variant?: 'default' | 'success' | 'warning' }>;
       if (ce.detail?.title) {
         show(ce.detail);
       }
@@ -46,7 +46,9 @@ function AppToastBridge() {
         open={open}
         onOpenChange={setOpen}
         type="foreground"
-        className={`toast-root${variant === 'success' ? ' toast-root--success' : ''}`}
+        className={`toast-root${
+          variant === 'success' ? ' toast-root--success' : variant === 'warning' ? ' toast-root--warning' : ''
+        }`}
       >
         <Toast.Title className="toast-title">{title}</Toast.Title>
       </Toast.Root>

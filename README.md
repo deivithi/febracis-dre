@@ -16,6 +16,7 @@ Portal gerencial multi-franquias da Febracis para coleta padronizada da **DRE** 
 
 ## Stack
 
+- **Node.js 20+** (alinhado a CI e `engines` em `package.json`)
 - Vite
 - React 19
 - TypeScript
@@ -28,6 +29,8 @@ Portal gerencial multi-franquias da Febracis para coleta padronizada da **DRE** 
 ## CI (GitHub Actions)
 
 O workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) corre em cada push e pull request para `main`: jobs `migrate pairs`, `lint`, `test`, **`test coverage`** (Vitest + thresholds nos hot paths), **`e2e`** (Playwright, Chromium), `build`. O job `audit` é informativo e **não** bloqueia o merge.
+
+**Secrets no repositório GitHub:** configure `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` como *repository secrets* — o job `build` injeta-os para o `npm run build` (paridade com o artefacto Vite da Vercel).
 
 **Local:** cobertura com `npm run test:coverage`; E2E com `npm run test:e2e` (instalar browsers: `npx playwright install`). Para desativar E2E: `E2E=0 npm run test:e2e`.
 

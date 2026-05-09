@@ -1,6 +1,6 @@
-import { lazy, Suspense } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { lazy, Suspense, useEffect } from 'react';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { AppToastsProvider } from './components/ui/AppToasts';
 import { TooltipProvider } from './components/ui/tooltip';
 import { AuthProvider } from './features/auth/AuthProvider';
@@ -8,15 +8,9 @@ import { AppThemeProvider } from './providers/ThemeProvider';
 import { ShortcutsProfileSync } from './providers/ShortcutsProfileSync';
 import { ThemeProfileSync } from './providers/ThemeProfileSync';
 import { ProtectedRoute } from './router/ProtectedRoute';
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5,
-      retry: 1,
-    },
-  },
-});
+import { useAuth } from './features/auth/useAuth';
+import { showAppToast } from './lib/appToast';
+import { queryClient } from './lib/queryClient';
 
 /** Code-splitting: cada rota /app/* baixa o respetivo chunk (ver `references/dashboard-perf-notes.md`). */
 const LoginPage = lazy(async () => ({
@@ -102,6 +96,24 @@ function RouteFallback() {
       <p className="page-loading__text">Carregando módulo...</p>
     </div>
   );
+}
+
+let invalidGlobalRouteToastShown = false;
+
+function InvalidRouteCatchAll() {
+  const { session, loading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (loading) return;
+    if (!invalidGlobalRouteToastShown) {
+      invalidGlobalRouteToastShown = true;
+      showAppToast({ title: 'Rota inválida — voltámos ao painel.', variant: 'warning' });
+    }
+    navigate(session ? '/app/dashboard' : '/login', { replace: true });
+  }, [loading, session, navigate]);
+
+  return <RouteFallback />;
 }
 
 function App() {
@@ -196,7 +208,7 @@ function App() {
                 />
               </Route>
 
-              <Route path="*" element={<Navigate to="/" replace />} />
+              <Route path="*" element={<InvalidRouteCatchAll />} />
               </Routes>
               </Suspense>
             </BrowserRouter>

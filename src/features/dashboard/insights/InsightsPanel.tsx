@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useElementInView } from '../../../hooks/useElementInView';
 import type { AccessProfile } from '../../auth/auth.types';
 import type { DerivedHoldingView } from '../holdingDerivations';
 import { DashboardInsightCard } from './InsightCard';
@@ -11,6 +11,11 @@ import {
   type DreInsightCard,
 } from './insightsApi';
 import './insights-panel.css';
+
+const EvidenceModalLazy = lazy(async () => {
+  const m = await import('./EvidenceModal');
+  return { default: m.EvidenceModal };
+});
 
 const INSIGHTS_CLIENT_STALE_MS = 4 * 60 * 60 * 1000;
 const DISMISSAL_STORAGE_KEY = 'febracis-dre-insight-dismissals-v1';
@@ -50,71 +55,6 @@ type Props = {
   onInvestigateEvidence: (evidence: Record<string, unknown>) => void;
 };
 
-function EvidenceModal({
-  card,
-  onClose,
-}: {
-  card: DreInsightCard;
-  onClose: () => void;
-}) {
-  const json = JSON.stringify(card.evidence, null, 2);
-
-  if (typeof document === 'undefined') {
-    return null;
-  }
-
-  return createPortal(
-    <div
-      className="insights-modal-overlay"
-      role="presentation"
-      onClick={onClose}
-      onKeyDown={(e) => {
-        if (e.key === 'Escape') onClose();
-      }}
-    >
-      <div
-        className="insights-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="insight-modal-title"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="insights-modal__header">
-          <h3 id="insight-modal-title">{card.title}</h3>
-          <p className="page-container__subtitle" style={{ margin: 0 }}>
-            Evidências (somente leitura) · métricas com DRE <strong>aprovada</strong>
-          </p>
-        </div>
-        <div className="insights-modal__body">
-          <pre className="insights-modal__pre">{json}</pre>
-          {card.suggested_action ? (
-            <p style={{ marginTop: 'var(--space-3)', fontSize: 'var(--text-sm)' }}>
-              <strong>Sugestão:</strong> {card.suggested_action}
-            </p>
-          ) : null}
-        </div>
-        <div className="insights-modal__actions">
-          <button
-            type="button"
-            className="btn btn--secondary"
-            onClick={() => {
-              void navigator.clipboard.writeText(json).catch(() => {
-                window.prompt('Copie o JSON:', json);
-              });
-            }}
-          >
-            Copiar evidência (JSON)
-          </button>
-          <button type="button" className="btn btn--secondary" onClick={onClose}>
-            Fechar
-          </button>
-        </div>
-      </div>
-    </div>,
-    document.body,
-  );
-}
-
 export function InsightsPanel({
   accessProfile,
   accessToken,
@@ -129,17 +69,23 @@ export function InsightsPanel({
   const [detailCard, setDetailCard] = useState<DreInsightCard | null>(null);
   const [dismissTick, setDismissTick] = useState(0);
   const [searchParams] = useSearchParams();
+  const deepLinkInsightId = searchParams.get('insight');
+
+  const { ref: panelRef, inView: panelInView } = useElementInView<HTMLElement>();
+
+  const fetchEnabled =
+    Boolean(accessToken) && (panelInView || Boolean(deepLinkInsightId));
 
   const insightsQuery = useQuery({
     queryKey: ['dre-insights', body],
     queryFn: () => fetchDreInsights(accessToken!, body),
-    enabled: Boolean(accessToken),
+    enabled: fetchEnabled,
     staleTime: INSIGHTS_CLIENT_STALE_MS,
     gcTime: 1000 * 60 * 60 * 6,
   });
 
   useEffect(() => {
-    const id = searchParams.get('insight');
+    const id = deepLinkInsightId;
     if (!id || !insightsQuery.data?.insights?.length) {
       return;
     }
@@ -147,7 +93,7 @@ export function InsightsPanel({
     if (hit) {
       setDetailCard(hit);
     }
-  }, [searchParams, insightsQuery.data]);
+  }, [deepLinkInsightId, insightsQuery.data]);
 
   const visible = useMemo(() => {
     const rows = insightsQuery.data?.insights ?? [];
@@ -181,7 +127,11 @@ export function InsightsPanel({
   }
 
   return (
-    <section className="insights-panel" aria-labelledby="insights-panel-heading">
+    <section
+      ref={panelRef}
+      className="insights-panel"
+      aria-labelledby="insights-panel-heading"
+    >
       <div className="insights-panel__header">
         <h2 id="insights-panel-heading" className="insights-panel__title">
           Insights (IA assistida)
@@ -201,13 +151,19 @@ export function InsightsPanel({
         ) : null}
       </div>
 
-      {insightsQuery.isLoading ? (
+      {!fetchEnabled ? (
+        <div className="insights-panel__empty" aria-hidden>
+          {/* placeholder invisível até ao scroll — evita pedido HTTP inicial */}
+        </div>
+      ) : null}
+
+      {fetchEnabled && insightsQuery.isLoading ? (
         <div className="insights-panel__empty" aria-busy="true">
           Analisando séries aprovadas e montando cartões…
         </div>
       ) : null}
 
-      {insightsQuery.isError ? (
+      {fetchEnabled && insightsQuery.isError ? (
         <div className="insights-panel__error" role="alert">
           {insightsQuery.error instanceof Error
             ? insightsQuery.error.message
@@ -215,7 +171,7 @@ export function InsightsPanel({
         </div>
       ) : null}
 
-      {!insightsQuery.isLoading && visible.length === 0 && !insightsQuery.isError ? (
+      {fetchEnabled && !insightsQuery.isLoading && visible.length === 0 && !insightsQuery.isError ? (
         <div className="insights-panel__empty">
           Sem insights novos neste recorte. Os cálculos usam apenas valores de DRE com status{' '}
           <strong>aprovado</strong>.
@@ -238,7 +194,11 @@ export function InsightsPanel({
         </div>
       ) : null}
 
-      {detailCard ? <EvidenceModal card={detailCard} onClose={() => setDetailCard(null)} /> : null}
+      {detailCard ? (
+        <Suspense fallback={null}>
+          <EvidenceModalLazy card={detailCard} onClose={() => setDetailCard(null)} />
+        </Suspense>
+      ) : null}
     </section>
   );
 }

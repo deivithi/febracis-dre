@@ -10,6 +10,7 @@ export type DashboardWidgetRuntimeProps = {
   onPropsPatch: (id: string, nextProps: Record<string, unknown>) => void;
   kpis: ExecutiveKpiItem[];
   kpiSparklineStates: DashboardKpiSparklineState[];
+  onKpiTileVisibilityChange?: (index: number, visible: boolean) => void;
   snapshot: DashboardSnapshot;
   accessProfile: AccessProfile;
   holdingDerived: DerivedHoldingView | null;

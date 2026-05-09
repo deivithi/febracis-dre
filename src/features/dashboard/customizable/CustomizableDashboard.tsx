@@ -64,6 +64,8 @@ export type CustomizableDashboardProps = {
   queries: {
     kpis: ExecutiveKpiItem[];
     kpiSparklineStates: DashboardKpiSparklineState[];
+    /** Observabilidade por cartão KPI — controla RPC `get_kpi_history` fora da viewport. */
+    onKpiTileVisibilityChange?: (index: number, visible: boolean) => void;
   };
 };
 
@@ -419,6 +421,7 @@ export function CustomizableDashboard({
     onPropsPatch,
     kpis: queries.kpis,
     kpiSparklineStates: queries.kpiSparklineStates,
+    onKpiTileVisibilityChange: queries.onKpiTileVisibilityChange,
     snapshot,
     accessProfile,
     holdingDerived,

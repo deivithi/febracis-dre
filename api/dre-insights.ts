@@ -17,6 +17,10 @@ import {
 } from './lib/insightsSchemas.js';
 import { logContext, logJson } from './lib/log.js';
 
+export const config = {
+  maxDuration: 60,
+};
+
 export const DRE_INSIGHTS_ROUTE = '/api/dre-insights';
 const INSIGHTS_TTL_MS = 4 * 60 * 60 * 1000;
 
@@ -145,6 +149,7 @@ export default async function handler(req: InsightsApiRequest, res: InsightsApiR
 
     let pipelineHistory: KpiHistoryPoint[] | undefined;
     let approvedCountHistory: KpiHistoryPoint[] | undefined;
+    let insightsPartial = false;
 
     if (effective.scopeKind !== 'franchise') {
       const [pipe, appr] = await Promise.all([
@@ -161,8 +166,30 @@ export default async function handler(req: InsightsApiRequest, res: InsightsApiR
           p_regional_id: effective.rpcRegionalId,
         }),
       ]);
-      if (!pipe.error && !appr.error) {
+      if (pipe.error) {
+        insightsPartial = true;
+        logJson({
+          ...ctx,
+          level: 'warn',
+          msg: 'kpi_history_partial',
+          event: 'kpi_history_partial',
+          series: 'adjustment_pipeline_count',
+          detail: pipe.error.message,
+        });
+      } else {
         pipelineHistory = asKpiHistory(pipe.data);
+      }
+      if (appr.error) {
+        insightsPartial = true;
+        logJson({
+          ...ctx,
+          level: 'warn',
+          msg: 'kpi_history_partial',
+          event: 'kpi_history_partial',
+          series: 'approved_submission_count',
+          detail: appr.error.message,
+        });
+      } else {
         approvedCountHistory = asKpiHistory(appr.data);
       }
     }
@@ -263,6 +290,7 @@ export default async function handler(req: InsightsApiRequest, res: InsightsApiR
       ttl_ms: INSIGHTS_TTL_MS,
       scope: effective,
       latency_ms: latencyMs,
+      partial: insightsPartial,
     });
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);

@@ -17,5 +17,12 @@ export function logContext(
 }
 
 export function logJson(entry: Record<string, unknown>): void {
-  console.log(JSON.stringify(entry));
+  const next: Record<string, unknown> = { ...entry };
+  const lat = next.latencyMs;
+  if (typeof lat === 'number' && lat > 30_000) {
+    next.level = 'error';
+    next.event = next.event ?? 'slow_request';
+    next.slow = true;
+  }
+  console.log(JSON.stringify(next));
 }

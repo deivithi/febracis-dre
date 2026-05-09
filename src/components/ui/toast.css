@@ -45,6 +45,10 @@
   border-color: color-mix(in srgb, var(--status-success) 45%, var(--border-default));
 }
 
+.toast-root--warning {
+  border-color: color-mix(in srgb, var(--status-warning, #d97706) 45%, var(--border-default));
+}
+
 @keyframes toast-slide-in {
   from {
     opacity: 0;

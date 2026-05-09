@@ -3,7 +3,7 @@ export const APP_TOAST_EVENT = 'febracis-dre:app-toast';
 
 export type AppToastDetail = {
   title: string;
-  variant?: 'success';
+  variant?: 'default' | 'success' | 'warning';
 };
 
 export function showAppToast(detail: AppToastDetail): void {

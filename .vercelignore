@@ -1,0 +1,8 @@
+tests/
+playwright-report/
+test-results/
+docs/
+references/
+.github/
+coverage/
+scripts/dev-only/

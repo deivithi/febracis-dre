@@ -2,16 +2,17 @@
 import process from "node:process";
 
 const base =
-  process.env.SMOKE_PROD_URL?.replace(/\/?$/, "") ??
+  (process.env.SMOKE_TARGET_URL || process.env.SMOKE_PROD_URL)?.replace(/\/?$/, "") ??
   "https://febracis-dre.vercel.app";
 
-const PROJECT_REF = "vwxgrjjwbvdiaqxqbryk";
+const PROJECT_REF =
+  process.env.SUPABASE_PROJECT_REF?.trim() || "vwxgrjjwbvdiaqxqbryk";
 const STRICT = process.env.SMOKE_STRICT === "1" || process.env.SMOKE_STRICT === "true";
 
 const FALLBACK_MARKERS = [
   "Configuração incompleta",
   "Configuração Supabase incompleta",
-  "vwxgrjjwbvdiaqxqbryk",
+  PROJECT_REF,
 ];
 
 async function fetchText(url) {

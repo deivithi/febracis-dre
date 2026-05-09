@@ -42,6 +42,29 @@ const loginBackgroundStyle = {
   '--login-hero-image': `url(${metodoCisBackground})`,
 } as CSSProperties;
 
+function formatLoginAuthError(error: unknown): string {
+  if (!error || typeof error !== 'object') {
+    return 'E-mail ou senha incorretos. Tente novamente.';
+  }
+  const e = error as { message?: string; code?: string };
+  const code = typeof e.code === 'string' ? e.code : '';
+  const lower = typeof e.message === 'string' ? e.message.toLowerCase() : '';
+
+  if (code === 'email_not_confirmed' || lower.includes('email not confirmed')) {
+    return 'Confirme o endereço de e-mail antes de entrar.';
+  }
+  if (code === 'over_request_rate_limit' || lower.includes('rate limit') || lower.includes('too many requests')) {
+    return 'Muitas tentativas de início de sessão. Aguarde um momento e tente novamente.';
+  }
+  if (code === 'invalid_credentials' || lower.includes('invalid login credentials')) {
+    return 'E-mail ou senha incorretos. Tente novamente.';
+  }
+  if (lower.includes('network') || lower.includes('failed to fetch')) {
+    return 'Sem ligação ao servidor. Verifique a rede e tente novamente.';
+  }
+  return 'E-mail ou senha incorretos. Tente novamente.';
+}
+
 export function LoginPage() {
   const { session, signIn, supabaseMisconfigured } = useAuth();
   const navigate = useNavigate();
@@ -82,7 +105,7 @@ export function LoginPage() {
     const { error } = await signIn(data.email, data.password);
 
     if (error) {
-      setAuthError('E-mail ou senha incorretos. Tente novamente.');
+      setAuthError(formatLoginAuthError(error));
       setIsSubmitting(false);
       return;
     }

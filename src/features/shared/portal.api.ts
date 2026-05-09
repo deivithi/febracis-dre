@@ -1012,5 +1012,29 @@ export async function updateAgentSessionState(
 }
 
 export function formatApiError(error: unknown, fallback: string) {
-  return getErrorMessage(error, fallback);
+  if (error instanceof TypeError && error.message === 'Failed to fetch') {
+    return 'Sem ligação ao servidor — verifique a rede e tente novamente.';
+  }
+
+  if (typeof error === 'object' && error !== null) {
+    const rec = error as Record<string, unknown>;
+    const code = typeof rec.code === 'string' ? rec.code : '';
+    const status = typeof rec.status === 'number' ? rec.status : undefined;
+
+    if (code === 'UPSTREAM_TIMEOUT') {
+      return 'O assistente demorou — tente novamente em alguns segundos.';
+    }
+    if (status === 401) {
+      return 'Sessão expirada — entre novamente.';
+    }
+    if (status === 403) {
+      return 'Sem permissão para esta operação.';
+    }
+  }
+
+  const msg = getErrorMessage(error, fallback);
+  if (/UPSTREAM_TIMEOUT/i.test(msg)) {
+    return 'O assistente demorou — tente novamente em alguns segundos.';
+  }
+  return msg;
 }

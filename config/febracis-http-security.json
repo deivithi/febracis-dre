@@ -1,0 +1,4 @@
+{
+  "_comment": "Opcional: defina \"headers\" com pares nome/valor para CSP e cabeçalhos HTTP adicionais no dev server Vite. Produção: configurar na Vercel.",
+  "headers": {}
+}

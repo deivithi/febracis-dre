@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { type Session, type User } from '@supabase/supabase-js';
 import { getSupabaseClient, getSupabaseConfig } from '../../lib/supabase';
+import { queryClient } from '../../lib/queryClient';
 import { AuthContext } from './AuthContext';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -58,6 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    queryClient.clear();
     const client = getSupabaseClient();
     if (client) {
       await client.auth.signOut();

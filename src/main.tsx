@@ -28,6 +28,29 @@ import './styles/components/module-pages.css';
 import './styles/components/validation-checklist.css';
 import './features/tour/shepherd-overrides.css';
 
+function installClientErrorHandlers() {
+  window.addEventListener('error', (event) => {
+    console.error('[febracis-dre:window]', {
+      type: 'error',
+      message: event.message,
+      filename: event.filename,
+      lineno: event.lineno,
+      colno: event.colno,
+      error: event.error instanceof Error ? event.error.stack : event.error,
+    });
+  });
+  window.addEventListener('unhandledrejection', (event) => {
+    const reason = event.reason;
+    console.error('[febracis-dre:unhandledrejection]', {
+      type: 'unhandledrejection',
+      reason: reason instanceof Error ? reason.message : reason,
+      stack: reason instanceof Error ? reason.stack : undefined,
+    });
+  });
+}
+
+installClientErrorHandlers();
+
 function mount() {
   const rootEl = document.getElementById('root');
   if (!rootEl) {

@@ -29,7 +29,11 @@ export function parseAgentRateLimitEnv(): {
  * Valida a resposta JSON de `fn_agent_rate_check` (Supabase).
  */
 export function parseRateLimitRpcResult(data: unknown): { allowed: boolean; retryAfterSeconds: number } {
+  const failClosed = process.env.AGENT_RATE_LIMIT_FAIL_CLOSED === 'true';
   if (data == null || typeof data !== 'object' || Array.isArray(data)) {
+    if (failClosed) {
+      return { allowed: false, retryAfterSeconds: 60 };
+    }
     return { allowed: true, retryAfterSeconds: 0 };
   }
   const o = data as Record<string, unknown>;

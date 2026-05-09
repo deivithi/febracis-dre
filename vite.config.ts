@@ -40,6 +40,16 @@ export default defineConfig(({ mode }) => {
     define: {
       __APP_VERSION__: JSON.stringify(appVersion),
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules/recharts')) return 'recharts';
+            if (id.includes('node_modules/react-grid-layout')) return 'react-grid-layout';
+          },
+        },
+      },
+    },
     plugins: [react()],
     server: {
       headers: spaSecurityHeaders,

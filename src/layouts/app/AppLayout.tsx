@@ -115,7 +115,7 @@ function AppLayoutShell({ accessProfile, sections, userName, userInitials }: App
     <div
       className={`app-layout ${isMobile ? 'app-layout--mobile' : ''}${!isMobile && sidebarCollapsed ? ' app-layout--sidebar-collapsed' : ''}${demoBannerActive ? ' app-layout--demo-banner' : ''}`}
     >
-      <a href="#main-content" className="sr-only">
+      <a href="#main-content" className="skip-link">
         Ir para o conteúdo principal
       </a>
       {!isMobile ? (

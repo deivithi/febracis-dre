@@ -12,7 +12,8 @@ import process from "node:process";
 const ROOT = path.resolve(process.cwd());
 const DIST = path.join(ROOT, "dist");
 const ASSETS = path.join(DIST, "assets");
-const PROJECT_REF = "vwxgrjjwbvdiaqxqbryk";
+const PROJECT_REF =
+  process.env.SUPABASE_PROJECT_REF?.trim() || "vwxgrjjwbvdiaqxqbryk";
 
 function readUtf8(file) {
   return fs.readFileSync(file, "utf8");

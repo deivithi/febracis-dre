@@ -32,9 +32,19 @@ describe('parseAgentRateLimitEnv', () => {
 });
 
 describe('parseRateLimitRpcResult', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it('fail-open quando dado nulo ou invalido', () => {
     expect(parseRateLimitRpcResult(null)).toEqual({ allowed: true, retryAfterSeconds: 0 });
     expect(parseRateLimitRpcResult('x')).toEqual({ allowed: true, retryAfterSeconds: 0 });
+  });
+
+  it('fail-closed quando AGENT_RATE_LIMIT_FAIL_CLOSED=true', () => {
+    vi.stubEnv('AGENT_RATE_LIMIT_FAIL_CLOSED', 'true');
+    expect(parseRateLimitRpcResult(null)).toEqual({ allowed: false, retryAfterSeconds: 60 });
+    expect(parseRateLimitRpcResult('x')).toEqual({ allowed: false, retryAfterSeconds: 60 });
   });
 
   it('interpreta bloqueio com retry', () => {

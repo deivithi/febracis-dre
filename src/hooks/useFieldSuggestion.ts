@@ -36,12 +36,34 @@ export type FieldSuggestApiResponse = {
   editable: boolean;
 };
 
-async function fetchFieldSuggestion(params: {
-  accessToken: string;
-  submissionId: string;
-  lineCode: string;
-  currentValue: number | null;
-}): Promise<FieldSuggestApiResponse> {
+const FIELD_SUGGEST_TIMEOUT_MS = 15_000;
+
+function mergeAbortWithTimeout(parent: AbortSignal, ms: number): AbortSignal {
+  if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.any === 'function') {
+    return AbortSignal.any([parent, AbortSignal.timeout(ms)]);
+  }
+  const c = new AbortController();
+  const t = window.setTimeout(() => c.abort(), ms);
+  parent.addEventListener(
+    'abort',
+    () => {
+      window.clearTimeout(t);
+      c.abort();
+    },
+    { once: true },
+  );
+  return c.signal;
+}
+
+async function fetchFieldSuggestion(
+  params: {
+    accessToken: string;
+    submissionId: string;
+    lineCode: string;
+    currentValue: number | null;
+  },
+  mergedSignal: AbortSignal,
+): Promise<FieldSuggestApiResponse> {
   const res = await fetch('/api/dre-agent', {
     method: 'POST',
     headers: {
@@ -56,6 +78,7 @@ async function fetchFieldSuggestion(params: {
       assistantProductTab: 'preencher',
       context: {},
     }),
+    signal: mergedSignal,
   });
   const rawText = await res.text();
   let body: FieldSuggestApiResponse & { error?: string; code?: string };
@@ -104,13 +127,16 @@ export function useFieldSuggestion(opts: {
 
   const query = useQuery({
     queryKey: ['field-suggestion', opts.submissionId, opts.lineCode],
-    queryFn: () =>
-      fetchFieldSuggestion({
-        accessToken: opts.accessToken!,
-        submissionId: opts.submissionId!,
-        lineCode: opts.lineCode,
-        currentValue: opts.currentNumeric,
-      }),
+    queryFn: ({ signal }) =>
+      fetchFieldSuggestion(
+        {
+          accessToken: opts.accessToken!,
+          submissionId: opts.submissionId!,
+          lineCode: opts.lineCode,
+          currentValue: opts.currentNumeric,
+        },
+        mergeAbortWithTimeout(signal, FIELD_SUGGEST_TIMEOUT_MS),
+      ),
     enabled: Boolean(
       opts.submissionId &&
         opts.lineCode &&
