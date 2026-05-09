@@ -82,7 +82,8 @@
 }
 
 .login-page__story {
-  padding: clamp(3rem, 6.5vh, 5.5rem) clamp(2.25rem, 4.8vw, 5rem) clamp(2.75rem, 5.5vh, 4.5rem);
+  padding: clamp(var(--space-12), 6.5vh, 5.5rem) clamp(var(--space-8), 4.8vw, var(--space-12))
+    clamp(var(--space-10), 5.5vh, 4.5rem);
   display: flex;
   align-items: center;
   min-height: 100vh;

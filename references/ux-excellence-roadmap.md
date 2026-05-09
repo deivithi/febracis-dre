@@ -14,13 +14,13 @@ Pontuação **subjetiva até auditoria formal**; atualizar após cada onda. Refe
 
 | Dimensão | Âncora externa | Estado alvo (Febracis) | Notas / ligação PRD §14 | Score (0–3) |
 |----------|----------------|------------------------|--------------------------|-------------|
-| **Clareza e hierarquia** | [Nielsen — 10 heurísticas](https://www.nngroup.com/articles/ten-usability-heuristics/) | Um vocabulário para escopo/competência; hierarquia hero → KPI → detalhe sem duplicidade | §14.1–3, 7; gap “cobertura vs modo” em [dashboard-ux-benchmark §2](./dashboard-ux-benchmark.md) | _preencher_ |
-| **Confiança nos dados** | Boas práticas BI executivo (já citadas no benchmark) | Freshness BRT, selo rascunho vs oficial, KPIs sem misturar drafts | §14.7, cockpit documentado | _preencher_ |
-| **Acessibilidade web** | [WCAG 2.2 Quick Reference](https://www.w3.org/WAI/WCAG22/quickref/) | Contraste, foco visível, teclado em tabelas/form DRE, labels | Cross-cutting §14; regressão com mudanças UI | _preencher_ |
-| **Dados densos / tabelas** | [Material Design 3](https://m3.material.io) + WAI-ARIA para grelhas | Landmarks em `ExecutiveKpiGrid`, âmbito submissions, alvos táteis móveis | §6.1–6.2 alto nível PRD | _preencher_ |
-| **Feedback e estados** | [Apple HIG — princípios gerais](https://developer.apple.com/design/human-interface-guidelines) | Estados de loading/erro honestos; reduced-motion já parcial no chat | §14.4–5 (agente); copy honesta (notificações) | _preencher_ |
-| **Performance percebida** | PRD §13 Fase 1 | p95 primeira interação cockpit (alvo institucional no PRD); evitar truncamento enganoso | §13 Fase 1 | _preencher_ |
-| **Assistente (governança)** | [dre-agent-evals.yaml](../docs/dre-agent-evals.yaml) | BC-01..07; modo `explain_only`; sem cálculo paralelo ao motor | §14.4–5, 11–12 | _preencher_ |
+| **Clareza e hierarquia** | [Nielsen — 10 heurísticas](https://www.nngroup.com/articles/ten-usability-heuristics/) | Um vocabulário para escopo/competência; hierarquia hero → KPI → detalhe sem duplicidade | §14.1–3, 7; gap “cobertura vs modo” em [dashboard-ux-benchmark §2](./dashboard-ux-benchmark.md) | **2** — `getActiveScopeHeadline` + badge hero + narrativa `getScopeNarrative`; ver [audit-routes-states-ux-wave](./audit-routes-states-ux-wave.md) |
+| **Confiança nos dados** | Boas práticas BI executivo (já citadas no benchmark) | Freshness BRT, selo rascunho vs oficial, KPIs sem misturar drafts | §14.7, cockpit documentado | **2** — query dashboard com cache explícito (`staleTime`/`gcTime`); copy de ausência de dados no hero |
+| **Acessibilidade web** | [WCAG 2.2 Quick Reference](https://www.w3.org/WAI/WCAG22/quickref/) | Contraste, foco visível, teclado em tabelas/form DRE, labels | Cross-cutting §14; regressão com mudanças UI | **2** — contraste checklist; segmentos Assistente ≥44px; `prefers-reduced-motion` expandido (§1.1 abaixo) |
+| **Dados densos / tabelas** | [Material Design 3](https://m3.material.io) + WAI-ARIA para grelhas | Landmarks em `ExecutiveKpiGrid`, âmbito submissions, alvos táteis móveis | §6.1–6.2 alto nível PRD | **2** — KPI grid `<article>` + `aria-labelledby`; token `--touch-target-min`; KPIs mobile coluna única com `gap` |
+| **Feedback e estados** | [Apple HIG — princípios gerais](https://developer.apple.com/design/human-interface-guidelines) | Estados de loading/erro honestos; reduced-motion já parcial no chat | §14.4–5 (agente); copy honesta (notificações) | **2** — mapa por rota em [audit-routes-states-ux-wave](./audit-routes-states-ux-wave.md); banner fallback assistente |
+| **Performance percebida** | PRD §13 Fase 1 | p95 primeira interação cockpit (alvo institucional no PRD); evitar truncamento enganoso | §13 Fase 1 | **2** — lazy routes `App.tsx`; notas Lighthouse em [dashboard-perf-notes](./dashboard-perf-notes.md) |
+| **Assistente (governança)** | [dre-agent-evals.yaml](../docs/dre-agent-evals.yaml) | BC-01..07; modo `explain_only`; sem cálculo paralelo ao motor | §14.4–5, 11–12 | **2** — harness Vitest `tests/unit/dre-agent-eval-harness.test.ts` + `ci_config` YAML; paridade `assistantProductTab` documentada no audit |
 
 ### Mapeamento rápido §14 → dimensões
 
@@ -32,6 +32,14 @@ Pontuação **subjetiva até auditoria formal**; atualizar após cada onda. Refe
 | 8 | BRT / datas |
 | 9–10 | Segurança RLS + motor (não só UX, mas afeta confiança percebida) |
 
+### 1.1 Checklist WCAG (execução onda 2 — evidências repo)
+
+| Critério (objetivo) | Evidência |
+|---------------------|-----------|
+| **1.4.3 Contraste (texto)** | `.validation-checklist__message` usa `--text-secondary` para melhor leitura sobre fundo escuro da checklist |
+| **2.5.5 Alvo (44×44 CSS px)** | `--touch-target-min` em `tokens.css`; botões segmento hub `.assistant-hub-segment__btn` com `min-height` do token |
+| **2.3.3 Animar por interação** | `@media (prefers-reduced-motion: reduce)` em `SubmissionsPage.css`: mensagens, composer `--pending` (animação **e** sombra desativadas), hover do enviar |
+
 ---
 
 ## 2. Backlog ondulado (P0 / P1 / P2)
@@ -41,7 +49,7 @@ Amarrado ao [dashboard-ux-benchmark §4](./dashboard-ux-benchmark.md) e ao score
 ### P0 — antes ou durante janela go-live / demo (sem refactor grande)
 
 - [ ] Fechar [go-live-trilha-a-checklist.md](./go-live-trilha-a-checklist.md) (A.1–A.4 + smoke).
-- [ ] Resolver ambiguidade percebida cobertura vs modo painel (benchmark §2) — copy/headline mínimo se não der para refactor estrutural.
+- [x] Resolver ambiguidade percebida cobertura vs modo painel (benchmark §2) — copy/headline mínimo se não der para refactor estrutural. **Feito:** selo `dashboard-hero__scope-badge` + `title` com `getActiveScopeHeadline` + linha contextual no cockpit (DashboardPage); ver [dashboard-ux-benchmark §2](./dashboard-ux-benchmark.md).
 
 ### P1 — onda pós-demo (1–2 iterações curtas)
 
@@ -93,4 +101,4 @@ Roadmap institucional completo na tabela **§13** do PRD (coleta guiada → scor
 
 ---
 
-**Última revisão:** 09/02/2026 BRT — criado como entregável do plano “produção, demo executiva e paridade UX”; score numérico a preencher após primeira auditoria conjunta Produto × Eng.
+**Última revisão:** 08/05/2026 BRT — scorecard preenchido (evidência onda 0–3 + [audit-routes-states-ux-wave](./audit-routes-states-ux-wave.md)); P0 benchmark §2 tickado; WCAG §1.1 documentado.

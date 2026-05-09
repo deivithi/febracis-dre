@@ -1,0 +1,219 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://febracis-dre.local/specs/contracts/api-dre-agent.json",
+  "title": "POST /api/dre-agent (Vercel serverless)",
+  "description": "Contrato inferido de `api/dre-agent.ts` (Zod `requestSchema`, respostas do handler). Autenticação: header `Authorization: Bearer <JWT Supabase>`.",
+  "method": "POST",
+  "request": {
+    "contentType": "application/json",
+    "body": {
+      "type": "object",
+      "required": ["sessionId", "submissionId", "message"],
+      "properties": {
+        "sessionId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "ID da linha `agent_sessions`."
+        },
+        "submissionId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Deve coincidir com `agent_sessions.submission_id` (senão 400 SUBMISSION_MISMATCH)."
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 12000,
+          "description": "Texto do utilizador; comandos `cmd:*` tratados antes do grafo LLM."
+        },
+        "assistantProductTab": {
+          "type": "string",
+          "enum": ["duvidas", "preencher"],
+          "description": "Opcional. `duvidas` força `explain_only` no servidor (`shouldAssistantExplainOnly`)."
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "responses": {
+    "200": {
+      "description": "Turno processado.",
+      "body": {
+        "type": "object",
+        "required": ["ok", "result", "mode", "flow_checkpoint", "interaction_mode", "session_state_patch"],
+        "properties": {
+          "ok": { "type": "boolean", "const": true },
+          "result": { "$ref": "#/$defs/DreAssistantTurnResult" },
+          "mode": {
+            "type": "string",
+            "description": "Eco de `result.mode` (ex.: `llm`, `fallback`)."
+          },
+          "telemetry": {
+            "type": "object",
+            "properties": {
+              "assistant_provider": { "type": "string" },
+              "assistant_model": { "type": "string" }
+            },
+            "description": "Presente quando o handler preenche (OpenAI, OpenRouter, deterministic, fallbacks)."
+          },
+          "flow_checkpoint": { "$ref": "#/$defs/FlowCheckpoint" },
+          "interaction_mode": {
+            "type": "string",
+            "enum": ["explain_only", "full"],
+            "description": "Derivado de papéis, estado da submissão e `assistantProductTab`."
+          },
+          "session_state_patch": {
+            "type": "object",
+            "description": "Patch parcial para `agent_sessions.state_json` (ex.: `proposed_value`, `acceptance_state`, campos de fluxo guiado)."
+          }
+        }
+      }
+    },
+    "400": {
+      "description": "Corpo inválido (Zod) ou parâmetros inconsistentes.",
+      "body": {
+        "type": "object",
+        "properties": {
+          "error": { "type": "string" },
+          "code": { "type": "string", "examples": ["INVALID_INPUT", "SUBMISSION_MISMATCH"] }
+        }
+      }
+    },
+    "401": {
+      "description": "Sem `Authorization` ou utilizador inválido.",
+      "body": {
+        "type": "object",
+        "properties": {
+          "error": { "type": "string" },
+          "code": { "type": "string", "const": "UNAUTHENTICATED" }
+        }
+      }
+    },
+    "403": {
+      "description": "Acesso negado (RLS / permissões).",
+      "body": {
+        "type": "object",
+        "properties": {
+          "error": { "type": "string" },
+          "code": { "type": "string", "const": "FORBIDDEN" }
+        }
+      }
+    },
+    "404": {
+      "description": "Sessão não encontrada.",
+      "body": {
+        "type": "object",
+        "properties": {
+          "error": { "type": "string" },
+          "code": { "type": "string", "const": "SESSION_NOT_FOUND" }
+        }
+      }
+    },
+    "405": {
+      "description": "Método diferente de POST.",
+      "body": { "type": "object", "properties": { "error": { "type": "string" } } }
+    },
+    "429": {
+      "description": "Rate limit RPC (`fn_agent_rate_check`) quando aplicável; header `Retry-After` opcional.",
+      "body": {
+        "type": "object",
+        "properties": {
+          "error": { "type": "string", "const": "rate_limit_exceeded" },
+          "retryAfterSeconds": { "type": "integer" }
+        }
+      }
+    },
+    "500": {
+      "description": "Erro interno classificado.",
+      "body": {
+        "type": "object",
+        "properties": {
+          "error": { "type": "string" },
+          "code": { "type": "string" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "DreAssistantCitation": {
+      "type": "object",
+      "required": ["title", "source", "excerpt"],
+      "properties": {
+        "title": { "type": "string" },
+        "source": { "type": "string" },
+        "excerpt": { "type": "string" }
+      }
+    },
+    "DreAssistantFieldUpdate": {
+      "type": "object",
+      "required": ["lineCode", "valueCurrency", "label"],
+      "properties": {
+        "lineCode": { "type": "string" },
+        "valueCurrency": { "type": "number" },
+        "label": { "type": "string" }
+      }
+    },
+    "DreAssistantTurnResult": {
+      "type": "object",
+      "required": [
+        "answer",
+        "citations",
+        "fieldUpdates",
+        "focusLineCode",
+        "nextPrompt",
+        "requestSave",
+        "requestSubmit",
+        "mode"
+      ],
+      "properties": {
+        "answer": { "type": "string" },
+        "citations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/DreAssistantCitation" }
+        },
+        "fieldUpdates": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/DreAssistantFieldUpdate" }
+        },
+        "focusLineCode": { "type": ["string", "null"] },
+        "nextPrompt": { "type": ["string", "null"] },
+        "requestSave": { "type": "boolean" },
+        "requestSubmit": { "type": "boolean" },
+        "mode": {
+          "type": "string",
+          "enum": ["fallback", "llm"],
+          "description": "`src/features/submissions/dreAssistant.ts` — turnos determinísticos/local usam tipicamente `fallback`."
+        },
+        "requiresFieldConfirmation": {
+          "type": "boolean",
+          "description": "Quando true, cliente não aplica `fieldUpdates` sem confirmação explícita."
+        },
+        "telemetry": {
+          "type": "object",
+          "properties": {
+            "assistant_provider": { "type": "string" },
+            "assistant_model": { "type": "string" }
+          }
+        }
+      }
+    },
+    "FlowCheckpoint": {
+      "type": "object",
+      "description": "`buildFlowCheckpoint` / `FlowCheckpoint` em `dreAssistant.ts`.",
+      "required": ["phase", "line_code", "filled_count", "total_inputs", "last_user_intent"],
+      "properties": {
+        "phase": {
+          "type": "string",
+          "enum": ["collecting", "complete", "explain_only"]
+        },
+        "line_code": { "type": ["string", "null"] },
+        "filled_count": { "type": "integer", "minimum": 0 },
+        "total_inputs": { "type": "integer", "minimum": 0 },
+        "last_user_intent": {
+          "type": "string",
+          "enum": ["greeting", "numeric_value", "dre_question", "off_topic", "other"]
+        }
+      }
+    }
+  }
+}

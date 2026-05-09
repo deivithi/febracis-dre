@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Eventos propostos para baselines PRD §0.5 e KPIs §15",
+  "description": "Nomes canónicos para instrumentação futura (schema de payload [Não verificado] até ticket de engenharia). Alinhar a §15.5 (fonte servidor preferencial).",
+  "events": [
+    {
+      "name": "submission_workspace_opened",
+      "description": "Utilizador abre workspace de submissões (âncora first_open vs §0 / §15.1)."
+    },
+    {
+      "name": "submission_draft_saved",
+      "description": "Persistência de rascunho válida (contagem de hipóteses de preenchimento ativo)."
+    },
+    {
+      "name": "submission_submitted_valid",
+      "description": "Transição para estado submetido válido (marca fim do funil first_open → submit)."
+    },
+    {
+      "name": "submission_returned_controller",
+      "description": "Devolução oficial pela controladoria (taxa de devoluções / ciclo)."
+    },
+    {
+      "name": "reporting_period_state_change",
+      "description": "Mudança de estado de `reporting_periods` ou `period_franchise_status` relevante ao SLA de fecho."
+    },
+    {
+      "name": "dre_agent_turn",
+      "description": "Turno do assistente concluído (já logado em JSON em `api/dre-agent.ts`; normalizar destino agregador)."
+    },
+    {
+      "name": "dre_agent_turn_error",
+      "description": "Erro classificado no handler do assistente (códigos estáveis para SRE)."
+    },
+    {
+      "name": "dre_agent_command",
+      "description": "Comando determinístico `cmd:*` (bypass LangGraph; latência e adoção do fluxo guiado)."
+    },
+    {
+      "name": "validation_blocked_submit",
+      "description": "Submissão bloqueada por validação antes de envio (KPI §15.2 validações bloqueantes)."
+    },
+    {
+      "name": "dashboard_cockpit_view",
+      "description": "Visualização cockpit holding/regional (adoção vs escopo executivo)."
+    },
+    {
+      "name": "session_mobile_detected",
+      "description": "Sinalização de sessão mobile (hipótese PRD §19 Q2)."
+    },
+    {
+      "name": "support_ticket_tagged_portal",
+      "description": "Ticket helpdesk com tag portal (denominador §15.3; integração [Não verificado])."
+    }
+  ]
+}

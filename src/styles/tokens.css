@@ -186,4 +186,12 @@
   --sidebar-collapsed:   72px;
   --header-height:       64px;
   --content-max-width:   1440px;
+
+  /* ================================================
+     TOUCH & ELEVATION (WCAG 2.5 / camadas UI)
+     ================================================ */
+  --touch-target-min:    44px; /* mínimo recomendado alvos interativos */
+  --elevation-caption:   0 1px 0 rgba(255, 255, 255, 0.04);
+  --elevation-surface-1: var(--shadow-sm);
+  --elevation-surface-2: var(--shadow-md);
 }

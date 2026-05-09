@@ -190,6 +190,12 @@ export function DreAssistantPanel({
 
   return (
     <div className="card card--accent dre-assistant dre-assistant--hero">
+      {agentMode === 'fallback' ? (
+        <div className="inline-message inline-message--warning dre-assistant__mode-banner" role="status">
+          Modo guiado local ativo (sem chamada à API de modelo). As respostas seguem o catálogo e regras determinísticas;
+          quando a API voltar, o painel técnico mostrará «Assistente online».
+        </div>
+      ) : null}
       <div className="dre-assistant__hero-top dre-assistant__hero-top--compact">
         <div className="dre-assistant__hero-title-row">
           <span className="badge badge--gold">Assistente DRE</span>

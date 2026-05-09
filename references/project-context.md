@@ -4,7 +4,7 @@
 
 **Contrato de avaliações do agente / cenários (ENTREGA 2):** [`docs/dre-agent-evals.yaml`](../docs/dre-agent-evals.yaml).
 
-Última revisão documental: **08/05/2026 BRT** — produção READY `dpl_7kF393isfJTutwSGbZ6CFwz8KGaf` (commit `e70bfd1`, docs Trilha A + roadmap UX). Datas e competências alinhadas ao calendário civil em **America/Sao_Paulo** (`brazilTimezone.ts`, `resolveDefaultReportingPeriod`, `formatDate`/`formatDateTime` em `formatters.ts`); cockpit **Holding** deriva competência `YYYY-MM` do mês BRT quando existe no snapshot. Auditoria lógica anterior: [`references/audit-app-logic-2026-05-08.md`](./audit-app-logic-2026-05-08.md). Dashboard: [`references/dashboard-ux-benchmark.md`](./dashboard-ux-benchmark.md); **Trilha go-live:** [`references/go-live-trilha-a-checklist.md`](./go-live-trilha-a-checklist.md); **excelência UX / ondas PRD:** [`references/ux-excellence-roadmap.md`](./ux-excellence-roadmap.md). **Deploy canónico:** linha mais recente em **Raiz e URLs**.
+Última revisão documental: **08/05/2026 BRT** — produção READY `dpl_7kF393isfJTutwSGbZ6CFwz8KGaf` (commit `e70bfd1`, docs Trilha A + roadmap UX). **Paridade headline cockpit:** `getActiveScopeHeadline` repete no badge hero, `title` do selo e linha de período no hero (DashboardPage). Datas e competências alinhadas ao calendário civil em **America/Sao_Paulo** (`brazilTimezone.ts`, `resolveDefaultReportingPeriod`, `formatDate`/`formatDateTime` em `formatters.ts`); cockpit **Holding** deriva competência `YYYY-MM` do mês BRT quando existe no snapshot. Auditoria lógica anterior: [`references/audit-app-logic-2026-05-08.md`](./audit-app-logic-2026-05-08.md). Dashboard: [`references/dashboard-ux-benchmark.md`](./dashboard-ux-benchmark.md); **Trilha go-live:** [`references/go-live-trilha-a-checklist.md`](./go-live-trilha-a-checklist.md); **excelência UX / ondas PRD:** [`references/ux-excellence-roadmap.md`](./ux-excellence-roadmap.md). **Deploy canónico:** linha mais recente em **Raiz e URLs**.
 
 ## Raiz e URLs
 
@@ -38,7 +38,7 @@
 
 ### Go-live demo + gerência (Trilha A)
 
-Checklist consolidada (roteiro CEO, RBAC manual, smoke, ops): [`references/go-live-trilha-a-checklist.md`](./go-live-trilha-a-checklist.md). Roadmap UX/a11y e ondas pós-demo (PRD §13 / §9-bis): [`references/ux-excellence-roadmap.md`](./ux-excellence-roadmap.md).
+Checklist consolidada (roteiro CEO, RBAC manual, smoke, ops): [`references/go-live-trilha-a-checklist.md`](./go-live-trilha-a-checklist.md). Pacote curto para gerência (bullets IA A.4, registo smoke strict, grelha de ensaio): [`references/briefing-gerente-preparacao.md`](./briefing-gerente-preparacao.md). Roadmap UX/a11y e ondas pós-demo (PRD §13 / §9-bis): [`references/ux-excellence-roadmap.md`](./ux-excellence-roadmap.md).
 
 ### Checklist — app “verde” no browser (resumo)
 
