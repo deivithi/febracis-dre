@@ -15,7 +15,7 @@ export function DemoBanner() {
         <span className="demo-banner__text">
           Ambiente de demonstração — dados sintéticos para apresentação
         </span>
-        <Link to="/app/guide#roteiro-demo" className="demo-banner__link">
+        <Link to="/app/guide/demo#roteiro-demo" className="demo-banner__link">
           Saiba mais
         </Link>
       </div>

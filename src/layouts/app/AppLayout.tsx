@@ -57,6 +57,8 @@ function AppLayoutShell({ accessProfile, sections, userName, userInitials }: App
   const { open, setOpen } = useSidebarDrawer();
   const edgeX = useRef<number | null>(null);
 
+  const hideHeaderScope = location.pathname.startsWith('/app/guide');
+
   usePlatformTourCleanup();
 
   const tourCompletedDre = user?.user_metadata?.tour_completed_dre === true;
@@ -113,7 +115,7 @@ function AppLayoutShell({ accessProfile, sections, userName, userInitials }: App
     <div
       className={`app-layout ${isMobile ? 'app-layout--mobile' : ''}${!isMobile && sidebarCollapsed ? ' app-layout--sidebar-collapsed' : ''}${demoBannerActive ? ' app-layout--demo-banner' : ''}`}
     >
-      <a href="#main-content" className="skip-link">
+      <a href="#main-content" className="sr-only">
         Ir para o conteúdo principal
       </a>
       {!isMobile ? (
@@ -164,14 +166,16 @@ function AppLayoutShell({ accessProfile, sections, userName, userInitials }: App
 
           <Breadcrumb segments={headerBreadcrumbSegments} />
 
-          <div
-            className="app-header__scope"
-            data-tour-id="app-header-scope"
-            title={`${getScopeSummary(accessProfile)} — modo ${getDashboardScopeLabel(accessProfile.dashboardScope)}`}
-          >
-            <span className="app-header__scope-label">Escopo ativo</span>
-            <span className="app-header__scope-value">{getActiveScopeHeadline(accessProfile)}</span>
-          </div>
+          {hideHeaderScope ? null : (
+            <div
+              className="app-header__scope"
+              data-tour-id="app-header-scope"
+              title={`${getScopeSummary(accessProfile)} — modo ${getDashboardScopeLabel(accessProfile.dashboardScope)}`}
+            >
+              <span className="app-header__scope-label">Escopo ativo</span>
+              <span className="app-header__scope-value">{getActiveScopeHeadline(accessProfile)}</span>
+            </div>
+          )}
         </div>
 
         <div className="app-header__right">

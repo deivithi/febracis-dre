@@ -31,8 +31,36 @@ const DashboardPage = lazy(async () => ({
   default: (await import('./features/dashboard/DashboardPage')).DashboardPage,
 }));
 
-const GuidePage = lazy(async () => ({
-  default: (await import('./features/guide/GuidePage')).GuidePage,
+const GuideShell = lazy(async () => ({
+  default: (await import('./features/guide/GuideShell')).GuideShell,
+}));
+
+const GuideHubPage = lazy(async () => ({
+  default: (await import('./features/guide/GuideHubPage')).GuideHubPage,
+}));
+
+const GuideFluxPage = lazy(async () => ({
+  default: (await import('./features/guide/GuideFluxPage')).GuideFluxPage,
+}));
+
+const GuidePilaresPage = lazy(async () => ({
+  default: (await import('./features/guide/GuidePilaresPage')).GuidePilaresPage,
+}));
+
+const GuideAcessosPage = lazy(async () => ({
+  default: (await import('./features/guide/GuideAcessosPage')).GuideAcessosPage,
+}));
+
+const GuideJornadasPage = lazy(async () => ({
+  default: (await import('./features/guide/GuideJornadasPage')).GuideJornadasPage,
+}));
+
+const GuideDemoPage = lazy(async () => ({
+  default: (await import('./features/guide/GuideDemoPage')).GuideDemoPage,
+}));
+
+const GuideLogicaDrePage = lazy(async () => ({
+  default: (await import('./features/guide/GuideLogicaDrePage')).GuideLogicaDrePage,
 }));
 
 const SubmissionsPage = lazy(async () => ({
@@ -101,7 +129,15 @@ function App() {
               >
                 <Route index element={<Navigate to="/app/dashboard" replace />} />
                 <Route path="dashboard" element={<DashboardPage />} />
-                <Route path="guide" element={<GuidePage />} />
+                <Route path="guide" element={<GuideShell />}>
+                  <Route index element={<GuideHubPage />} />
+                  <Route path="fluxo" element={<GuideFluxPage />} />
+                  <Route path="pilares" element={<GuidePilaresPage />} />
+                  <Route path="acessos" element={<GuideAcessosPage />} />
+                  <Route path="jornadas" element={<GuideJornadasPage />} />
+                  <Route path="demo" element={<GuideDemoPage />} />
+                  <Route path="logica-dre" element={<GuideLogicaDrePage />} />
+                </Route>
                 <Route path="notifications" element={<NotificationsPage />} />
                 <Route path="forbidden" element={<AccessDeniedPage />} />
                 <Route

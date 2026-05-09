@@ -1,19 +1,16 @@
-import type { MouseEvent } from 'react';
 import { ScrollText, Store } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { useIsMobileMax767 } from '../../hooks/useMediaQuery';
 import {
   franchiseJourneySteps,
   reviewJourneySteps,
 } from './guide-data';
+import { GUIDE_HUB_PATH } from './guideNav';
 import { JourneyChecklist } from './JourneyChecklist';
 
 const JORNADAS_HEADING_ID = 'jornadas-detalhe-title';
-
-function scrollToFluxoVisual(e: MouseEvent<HTMLAnchorElement>) {
-  e.preventDefault();
-  document.getElementById('fluxo-visual')?.scrollIntoView({ behavior: 'smooth' });
-}
+const FLUXO_VISUAL_HREF = `${GUIDE_HUB_PATH}/fluxo#fluxo-visual`;
 
 function FranchiseJourneyCard() {
   return (
@@ -111,9 +108,9 @@ export function JourneyDetails() {
         )}
 
         <p className="guide-journey-details__footer">
-          <a href="#fluxo-visual" className="guide-journey-details__cta" onClick={scrollToFluxoVisual}>
+          <Link to={FLUXO_VISUAL_HREF} className="guide-journey-details__cta">
             Ver fluxo visual →
-          </a>
+          </Link>
         </p>
       </div>
     </section>

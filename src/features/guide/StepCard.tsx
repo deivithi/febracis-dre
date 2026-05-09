@@ -7,10 +7,10 @@ export interface StepCardProps {
   shortDescription: string;
   bullets: string[];
   onLearnMore: () => void;
-  /** Anchor para a seção de fórmulas (passo 1). */
-  formulasAnchorId?: string;
-  /** Link opcional para roteiro de demo (passo 3). */
-  demoAnchorId?: string;
+  /** Link para a página de lógica da DRE (passo 1). */
+  formulasHref?: string;
+  /** Link para o roteiro de demo (passo 3). */
+  demoHref?: string;
 }
 
 export function StepCard({
@@ -20,8 +20,8 @@ export function StepCard({
   shortDescription,
   bullets,
   onLearnMore,
-  formulasAnchorId,
-  demoAnchorId,
+  formulasHref,
+  demoHref,
 }: StepCardProps) {
   const eyebrow = `Passo ${stepNumber} de ${totalSteps}`;
 
@@ -52,13 +52,13 @@ export function StepCard({
         <button type="button" className="journey-step-card__cta typo-body-sm" onClick={onLearnMore}>
           Saiba mais →
         </button>
-        {formulasAnchorId ? (
-          <a href={`#${formulasAnchorId}`} className="journey-step-card__anchor typo-body-sm">
+        {formulasHref ? (
+          <a href={formulasHref} className="journey-step-card__anchor typo-body-sm">
             Abrir Lógica da DRE (fórmulas)
           </a>
         ) : null}
-        {demoAnchorId ? (
-          <a href={`#${demoAnchorId}`} className="journey-step-card__anchor typo-body-sm">
+        {demoHref ? (
+          <a href={demoHref} className="journey-step-card__anchor typo-body-sm">
             Abrir roteiro de demo
           </a>
         ) : null}

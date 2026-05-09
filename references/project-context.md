@@ -17,26 +17,26 @@ Checklist (auditoria automática neste repositório):
 
 **Nota:** smoke passou em **build + lint + testes + E2E smoke**; isto **não** garante cada botão ou fluxo manual na UI.
 
-### Mapa de atividades — Guia `/app/guide` (G01–G15)
+### Mapa de atividades — Guia `/app/guide` e subrotas (G01–G15)
 
-Leitura **evidence-based** a partir de comentários `Gxx` e ficheiros em `src/features/guide/` (lote UX “excelência Guia”). Ordem abaixo do código em **`GuideBelowFold`** segue **G10** (pilares → matriz → jornadas → roteiro → lógica DRE → CTA). Estilos globais da página: **`GuidePage.css`**. O projeto **não** usa Tailwind na Guia — layout via CSS e tokens (`tokens.css`, `typography.css`).
+Leitura **evidence-based** a partir de comentários `Gxx` e ficheiros em `src/features/guide/` (lote UX “excelência Guia”). **Arquitectura actual:** **hub** em `/app/guide` (`GuideHubPage`) + **subpáginas** reais (`/app/guide/fluxo`, `pilares`, `acessos`, `jornadas`, `demo`, `logica-dre`) com layout partilhado `GuideShell.tsx`, breadcrumb estável por rota (`guideBreadcrumbForPathname` em `guideNav.ts`), **subnavegação** `GuideSubNav` e metadados `useGuideShellMeta.ts`. Links antigos `#âncora` na página única são redireccionados via `LEGACY_GUIDE_HASH_TO_PATH`. Estilos globais: **`GuidePage.css`**. O projeto **não** usa Tailwind na Guia — layout via CSS e tokens (`tokens.css`, `typography.css`).
 
 | ID | Entrega | Âncoras no repositório |
 |----|---------|-------------------------|
-| G01 | Hero do Guia | `GuideHeroSection.tsx`, `GuidePage.css` §G01 |
-| G02 | Fluxo macro end-to-end | `FlowDiagram.tsx`, `FlowDiagram.css`, `print.css` |
-| G03 | TOC, âncoras, progresso de leitura | `guideSections.ts`, `GuideTableOfContents.tsx`, `useActiveSection`, `ReadingProgress` |
-| G04 | Journey track horizontal | `JourneyTrack.tsx`, `JourneyTrack.css` |
-| G05 | RBAC em cartões (matriz de acesso) | `AccessMatrix.tsx`, `RoleCard.tsx`, `guide-data.ts` |
-| G06 | Pilares em grelha | `PlatformPillars.tsx`, `PillarCard.tsx`, `platformPillarsCopy.ts` |
-| G07 | Lógica DRE (abas, impressão glossário) | `DreLogic.tsx`, `GuidePage.css` §G07 |
-| G08 | Roteiro demo (timeline) | `DemoRoadmap.tsx`, `DemoRoadmap.css`, `guide-data.ts` (roteiro) |
-| G09 | Jornadas comparativo (checklists) | `GuideJourneySection.tsx`, `JourneyDetails.tsx`, `JourneyChecklist.tsx`, `guide-data.ts` |
-| G10 | Ordem das secções abaixo da dobra | `GuideBelowFold.tsx` (comentário de ordem) |
-| G11 | CTA final + glossário (painel) | `GuideEndCta.tsx`, `guideGlossaryContent.ts` |
+| G01 | Hero do Guia | `GuideHeroSection.tsx`, `GuideHubPage.tsx`, `GuidePage.css` §G01 |
+| G02 | Fluxo macro end-to-end | `FlowDiagram.tsx`, `GuideFluxPage.tsx`, `FlowDiagram.css`, `print.css` |
+| G03 | Navegação do Guia (rotas, metadados; legado TOC) | `guideNav.ts`, `GuideSubNav.tsx`, `GuideShell.tsx`, `useGuideShellMeta.ts`; legado: `guideSections.ts`, `GuideTableOfContents.tsx` (não montado no hub actual) |
+| G04 | Journey track horizontal | `JourneyTrack.tsx`, `GuideFluxPage.tsx`, `JourneyTrack.css` |
+| G05 | Matriz de acesso (tabela) | `MatrizAcessoSection.tsx`, `GuideAcessosPage.tsx`, `RoleCard.tsx`, `guide-data.ts` |
+| G06 | Pilares em grelha | `PlatformPillars.tsx`, `GuidePilaresPage.tsx`, `PillarCard.tsx`, `platformPillarsCopy.ts` |
+| G07 | Lógica DRE (abas, impressão glossário) | `DreLogic.tsx`, `GuideLogicaDrePage.tsx`, `GuidePage.css` §G07 |
+| G08 | Roteiro demo (timeline) | `DemoRoadmap.tsx`, `GuideDemoPage.tsx`, `DemoRoadmap.css`, `guide-data.ts` (roteiro) |
+| G09 | Jornadas comparativo (checklists) | `GuideJourneySection.tsx`, `GuideJornadasPage.tsx`, `JourneyDetails.tsx`, `JourneyChecklist.tsx`, `guide-data.ts` |
+| G10 | Ordenação temática por subpágina | Rotas em `App.tsx` sob `guide/*`; conteúdo segmentado em `GuideHubPage.tsx`, `GuideFluxPage.tsx`, … |
+| G11 | CTA final + glossário (painel) | `GuideEndCta.tsx` (hub), `guideGlossaryContent.ts` |
 | G12 | Tipografia / escala legível | `typography.css`, classes `typo-*` em `GuidePage.css` |
-| G13 | Motion (Framer Motion, `prefers-reduced-motion`) | `GuidePage.tsx`, `GuideBelowFold.tsx`, `PillarCard.tsx`, `useScrollReveal.ts` |
-| G14 | TOC + drawer + contraste / layout largo | `GuidePage.css` (comentário G14), `GuideSectionStrip.tsx` |
+| G13 | Motion (Framer Motion, `prefers-reduced-motion`) | `GuideHubPage.tsx`, `Guide*Page.tsx`, `MatrizAcessoSection.tsx`, `PillarCard.tsx`, `useScrollReveal.ts` |
+| G14 | Layout largo / secções em faixas | `GuidePage.css` (G14), `GuideSectionStrip.tsx`, `guide-subnav` |
 | G15 | Fluxo executivo / screenshots pitch | `GuidePage.css` §screenshots, `public/screenshots/guide/`, `scripts/screenshot-guide.mjs`, relatórios Lighthouse em `public/lighthouse-report-guide*.html` |
 
 **Fecho em ciclo (autonomous-agent-loop):** métrica operacional de sessão = **build verde + documentação alinhada ao estado do repo**; ledger = commits; zona imutável = `references/project-context.md` (só actualizar texto, não “editar” URLs de producção sem deploy real); após merge/push, **`npx vercel --prod --yes`** no team `deivithis-projects` e registo do `dpl_*` Ready abaixo.

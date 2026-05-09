@@ -1,30 +1,48 @@
 import { useEffect } from 'react';
 
-const GUIDE_TITLE = 'Guia · febracis-dre';
-const GUIDE_DESCRIPTION =
+import { GUIDE_HUB_PATH } from './guideNav';
+
+const DESCRIPTION =
   'Guia oficial do portal Febracis DRE: fluxo de dados, papéis, jornadas da franquia e controladoria, fórmulas da DRE e roteiro de demonstração.';
 
+const TITLE_BY_PATH_PREFIX: [string, string][] = [
+  [GUIDE_HUB_PATH + '/logica-dre', 'Guia — Lógica da DRE · febracis-dre'],
+  [GUIDE_HUB_PATH + '/demo', 'Guia — Roteiro da demo · febracis-dre'],
+  [GUIDE_HUB_PATH + '/jornadas', 'Guia — Jornadas em detalhe · febracis-dre'],
+  [GUIDE_HUB_PATH + '/acessos', 'Guia — Matriz de acesso · febracis-dre'],
+  [GUIDE_HUB_PATH + '/pilares', 'Guia — Pilares da plataforma · febracis-dre'],
+  [GUIDE_HUB_PATH + '/fluxo', 'Guia — Fluxo e trilha · febracis-dre'],
+  [GUIDE_HUB_PATH, 'Guia — Visão geral · febracis-dre'],
+];
+
+function titleForPath(pathname: string): string {
+  const p = pathname.replace(/\/$/, '') || '/';
+  for (const [prefix, title] of TITLE_BY_PATH_PREFIX) {
+    if (p === prefix || p.startsWith(prefix + '/')) {
+      return title;
+    }
+  }
+  return 'Guia · febracis-dre';
+}
+
 /**
- * Título, meta description (PT-BR) e noindex específicos da rota `/app/guide`.
- * Restaura valores anteriores ao desmontar (SPA).
+ * Título da aba e metadados para todas as rotas sob `/app/guide/*`.
  */
-export function useGuidePageMeta() {
+export function useGuideShellMeta(pathname: string) {
   useEffect(() => {
     const prevTitle = document.title;
-
     const metaDesc = document.querySelector('meta[name="description"]');
     const prevDesc = metaDesc?.getAttribute('content') ?? null;
 
-    document.title = GUIDE_TITLE;
+    document.title = titleForPath(pathname);
     if (metaDesc) {
-      metaDesc.setAttribute('content', GUIDE_DESCRIPTION);
+      metaDesc.setAttribute('content', DESCRIPTION);
     }
 
     const existingRobots = document.querySelector('meta[name="robots"]');
     const prevRobots = existingRobots?.getAttribute('content') ?? null;
     let robotsEl: HTMLMetaElement | null = existingRobots as HTMLMetaElement | null;
     let robotsCreated = false;
-
     if (!robotsEl) {
       robotsEl = document.createElement('meta');
       robotsEl.setAttribute('name', 'robots');
@@ -51,5 +69,5 @@ export function useGuidePageMeta() {
       }
       document.documentElement.classList.remove('route-guide');
     };
-  }, []);
+  }, [pathname]);
 }

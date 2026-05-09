@@ -5,6 +5,7 @@
  * Tour “trilha guiada”: usa `startTour` (Shepherd) já existente — não há tour U20 dedicado só ao Guia no repositório.
  */
 import type { NavigateFunction } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import { ChevronRight, PlayCircle, Users, Workflow } from 'lucide-react';
 import type { AccessProfile } from '../auth/auth.types';
@@ -16,6 +17,9 @@ import {
 } from '../../hooks/useScrollReveal';
 import { startTour } from '../tour/Tour';
 import { TooltipContent, TooltipRoot, TooltipTrigger } from '../../components/ui/tooltip';
+import { GUIDE_HUB_PATH } from './guideNav';
+
+const MotionLink = motion(Link);
 
 export interface GuideHeroSectionProps {
   accessProfile: AccessProfile | undefined;
@@ -74,20 +78,23 @@ export function GuideHeroSection({ accessProfile, navigate, pathname }: GuideHer
         </motion.p>
 
         <motion.div className="guide-hero-g01__cta-grid guide-hero__cta--no-print" variants={guideItemVariants(rm)}>
-          <motion.a
-            href="#fluxo-visual"
+          <MotionLink
+            to={`${GUIDE_HUB_PATH}/fluxo#fluxo-visual`}
             className="btn btn--primary guide-hero-g01__cta guide-hero-g01__cta--primary"
             {...(rm ? {} : guidePrimaryCtaHoverTap)}
           >
             <Workflow size={18} aria-hidden />
             <span className="guide-hero-g01__cta-text">Ver fluxo completo</span>
             <ChevronRight size={18} aria-hidden className="guide-hero-g01__cta-chevron" />
-          </motion.a>
-          <a href="#matriz-acesso" className="btn guide-hero-g01__cta guide-hero-g01__cta--outline">
+          </MotionLink>
+          <Link
+            to={`${GUIDE_HUB_PATH}/acessos#matriz-acesso`}
+            className="btn guide-hero-g01__cta guide-hero-g01__cta--outline"
+          >
             <Users size={18} aria-hidden />
             <span className="guide-hero-g01__cta-text">Conhecer papéis e permissões</span>
             <ChevronRight size={18} aria-hidden className="guide-hero-g01__cta-chevron" />
-          </a>
+          </Link>
           {tourReady ? (
             <button
               type="button"

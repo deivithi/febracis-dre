@@ -113,7 +113,7 @@ export function useAutoStartDashboardTour(opts: {
       pathname === '/app/dashboard' ||
       pathname === '/app/submissions' ||
       (variant === 'controller' && pathname === '/app/workflow') ||
-      (variant === 'viewer' && pathname === '/app/guide');
+      (variant === 'viewer' && pathname.startsWith('/app/guide'));
 
     if (!pathOk) {
       return;

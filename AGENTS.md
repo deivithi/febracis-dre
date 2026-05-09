@@ -40,7 +40,7 @@ Lista completa e excepções na secção **“Protocolo de encerramento obrigat�
 ## Mapa de atividades (U01–U30 e Guia G01–G15)
 
 - **U01–U30:** tabela **evidence-based** (etiquetas `Uxx` no código ou SQL) em [`references/project-context.md`](./references/project-context.md#mapa-de-atividades-u01u30).
-- **Guia G01–G15** (`/app/guide`): mapa e âncoras em [`references/project-context.md`](./references/project-context.md) — secção **Mapa de atividades — Guia**. Ao fechar batch UX da Guia, actualizar **só** lá (com comentários `Gxx` no código como prova).
+- **Guia G01–G15** (`/app/guide` + `/app/guide/*`): mapa e âncoras em [`references/project-context.md`](./references/project-context.md) — secção **Mapa de atividades — Guia**. Hub + subrotas temáticas (`GuideShell`, `guideNav.ts`). Ao fechar batch UX da Guia, actualizar **só** lá (com comentários `Gxx` no código como prova).
 
 ## Referências
 

@@ -8,6 +8,7 @@ import {
   guideStaggerContainer,
 } from '../../hooks/useScrollReveal';
 import { JOURNEY_STEPS, resolveJourneyStepDetail, type JourneyStepId } from './journeyContent';
+import { GUIDE_HUB_PATH } from './guideNav';
 import { StepCard } from './StepCard';
 import { StepDetailSheet } from './StepDetailSheet';
 import './JourneyTrack.css';
@@ -16,8 +17,8 @@ export interface JourneyTrackProps {
   showViewerHint?: boolean;
 }
 
-const FORMULAS_ANCHOR_ID = 'g07-formulas';
-const DEMO_ANCHOR_ID = 'roteiro-demo';
+const FORMULAS_HREF = `${GUIDE_HUB_PATH}/logica-dre#g07-formulas`;
+const DEMO_HREF = `${GUIDE_HUB_PATH}/demo#roteiro-demo`;
 
 export function JourneyTrack({ showViewerHint = false }: JourneyTrackProps) {
   const [detailStepId, setDetailStepId] = useState<JourneyStepId | null>(null);
@@ -105,8 +106,8 @@ export function JourneyTrack({ showViewerHint = false }: JourneyTrackProps) {
                   shortDescription={step.shortDescription}
                   bullets={step.summaryBullets}
                   onLearnMore={() => setDetailStepId(step.id)}
-                  formulasAnchorId={step.id === 'entender' ? FORMULAS_ANCHOR_ID : undefined}
-                  demoAnchorId={step.id === 'extrair' ? DEMO_ANCHOR_ID : undefined}
+                  formulasHref={step.id === 'entender' ? FORMULAS_HREF : undefined}
+                  demoHref={step.id === 'extrair' ? DEMO_HREF : undefined}
                 />
               </motion.div>
             </motion.div>
