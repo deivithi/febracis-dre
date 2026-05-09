@@ -29,21 +29,21 @@ const byRole: Record<RoleCode, WidgetConfig[]> = {
   ],
   finance_controller: [
     L('w-kpi', 'kpi', { x: 0, y: 0, w: 12, h: 5, minW: 4, minH: 3 }),
-    L('w-trend', 'trend-chart', { x: 0, y: 5, w: 8, h: 8, minW: 6, minH: 6 }, { metric: 'ebitda_2' }),
-    L('w-audit', 'audit-feed', { x: 8, y: 5, w: 4, h: 8, minW: 3, minH: 6 }, { limit: 6 }),
+    L('w-trend', 'trend-chart', { x: 0, y: 5, w: 7, h: 8, minW: 5, minH: 6 }, { metric: 'ebitda_2' }),
+    L('w-audit', 'audit-feed', { x: 7, y: 5, w: 5, h: 8, minW: 4, minH: 6 }, { limit: 6 }),
     L('w-pend', 'pending-queue', { x: 0, y: 13, w: 12, h: 8, minW: 6, minH: 6 }),
   ],
   executive: [
     L('w-kpi', 'kpi', { x: 0, y: 0, w: 12, h: 5, minW: 4, minH: 3 }),
-    L('w-trend', 'trend-chart', { x: 0, y: 5, w: 8, h: 8, minW: 6, minH: 6 }, { metric: 'gross_revenue' }),
-    L('w-audit', 'audit-feed', { x: 8, y: 5, w: 4, h: 8, minW: 3, minH: 6 }, { limit: 8 }),
+    L('w-trend', 'trend-chart', { x: 0, y: 5, w: 7, h: 8, minW: 5, minH: 6 }, { metric: 'gross_revenue' }),
+    L('w-audit', 'audit-feed', { x: 7, y: 5, w: 5, h: 8, minW: 4, minH: 6 }, { limit: 8 }),
     L('w-rank', 'ranking', { x: 0, y: 13, w: 6, h: 8, minW: 4, minH: 6 }, { variant: 'top-ebitda', limit: 6 }),
     L('w-pend', 'pending-queue', { x: 6, y: 13, w: 6, h: 8, minW: 6, minH: 6 }),
   ],
   system_admin: [
     L('w-kpi', 'kpi', { x: 0, y: 0, w: 12, h: 5, minW: 4, minH: 3 }),
-    L('w-trend', 'trend-chart', { x: 0, y: 5, w: 8, h: 8, minW: 6, minH: 6 }),
-    L('w-audit', 'audit-feed', { x: 8, y: 5, w: 4, h: 8, minW: 3, minH: 6 }, { limit: 10 }),
+    L('w-trend', 'trend-chart', { x: 0, y: 5, w: 7, h: 8, minW: 5, minH: 6 }),
+    L('w-audit', 'audit-feed', { x: 7, y: 5, w: 5, h: 8, minW: 4, minH: 6 }, { limit: 10 }),
     L('w-pend', 'pending-queue', { x: 0, y: 13, w: 12, h: 8, minW: 6, minH: 6 }),
   ],
 };

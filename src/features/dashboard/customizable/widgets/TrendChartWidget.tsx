@@ -106,9 +106,43 @@ export default function TrendChartWidget({
         </div>
       }
       expandedContent={
-        <div style={{ height: '60vh', minHeight: 400 }}>
-          {renderChart(400, true)}
-        </div>
+        data.length === 0 ? (
+          <p className="text-secondary">Sem série histórica de rede disponível neste utilizador.</p>
+        ) : (
+          <div style={{ width: '100%', height: '60vh', minHeight: 400 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={data} margin={{ left: 4, right: 12, bottom: 20, top: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.25} />
+                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                <YAxis
+                  tick={{ fontSize: 10 }}
+                  width={52}
+                  tickFormatter={(v: number) =>
+                    new Intl.NumberFormat('pt-BR', { notation: 'compact', maximumFractionDigits: 1 }).format(
+                      Number(v),
+                    )
+                  }
+                />
+                <Tooltip
+                  formatter={(value) =>
+                    [
+                      fmt(Number(value ?? 0)),
+                      metric === 'gross_revenue' ? 'Receita' : 'EBITDA 2',
+                    ] as [string, string]
+                  }
+                />
+                <Line
+                  type="monotone"
+                  dataKey={metric === 'gross_revenue' ? 'receita' : 'ebitda'}
+                  stroke="var(--color-gold-strong, #c9a227)"
+                  strokeWidth={2}
+                  dot
+                  activeDot={{ r: 6 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )
       }
     />
   );

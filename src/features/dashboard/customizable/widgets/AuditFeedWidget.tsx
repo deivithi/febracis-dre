@@ -16,7 +16,7 @@ export default function AuditFeedWidget({
   const limit =
     typeof limitRaw === 'number' ? Math.min(Math.max(limitRaw, 3), 25) : 5;
 
-  const [range, setRange] = useState<'hoje' | '7d' | '30d'>('7d');
+  const [range, setRange] = useState<'hoje' | '7d' | '30d'>('30d');
 
   const auditQuery = useQuery({
     queryKey: ['dashboard-audit-feed', 50], // fetch more for client-side filter

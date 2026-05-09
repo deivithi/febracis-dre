@@ -20,10 +20,13 @@ export function ExpandableAnalyticsCard({
   cardProps,
 }: Props) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [overlayReady, setOverlayReady] = useState(false);
 
-  // Fechar com ESC
   useEffect(() => {
-    if (!isExpanded) return;
+    if (!isExpanded) {
+      setOverlayReady(false);
+      return;
+    }
 
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
@@ -32,12 +35,16 @@ export function ExpandableAnalyticsCard({
     }
 
     document.addEventListener('keydown', handleKeyDown);
-    // Bloquear scroll do body quando modal está aberto
     document.body.style.overflow = 'hidden';
+
+    // Recharts ResponsiveContainer needs a settled DOM to measure;
+    // defer content render until the overlay animation settles.
+    const timer = setTimeout(() => setOverlayReady(true), 80);
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = '';
+      clearTimeout(timer);
     };
   }, [isExpanded]);
 
@@ -90,7 +97,13 @@ export function ExpandableAnalyticsCard({
                 </button>
               </div>
             </div>
-            <div className="expandable-overlay__body">{expandedContent}</div>
+            <div className="expandable-overlay__body">
+              {overlayReady ? expandedContent : (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>
+                  <p className="text-secondary">A carregar…</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
