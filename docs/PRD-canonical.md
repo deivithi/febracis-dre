@@ -1,8 +1,8 @@
 # PRD canónico — Portal gerencial DRE Febracis (`febracis-dre`)
 
 **Documento:** requisitos de produto + arquitetura + contratos comportamentais (fonte sintética do ecossistema de docs internos).  
-**Versão PRD:** 2.0  
-**Última consolidação:** 08/05/2026 BRT (refactor canónico cliente-first / eval-agent / KPIs estruturados).  
+**Versão PRD:** 2.1  
+**Última consolidação:** 09/05/2026 BRT (Patch 1 — baseline §0.5 / §12.1 período / Decision log datas / eval catálogo §9-bis / guardrails §15.5).  
 **Não substitui:** operação ao vivo — [`references/project-context.md`](../references/project-context.md) continua SSOT deploy/Supabase/Vercel.  
 **Ref. técnica cruzada (rotas/arquivos):** [`references/technical-implementation.md`](../references/technical-implementation.md).  
 **Eval agente YAML:** [`dre-agent-evals.yaml`](./dre-agent-evals.yaml).
@@ -15,6 +15,7 @@
 |---|--------|
 | §-1 | [PR/FAQ cliente-first (Amazon WW)](#-1-prfaq--lançamento-visão-cliente-first) |
 | §0 | [Problema (baseline + custo de não fazer)](#0-problema-baseline-e-custo-de-não-fazer) |
+| §0.5 | [Plano de Coleta de Baseline](#05-plano-de-coleta-de-baseline-obrigatório-antes-de-promessas-externas) |
 | §1 | [Resumo executivo](#1-resumo-executivo-refinado) |
 | §2 | [North star e tese central](#2-north-star-e-tese-central) |
 | §3 | [Personas + RBAC](#3-personas-profundidade-jobs-to-be-done--rbac-narrativa) |
@@ -24,14 +25,14 @@
 | §7 | [Modelo DRE e motor](#7-modelo-dre-motor-de-cálculo-e-alinhamento-à-planilha) |
 | §8 | [Arquitetura sistemas](#8-arquitetura-de-sistemas-estado-real-e-evolução-recomendada) |
 | §9 | [Assistente DRE IA](#9-assistente-dre-ia--arquitetura-regras-e-roadmap) |
-| §9-bis | [Eval & behavioral contract](#9-bis-eval--behavioral-contract-do-agente-dre) |
+| §9-bis | [Eval & behavioral contract](#9-bis-eval--behavioral-contract-do-agente-dre) (incl. [§9-bis.6](#9-bis6-estado-atual-do-catálogo-de-evals)) |
 | §10 | [Benchmark internacional](#10-benchmark-internacional--síntese-aplicável) |
 | §11 | [Segurança não funcional](#11-segurança-privacidade-e-qualidade-não-funcional) |
-| §12 | [Fuso BRT produto](#12-fuso-dados-e-competência-brt-comportamento-produto) |
+| §12 | [Fuso BRT produto](#12-fuso-dados-e-competência-brt-comportamento-produto) ([§12.1](#121-regra-de-negócio-não-muda-mesmo-se-mudar-implementação)) |
 | §13 | [Roadmap fases](#13-roadmap-estratégico-em-fases--critérios-quantitativos) |
 | §13-bis | [Decision log](#13-bis-decision-log--decisões-controversas-registradas) |
 | §14 | [Critérios aceite](#14-critérios-de-aceite-globais-consolidados) |
-| §15 | [KPIs produto](#15-kpis-de-produto) |
+| §15 | [KPIs produto](#15-kpis-de-produto) (incl. [§15.5](#155-guardrails-métricas-anti-gaming)) |
 | §16 | [Riscos](#16-riscos-e-mitigações) |
 | §17 | [Mapa documentos filhos](#17-mapa-de-documentos-filhos--anexo) |
 | §18 | [Changelog PRD](#18-changelog-do-prd) |
@@ -41,6 +42,12 @@
 ## §-1. PR/FAQ — Lançamento (visão cliente-first)
 
 > *[Inferência criativa só para formato PR Amazon — cenário ilustrativo; não é comunicação oficial até a Febracis aprovar copy externa]*
+
+### Voz das personas (citações humanizadas — alinhadas §3.1)
+
+- **Maria (franqueada):** *"Eu não quero mais juntar três planilhas no WhatsApp na véspera — preciso saber na hora o que falta antes de mandar oficial."*
+- **Carlos (controlador):** *"Preciso menos tempo traduzindo layout diferente por unidade e mais tempo nas exceções que realmente mexem no resultado."*
+- **Roberto (holding):** *"Para reuniões de resultado, só número que já passou pelo trilho aprovável — zero mistura com rascunho no cockpit."*
 
 ### Manchete fictícia (alvo de lançamento)
 
@@ -58,20 +65,20 @@
 | 2 | Preciso aprender contabilidade pesada? | Não como pré-requisito de uso cotidiano; o texto do portal foi pensado em linguagem gerencial brasileira. Glossário institucional: [`docs/dre-glossario.md`](./dre-glossario.md). |
 | 3 | E se eu errar? | O motor recalcula automaticamente ao corrigir entradas editáveis válidas antes do envio. Após envio para revisão há bloqueio normal — só controlador pode devolver com motivo oficial. |
 | 4 | Quem vê meus dados? | Pessoas com papel oficial no mesmo escopo (franquia, regional, holding, controlador). Postgres RLS é a barreira real. Detalhes: [`references/audit-app-logic-2026-05-08.md`](../references/audit-app-logic-2026-05-08.md). |
-| 5 | Funciona no celular? | **[Não verificado — medir tráfego mobile].** SPA navegador-first; homologação real antes de promessa explícita. |
+| 5 | Funciona no celular? | Produto foca **SPA web responsiva** (navegador-first). **App mobile nativo** está **fora de âmbito** neste ciclo — ver **§13-bis decisão #14** e **§4**. Share mobile e comunicação cliente dependem de **baseline §0.5 + Telemetry §15** antes de promessa externa explícita. |
 
 ### FAQ negócio (interno)
 
 | # | Pergunta | Resposta |
 |---|----------|----------|
-| 1 | Por que agora? | Escala de eventos, fadiga retratil franquia↔central e maturidade de assistência servidor com segurança (sem recalc paralelo ao motor SQL). |
+| 1 | Por que agora? | Escala de eventos, fadiga comunicacional franquia↔central e maturidade de assistência servidor com segurança (sem recalc paralelo ao motor SQL). |
 | 2 | Por que não só BI? | BI consome resultado já consolidado; o portal é **captura oficial versionada** e workflow único até números aprováveis. |
-| 3 | Custo de não fazer? | Baseline horas **[Não verificado]** — Fase §0 KPIs §15 obriga primeira medição institucional. |
+| 3 | Custo de não fazer? | Baseline horas **[Não verificado]** — §0.5 + KPIs §15 obrigam primeira medição institucional antes de metas públicas duras. |
 | 4 | Maior risco? | Motor aplicativo divergir da planilha canónica — mitigar Foundations + regressões assinadas Controladoria. |
 
 ### Medição êxito 90 dias (estratégico)
 
-**[Não verificado — Telemetry]** — alinhar a §15 antes de comunicar percentuais externos.
+**[Não verificado — Telemetry]** — alinhar a §15 antes de comunicar percentuais externos ao mercado ou rede.
 
 ---
 
@@ -98,6 +105,20 @@
 > "Hoje, unidades **[Não verificado]** horas para fechar a DRE e **[Não verificado]%** das revisões exigem segundo passo — segurando decisões da holding **[Não verificado]** até a versão oficial unificada."
 
 Substituir quando §0 tiver primeira coleta concluída.
+
+## §0.5 Plano de Coleta de Baseline (obrigatório antes de promessas externas)
+
+> **Guarda institucional:** métricas com `[Não verificado]` neste §0 e §15 **não** sustentam promessa comercial, OKR público nem OK de fase seguinte até baseline medido + registo data e dono aqui ou em relatório appendix assinado PO/CFO onde aplicável.
+
+| Métrica (âncora §0 / §15) | Owner agregado | Prazo-alvo primeira rodada | Status |
+|---------------------------|----------------|----------------------------|--------|
+| Tempo médio coleta DRE (first_open → submit válido) | PO febracis-dre + Ops | Calendarizar CFO (Fase 0) | 🔴 Não iniciado |
+| % submissões devolvidas por ciclo | Controlador(a) + Tech | Calendarizar Controladoria | 🔴 Não iniciado |
+| Divergência planilha × motor (`MC2`/EBITDA) | CFO dados + Tech Lead | Foundations (amostragem institucional) | 🟡 Em definição amostral |
+| SLA calendário fecho competência rede | CFO red | Postgres `approved` snapshot corporativo | 🔴 Instrumentação pendente |
+| Tickets suporte / 100 franquias (rolling 90d) | Ops CX | Helpdesk tag portal + convenção denominador §15 | 🔴 Não iniciado |
+
+**Owner curadoria baseline agregado:** Product Owner **febracis-dre**. Fecha da primeira medição válida comunicada em changelog §18 quando números substituírem placeholders canónicos §0.
 
 ---
 
@@ -161,6 +182,7 @@ Síntese de [`docs/modelo-de-acesso-e-permissoes.md`](./modelo-de-acesso-e-permi
 - Aprovação legal de relatórios perante auditorias externas (o portal suporta **processo gerencial**, não substitui sign-off registado onde a empresa exija).
 - **Serviço dedicado LangGraph/Python** recomendado no plano 2026-03-28: **opcional/arquitetura-alvo**, não infraestrutura imposta atual (hoje há `api/dre-agent.ts` serverless Vercel + Supabase).
 - Vector buckets Supabase experimentais ou memory stores arquivadas sem validação produtiva (`langgraph-memory` arquivado — não baseline).
+- **Experiência mobile:** **sem app nativo iOS/Android** neste ciclo produto — adopção esperada via **SPA web responsiva** (navegador); promessa UX mobile comercial só após telemetry §15 + decisão explícita (§13-bis **#14**).
 
 ---
 
@@ -332,6 +354,28 @@ Ver §13 Fase cockpit + evoluções agent‑first.
 
 Review semanal obrigatório após mudanças grandes na API do agente; dupla rubrica PO + técnico sênior. Release major do assistente só com thresholds v1 quando existir CI automático (**[Não verificado]** estado atual semi-manual).
 
+### §9-bis.6 Estado atual do catálogo de evals
+
+Fonte sintética: [`docs/dre-agent-evals.yaml`](./dre-agent-evals.yaml) — deve evoluir de **scaffold (`schema_version` 0.x)** para **catálogo v1** com cenários sintéticos versionados CI (vide §14 ítems 11–12).
+
+| Requisito mínimo (PRD) | Estado alvo Patch 1 | Rastreamento Git |
+|------------------------|---------------------|-------------------|
+| `meta.thresholds` v1 / v2 + scoring **binário** (sem Likert) | ✅ Obrigatório | YAML `thresholds.v1/v2` + `binary_pass_fail` |
+| BC-01 … BC-07 (“NUNCA”) catalogados como constraints | ✅ Obrigatório | Lista `behavioral_constraints` |
+| Catálogo **50** cenários (10 × 5 failure modes: HLC, OSF, ACO, ICA, SPR) | 🎯 Gate Fase≥1 quando CI existe | ✅ Quando YAML `schema_version: 1.0.0` + `meta.total_scenarios: 50` merged |
+| Pass rate eval v1 ≥ **95%** (runner automatizado) | 🔴 Harness Vitest sob `ci_config` YAML | Ligado quando PR altera `api/dre-agent.ts`, prompts ou RLS agente-relacionadas |
+| Novo comportamento falha prod sem linha YAML | 🔴 Falha política §9-bis | `fail_build_if` no YAML quando CI empacotado |
+
+| Failure mode §9-bis | Label YAML | Estado documentação |
+|---------------------|------------|---------------------|
+| `hallucinated_line_code` | HLC-* | ✅ Catálogo v1 quando YAML 1.0 |
+| `out_of_scope_franchise` | OSF-* | ✅ idem |
+| `attempted_calculation_override` | ACO-* | ✅ idem |
+| `injection_compliance_attempt` | ICA-* | ✅ idem |
+| `stale_period_response` | SPR-* | ✅ idem |
+
+> 📌 **Política:** qualquer remoção de cenário threshold ou constraint exige revisão dupla conforme campo `human_review_required_for` no YAML quando operacionalizado.
+
 ---
 
 ## §10. Benchmark internacional — síntese aplicável
@@ -373,6 +417,18 @@ Produto garante experiência **calendário civil Brasil (BRT)** mesmo com SO/nav
 | Cockpit holding: se filtros ainda indefinidos e snapshot permitem, pode sugerir etiqueta período BRT — utilizador pode sobrepor sempre |
 | Regress automatizado BRT/DST obrig em CI onde já existir suites; QA manual navegadores fora TZ Brasil antes grandes releases (checklist homologação) |
 
+### §12.1 Regra de negócio (não muda mesmo se mudar implementação)
+
+Hierarquia de **editabilidade vs competência** (alinhamento workflow §3/`submissions` Postgres):
+
+| Estado período/submissão (síntese) | Franquia pode **editar** valores assistidos / manual via UI? |
+|-------------------------------------|---------------------------------------------------------------|
+| `draft`, `reopened`, `pending_adjustment` (devolvida oficialmente pela controladoria) | **Sim** — enquanto RLS JWT permitir (`franchise_user` na própria unidade). |
+| `submitted`, `under_review` | **Não** — leitura e assistência **explain_only**/pedagógicos conforme política API; persistência deltas bloqueada. |
+| `approved` | **Não** — imutável **até** devolução explícita com motivo institucional (transição apenas controlador workflows oficiais, **não** via prompt LLM §9 BC-04). |
+
+**Competência calendário:** período **`open`** / **`reopened`** visível ao utilizador deve, por defeito, respeitar **mês civil BRT** e `reporting_period` canónico (mesma regra tabela §12 linha defaults). Estado **approved no mês civil atual**: qualquer edição assistida solicitada deve ser **recusada** até devolução (alinhar cenários tipo SPR-* no [`dre-agent-evals.yaml`](./dre-agent-evals.yaml)).
+
 **Paths de código/utilitários** — apenas em [`references/technical-implementation.md`](../references/technical-implementation.md) e paralelo em **`references/project-context.md`**.
 
 ---
@@ -400,38 +456,41 @@ Produto garante experiência **calendário civil Brasil (BRT)** mesmo com SO/nav
 
 ## §13-bis. Decision Log — decisões controversas
 
-> Actualizar sempre que decisão mudar segurança, motor ou papel do agente. Mínimo 10 entradas na versão 2.x.
+> Actualizar sempre que decisão mudar segurança, motor ou papel do agente. Mínimo 10 entradas na versão 2.x; **datas** registam quando entrada foi formalizada produto/controlador — podem diferir da data primeira discussão técnica.
 
-| # | Decisão | Alternativa recusada | Porquê aceite | Papéis decisores | Reversível? |
-|---|---------|---------------------|---------------|------------------|------------|
-| 1 | Motor DRE apenas Postgres/functions | Serviço Python paralelo rápido | Menor divergência enquanto time pequeno | PO + CTO | Sim longo prazo |
-| 2 | IA nunca aprova workflow alone | Score auto-approval LLM | Risco reputacional/controladoria | CFO | **Não** |
-| 3 | Agregados `*_total` pessoa/CTO util na v1 vs micro-linhas | Granular já no dia zero | Velocity adoção | PO | Sim Fase Foundations |
-| 4 | Agent em Vercel serverless TS | Backend dedicado | Custo/iterações MVP seguras | Tech | Sim |
-| 5 | RLS Postgres fonte segurança | Só frontend “confia” usuário | defense-in-depth React manipulável | Seg + PO | Principio forte |
-| 6 | RAG lexical inicial vs pgvector | Vector search day 0 | Custo+dados curatoria | IA lead | Sim fase tardia |
-| 7 | Utilitários TZ BRT centralizados | TZ espalhada em componentes | bugs DST cara suporte | Eng | Pouco sem rework |
-| 8 | KPI executivo apenas estados oficial | KPI com draft visível erro board | marca confiança | CFO | **Não** curto horizonte |
-| 9 | `explain_only` enforce servidor não só cliente | Toggle browser only | spoof fácil | Seg + API | Core **Não** |
-| 10 | degrade determinístico se LLM falha | Erro UX branca | adoção menos resiliente redes | Produto | Tune copy apenas |
-| 11 | Lint hooks seguranço holding filters vs hacks `useEffect` | Silenciar eslint | sustain código | Eng | Sim |
-| 12 | Fail-open RPC rate limit degrade documentado vs fail-hard | outages totais | adoção *[inferência até policy CFO]* | Eng + Seg | Sim tunable |
-| 13 | `/app/assistant` página hub além só painel em submissões | só lateral embutida | onboarding coaching menos ruído workspace | Produto cockpit 2026 | Sim UX apenas |
+| # | Decisão | Alternativa recusada | Porquê aceite | Decisores | Data (BRT) | Reversível? |
+|---|---------|---------------------|---------------|-----------|-------------|-------------|
+| 1 | Motor DRE apenas Postgres/functions | Serviço Python paralelo rápido | Menor divergência enquanto time pequeno | PO + CTO | 06/06/2024 | Sim longo prazo |
+| 2 | IA nunca aprova workflow alone | Score auto-approval LLM | Risco reputacional/controladoria | CFO | 06/06/2024 | **Não** |
+| 3 | Agregados `*_total` pessoa/CTO/util na v1 vs micro-linhas | Granular já no dia zero | Velocity adoção | PO | 15/07/2024 | Sim Fase Foundations |
+| 4 | Agent em Vercel serverless TS (`api/dre-agent.ts`) | Backend dedicado IaC próprio | Custo/iterações MVP seguras | Tech Lead | 28/03/2026 | Sim |
+| 5 | RLS Postgres fonte segurança decisiva | Só frontend confia papel UI | Defense-in-depth; React falsificável | Seg + PO | 28/03/2026 | Princípio forte |
+| 6 | RAG lexical inicial vs pgvector day-0 | Vector search imediato | Custo + curatoria dados insuficiente | IA lead + PO | 28/03/2026 | Sim fase tardia |
+| 7 | Utilitários TZ BRT centralizados (uma fonte TZ) | TZ espalhada em componentes | Bugs DST cara suporte | Eng | 10/01/2025 | Pouco sem rework |
+| 8 | KPI cockpit só estados oficialmente válidos (`approved`/agregações fechamento) | KPI com draft misturado | Marca confiança executiva | CFO | 18/03/2026 | **Não** curto horizonte |
+| 9 | `explain_only` enforce **servidor** (não toggle browser-only spoofável) | Só cliente | Spoof UX fácil fora servidor | Seg + API | 08/05/2026 | Core **Não** |
+| 10 | Degrade determinístico se LLM indisponível | Erro em branco / fail-hard único | Resiliência redes pouco resilientes modelo cloud | Produto + Eng | 08/05/2026 | Sim copy apenas |
+| 11 | Lint + hooks segurança holding filtros estruturais vs hacks `useEffect` | Silenciar eslint hotspots | Sustain superfície risco SPA | Eng | 08/05/2026 | Sim |
+| 12 | Fail-open rate-limit RPC degrade **documentado** vs outages totais | Fail-hard sempre | adoção *[inferência até policy CFO]* resiliente onboarding | Eng + Seg | 08/05/2026 | Sim tunable |
+| 13 | Hub `/app/assistant` página dedicada além só painel embutido em submissões | Só lateral assistente | onboarding coaching onboarding menos ruído workspace cockpit | Produto | 08/05/2026 | Sim UX apenas |
+| 14 | **SPA web responsiva** como experiência mobile; **sem app iOS/Android nativo** até reavaliação pós Telemetry §15 | PWA/App Store paralelo já | Velocity Fase cockpit + foco segurança single deploy Vercel; promessa cliente condicionada baseline | PO + CTO | **09/05/2026** | Sim fase ≥3 |
 
----
+> 📌 **Dica:** registar deltas data vs commit Git quando mover decisões para ticketing formal (Jira/Wiki). FAQ §-1 FAQ-5 ↔ **#14** devem ficar lexicalmente sincronizados em futuras edições §4 PR fora âmbito.
 
 ## §14. Critérios de aceite globais consolidados
 
-1. **`admin/holding`** vê rede com filtros competência/regional/franquia (estado atual cockpit documentado projeto).
-2. **`regional_manager`** apenas carteira, filtros coherentes papel.
-3. **`franchise_user`** apenas sua unidade, impossibilitado edit fora drafts/reopened/adjust flows.
-4. **Agente não quebra** workflow nem faz cálculo paralelo aos fatos engine.
-5. **Respostas com base auditável** (documentação/glossário/controlador quando RAG oficial).
-6. **Edição menos fragmentada perceptível pelo franqueado** segundo métricas usabilidade (tempo ciclo primeira submissão).
-7. **Dashboard não consome drafts soltos**.
-8. **Datas prazos e competências** coerentes calendário **BRT** em browsers fora TZ Brasil (§12 smoke manual homologável).
-9. **Segurança**: RLS sempre prova regressão antes release assistente grandes mudanças.
-10. **Motor DRE cada release material** regressão automatizada aumentar cobertura `MC2`/margens deltas > limiar controlador quando definido quantitativamente.
+1. **`admin/holding`** vê rede com filtros competência/regional/franquia coerentes (estado atual cockpit documentado projeto).
+2. **`regional_manager`** apenas carteira regional, filtros coherentes papel (sem valores alheios editáveis).
+3. **`franchise_user`** apenas sua própria unidade; edição só em `draft` / `reopened` / `pending_adjustment` após fluxo institucional.
+4. **Agente DRE** não altera estado de workflow só via LLM; não “aprova”; não sobrescreve cálculos oficiais fora Postgres motor.
+5. **Respostas com base auditável** (documentação/glossário/RAG lexical quando oficial) — sem hallucinate `line_code` fora catálogo.
+6. **Edição menos fragmentada perceptível** pelo franqueado conforme métricas ciclo primeira submissão Telemetry §15 quando existir baseline.
+7. **Dashboard cockpit** não mistura KPI executivo com rascunhos — só dados em estados leitura executiva válidos.
+8. **Datas, prazos e competências** coerentes com calendário **BRT** (§12 — smoke manual TZ externa homologável + suites CI onde aplicável).
+9. **Segurança Postgres RLS** — regressão obrigatória antes de release com mudança material assistente/agente ou políticas relacionadas JWT↔submissões.
+10. **Motor DRE cada release:** regressões automatizadas cobertura `MC2`/margens/EBITDA em thresholds controlador institucional.
+11. **Eval agent (§9-bis)** — quando harness CI automatizado ligado ao [`dre-agent-evals.yaml`](./dre-agent-evals.yaml), **critérios v1 PASS** obrig execução em PR ou merge train conforme campo `blocking_release_from_phase`; falha cenário **`severity=critical`** bloqueia release major assistente até correção OU override documentado changelog §18 🆕
+12. 🆕 Catálogo de **failure modes comportamentais documentado** sincronizado com código e prompts (**50 cenários sintéticos** em YAML `schema_version: 1.0.0` — 10 por categoria **HLC, OSF, ACO, ICA, SPR**) + scoring **somente binário** (sem escalas tipo Likert) — ver [`dre-agent-evals.yaml`](./dre-agent-evals.yaml) e §9-bis.6.
 
 ---
 
@@ -471,6 +530,17 @@ Produto garante experiência **calendário civil Brasil (BRT)** mesmo com SO/nav
 | Cobertura aprovadas até deadline combinado interno | **[Não verificado]** | ≥ **70%** | ≥ **95%** | CFO | ciclo | proporções approved-vs-deadline |
 | Retrabalho longitudinal (reopens + suporte combinado) | **[Não verificado]** | ↓ **20%**/trim | ↓ **40%**/ano CFO | CFO+Produto | rolling trim/anual | comparação métricas devoluções + soporte combinado institucional |
 
+### §15.5 Guardrails métricas anti‑gaming
+
+> Inspirado em culturas métricas de produtos de alta escala (ex.: **Stripe** cadência honesta dashboards; **Linear** ciclo roadmap sem optimism bias inflacionado só para comunicação).
+
+- Baseline denominador **frozen** antes de comunicar deltas % externos — primeiro snapshot sem escolha “melhor segunda-feira disponível”.
+- Metas proporcionais a **counts reais Postgres** de franquias elegíveis (nunca universo teórico de rede inteira quando só piloto onboarding).
+- Novo denominador KPI ou inclusão país/regional ⇒ linha changelog **§18** + assinatura dupla **PO + CFO** registada (sem retroactive KPI sem nota causal).
+- Eventos Telemetry `first_open`→`submit` privilegiamento **instrumentação servidor/única fonte** — evitar self-report apenas questionário antes de SLA oficial.
+- Divergências **motor SQL vs UI preview** decididas regressão institucional; produto/marketing não “ajusta texto” só para ficar bonito KPI sem corrige bug.
+- Revisões semanais PO + Controller **spot check** proporção amostragem eval agent não autocurada só por eng team (dual control §9-bis quando catálogo eval operacionalizado).
+
 ---
 
 ## §16. Riscos e mitigações
@@ -504,7 +574,7 @@ Produto garante experiência **calendário civil Brasil (BRT)** mesmo com SO/nav
 | [`references/audit-app-logic-2026-05-08.md`](../references/audit-app-logic-2026-05-08.md) | auditorias UI RBAC papel |
 | [`references/audit-dre-agent-2026-05-08.md`](../references/audit-dre-agent-2026-05-08.md) | auditoria API agente servidor |
 | [`references/technical-implementation.md`](../references/technical-implementation.md) | **ROTAS/arquivos/migrações cruz §6** 🆕 |
-| [`docs/dre-agent-evals.yaml`](./dre-agent-evals.yaml) | **thresholds YAML eval agente §9‑bis** 🆕 |
+| [`docs/dre-agent-evals.yaml`](./dre-agent-evals.yaml) | behavioral contract YAML + cenários eval §9-bis · §14 (catálogo v1 quando `schema_version: 1.0.0`) |
 
 ---
 
@@ -512,11 +582,10 @@ Produto garante experiência **calendário civil Brasil (BRT)** mesmo com SO/nav
 
 | Versão | Data BRT | Origem | Notas majores |
 |--------|----------|--------|----------------|
+| **2.1** | **09/05/2026** | **Patch 1 cirúrgico (PRD-canonical)** | §0.5 plano baseline; §‑1 voz Maria/Carlos/Roberto + FAQ‑5 mobile refs §13-bis #14, §4, §15; §9-bis.6 estado catálogo eval (YAML); §12.1 regra competência e editabilidade; §13-bis coluna Data + decisão #14 SPA sem app nativo; §14 itens 11-12 CI eval e catálogo 50 cenários; §15.5 métricas anti-gaming |
 | **2.0** | 08/05/2026 | Refactor PROMPT MESTRE canónico | §-1 PR/FAQ cliente-first; §0 baselines **[Não verificado]**; JTBD §3; §6 só alto nível + `technical-implementation.md`; §9-bis contrato YAML `dre-agent-evals`; §13 critérios quantitativos+assinantes §13‑bis Decision Log; §15 KPIs tabeladas; §18 versionamento changelog |
 | **1.x** | ≤08/05/2026 | Consolidação docs filhos primeira onda PRD mono doc | Estado pré Promessa canónica v2 estrutura Amazon eval |
 
 ---
 
-**Fim PRD canónico v2.0** — manter coerência docs filhos; **nunca** silenciar flags `[Não verificado]` sem baseline institucional assinado.
-
-Estou seguindo as minhas instruções, chefe.
+**Fim PRD canónico v2.1** — manter coerência docs filhos; **nunca** silenciar flags `[Não verificado]` sem baseline institucional assinado.
