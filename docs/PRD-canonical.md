@@ -356,19 +356,19 @@ Review semanal obrigatório após mudanças grandes na API do agente; dupla rubr
 
 ### §9-bis.6 Estado atual do catálogo de evals
 
-Fonte sintética: [`docs/dre-agent-evals.yaml`](./dre-agent-evals.yaml) — deve evoluir de **scaffold (`schema_version` 0.x)** para **catálogo v1** com cenários sintéticos versionados CI (vide §14 ítems 11–12).
+Fonte sintética: [`docs/dre-agent-evals.yaml`](./dre-agent-evals.yaml) — **catálogo v1 merged** (`schema_version: 1.0.0`, **50** cenários sintéticos + `ci_config`); **runner Vitest**/harness automatizado CI permanece 🔴 até wiring no repo conforme campo `runner` YAML (vide §14 ítems 11–12).
 
 | Requisito mínimo (PRD) | Estado alvo Patch 1 | Rastreamento Git |
 |------------------------|---------------------|-------------------|
-| `meta.thresholds` v1 / v2 + scoring **binário** (sem Likert) | ✅ Obrigatório | YAML `thresholds.v1/v2` + `binary_pass_fail` |
-| BC-01 … BC-07 (“NUNCA”) catalogados como constraints | ✅ Obrigatório | Lista `behavioral_constraints` |
-| Catálogo **50** cenários (10 × 5 failure modes: HLC, OSF, ACO, ICA, SPR) | 🎯 Gate Fase≥1 quando CI existe | ✅ Quando YAML `schema_version: 1.0.0` + `meta.total_scenarios: 50` merged |
-| Pass rate eval v1 ≥ **95%** (runner automatizado) | 🔴 Harness Vitest sob `ci_config` YAML | Ligado quando PR altera `api/dre-agent.ts`, prompts ou RLS agente-relacionadas |
-| Novo comportamento falha prod sem linha YAML | 🔴 Falha política §9-bis | `fail_build_if` no YAML quando CI empacotado |
+| `meta.thresholds` v1 / v2 + scoring **binário** (sem Likert) | ✅ | YAML `thresholds.v1/v2` + `binary_pass_fail` |
+| BC-01 … BC-07 (“NUNCA”) catalogados como constraints | ✅ | Lista `behavioral_constraints` |
+| Catálogo **50** cenários (10 × 5 failure modes: HLC, OSF, ACO, ICA, SPR) | ✅ YAML v1 ENTREGA 2 | ✅ `schema_version: 1.0.0` + `meta.total_scenarios: 50` |
+| Pass rate eval v1 ≥ **95%** (runner automatizado) | 🎯 Gate Fase≥1 | 🔴 Harness Vitest sob `ci_config`; triggers listados YAML |
+| Novo comportamento falha prod sem linha YAML | 🔴 política §9-bis | `fail_build_if` quando CI empacotado |
 
 | Failure mode §9-bis | Label YAML | Estado documentação |
 |---------------------|------------|---------------------|
-| `hallucinated_line_code` | HLC-* | ✅ Catálogo v1 quando YAML 1.0 |
+| `hallucinated_line_code` | HLC-* | ✅ 10 cenários catálogo v1 |
 | `out_of_scope_franchise` | OSF-* | ✅ idem |
 | `attempted_calculation_override` | ACO-* | ✅ idem |
 | `injection_compliance_attempt` | ICA-* | ✅ idem |
@@ -574,7 +574,7 @@ Hierarquia de **editabilidade vs competência** (alinhamento workflow §3/`submi
 | [`references/audit-app-logic-2026-05-08.md`](../references/audit-app-logic-2026-05-08.md) | auditorias UI RBAC papel |
 | [`references/audit-dre-agent-2026-05-08.md`](../references/audit-dre-agent-2026-05-08.md) | auditoria API agente servidor |
 | [`references/technical-implementation.md`](../references/technical-implementation.md) | **ROTAS/arquivos/migrações cruz §6** 🆕 |
-| [`docs/dre-agent-evals.yaml`](./dre-agent-evals.yaml) | behavioral contract YAML + cenários eval §9-bis · §14 (catálogo v1 quando `schema_version: 1.0.0`) |
+| [`docs/dre-agent-evals.yaml`](./dre-agent-evals.yaml) | behavioral contract YAML `schema_version 1.0.0` + **50 cenários** eval §9-bis · §14 |
 
 ---
 
@@ -582,7 +582,7 @@ Hierarquia de **editabilidade vs competência** (alinhamento workflow §3/`submi
 
 | Versão | Data BRT | Origem | Notas majores |
 |--------|----------|--------|----------------|
-| **2.1** | **09/05/2026** | **Patch 1 cirúrgico (PRD-canonical)** | §0.5 plano baseline; §‑1 voz Maria/Carlos/Roberto + FAQ‑5 mobile refs §13-bis #14, §4, §15; §9-bis.6 estado catálogo eval (YAML); §12.1 regra competência e editabilidade; §13-bis coluna Data + decisão #14 SPA sem app nativo; §14 itens 11-12 CI eval e catálogo 50 cenários; §15.5 métricas anti-gaming |
+| **2.1** | **09/05/2026** | **Patch 1 + ENTREGA 2 YAML** | Patch 1: §0.5…§15.5 conforme histórico. ENTREGA 2 (mesma data BRT): [`dre-agent-evals.yaml`](./dre-agent-evals.yaml) `schema_version: 1.0.0`, 50 cenários (HLC/OSF/ACO/ICA/SPR), changelog arquivo 09/05/2026; §9-bis.6 PRD atualizado. |
 | **2.0** | 08/05/2026 | Refactor PROMPT MESTRE canónico | §-1 PR/FAQ cliente-first; §0 baselines **[Não verificado]**; JTBD §3; §6 só alto nível + `technical-implementation.md`; §9-bis contrato YAML `dre-agent-evals`; §13 critérios quantitativos+assinantes §13‑bis Decision Log; §15 KPIs tabeladas; §18 versionamento changelog |
 | **1.x** | ≤08/05/2026 | Consolidação docs filhos primeira onda PRD mono doc | Estado pré Promessa canónica v2 estrutura Amazon eval |
 
