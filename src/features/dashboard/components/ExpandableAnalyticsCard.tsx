@@ -1,5 +1,6 @@
 import { Maximize2, X } from 'lucide-react';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useId, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { Card, type CardProps } from '../../../components/ui/card';
 
 type Props = {
@@ -19,6 +20,7 @@ export function ExpandableAnalyticsCard({
   expandedContent,
   cardProps,
 }: Props) {
+  const titleId = useId();
   const [isExpanded, setIsExpanded] = useState(false);
   const [overlayReady, setOverlayReady] = useState(false);
 
@@ -72,41 +74,61 @@ export function ExpandableAnalyticsCard({
         {compactContent}
       </Card>
 
-      {isExpanded && (
-        <div className="expandable-overlay" role="dialog" aria-modal="true" aria-labelledby="expandable-title">
-          <div className="expandable-overlay__backdrop" onClick={() => setIsExpanded(false)} />
-          <div className="expandable-overlay__content">
-            <div className="expandable-overlay__header">
-              <div>
-                <h2 id="expandable-title" className="expandable-overlay__title">
-                  {title}
-                </h2>
-                {subtitle && <p className="expandable-overlay__subtitle">{subtitle}</p>}
-              </div>
-              <div className="expandable-overlay__actions">
-                {headerExtra}
-                <button
-                  type="button"
-                  className="btn btn--icon btn--ghost"
-                  onClick={() => setIsExpanded(false)}
-                  aria-label="Fechar"
-                  title="Fechar"
-                  autoFocus
-                >
-                  <X size={20} />
-                </button>
-              </div>
-            </div>
-            <div className="expandable-overlay__body">
-              {overlayReady ? expandedContent : (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>
-                  <p className="text-secondary">A carregar…</p>
+      {/* Portal: react-grid-layout aplica transform nos itens — position:fixed fica preso ao widget sem portal */}
+      {isExpanded && typeof document !== 'undefined'
+        ? createPortal(
+            <div
+              className="expandable-overlay"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={titleId}
+            >
+              <div
+                className="expandable-overlay__backdrop"
+                onClick={() => setIsExpanded(false)}
+                aria-hidden="true"
+              />
+              <div className="expandable-overlay__content">
+                <div className="expandable-overlay__header">
+                  <div>
+                    <h2 id={titleId} className="expandable-overlay__title">
+                      {title}
+                    </h2>
+                    {subtitle && <p className="expandable-overlay__subtitle">{subtitle}</p>}
+                  </div>
+                  <div className="expandable-overlay__actions">
+                    {headerExtra}
+                    <button
+                      type="button"
+                      className="btn btn--icon btn--ghost"
+                      onClick={() => setIsExpanded(false)}
+                      aria-label="Fechar"
+                      title="Fechar"
+                      autoFocus
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
                 </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+                <div className="expandable-overlay__body">
+                  {overlayReady ? expandedContent : (
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minHeight: 200,
+                      }}
+                    >
+                      <p className="text-secondary">A carregar…</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </>
   );
 }

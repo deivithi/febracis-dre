@@ -45,6 +45,18 @@ Em `AuditFeedWidget.tsx`, o `useMemo` filtrava `rows` por `(now - new Date(row.p
 
 ---
 
+## Dashboard expandível — overlay via React Portal (09/05/2026 BRT)
+
+**Sintoma:** ao clicar em "Expandir" nos widgets da secção «Painel personalizável», o modal não ocupava o ecrã — parecia um recorte ou sobreposição errada dentro do tile.
+
+**Causa raiz:** `react-grid-layout` usa `transform: translate(...)` nos itens. Em CSS, `position: fixed` dentro de ancestral com `transform` deixa de ser relativo ao viewport e fica **preso** ao tile — o overlay renderizava fora dos limites visíveis esperados.
+
+**Correção:** [`ExpandableAnalyticsCard.tsx`](../src/features/dashboard/components/ExpandableAnalyticsCard.tsx) passa o overlay com `createPortal(..., document.body)`. Títulos para `aria-labelledby` usam `useId()` por instância.
+
+**Docs PRD:** linha **`2.2-ux3`** no changelog em [`docs/PRD-canonical.md`](../docs/PRD-canonical.md).
+
+---
+
 ## Build Vercel limpo de TS errors — 09/05/2026 (BRT)
 
 **Sintoma anterior:** o último deploy READY (`dpl_GJGZ4mK7xMvcwV7gLjDkzqPfPs4T`, commit `dea140a`) ficou Ready apesar de o log de build emitir três `error TS` durante a compilação dos handlers em `api/*.ts`:
