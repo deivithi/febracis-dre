@@ -18,6 +18,34 @@
   overflow: auto;
 }
 
+/*
+ * UX5 — pintura full-height do widget no slot do react-grid-layout.
+ *
+ * O RGL reserva um slot fixo `h * rowHeight + (h-1) * marginY` (ex.: 384 px
+ * em h=9). Sem este bloco o `.card` interno fica com altura natural do
+ * conteúdo (~280-320 px em "Fila de revisão") e o restante do slot fica
+ * transparente — visível como gap entre o último cartão e a próxima
+ * secção «Vista do escopo». Padrão espelha `.holding-bento ... > .card`.
+ * Não afecta widgets sem `.card` (KPI / sparkline) por desenho.
+ */
+.dashboard-grid-tile__lazy {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-grid-tile__lazy > .card {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.dashboard-grid-tile__lazy > .card > .card__body {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 .dashboard-grid-tile__remove {
   position: absolute;
   top: var(--space-2, 8px);
