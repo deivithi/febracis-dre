@@ -4,7 +4,7 @@
 
 **Contrato de avaliações do agente / cenários (ENTREGA 2):** [`docs/dre-agent-evals.yaml`](../docs/dre-agent-evals.yaml).
 
-Última revisão documental: **08/05/2026 BRT** — datas e competências alinhadas ao calendário civil em **America/Sao_Paulo** (`brazilTimezone.ts`, `resolveDefaultReportingPeriod`, `formatDate`/`formatDateTime` em `formatters.ts`); cockpit **Holding** deriva competência `YYYY-MM` do mês BRT quando existe no snapshot. Auditoria lógica anterior: [`references/audit-app-logic-2026-05-08.md`](./audit-app-logic-2026-05-08.md). Dashboard: [`references/dashboard-ux-benchmark.md`](./dashboard-ux-benchmark.md); **Produção READY** — ver linha mais recente em **Raiz e URLs** após deploy.
+Última revisão documental: **08/05/2026 BRT** — datas e competências alinhadas ao calendário civil em **America/Sao_Paulo** (`brazilTimezone.ts`, `resolveDefaultReportingPeriod`, `formatDate`/`formatDateTime` em `formatters.ts`); cockpit **Holding** deriva competência `YYYY-MM` do mês BRT quando existe no snapshot. Auditoria lógica anterior: [`references/audit-app-logic-2026-05-08.md`](./audit-app-logic-2026-05-08.md). Dashboard: [`references/dashboard-ux-benchmark.md`](./dashboard-ux-benchmark.md); **Trilha go-live** (demo CEO + RBAC + smoke): [`references/go-live-trilha-a-checklist.md`](./go-live-trilha-a-checklist.md); **excelência UX / ondas PRD:** [`references/ux-excellence-roadmap.md`](./ux-excellence-roadmap.md). **Produção READY** — ver linha mais recente em **Raiz e URLs** após deploy.
 
 ## Raiz e URLs
 
@@ -34,6 +34,10 @@
 - **Supabase (produção canônica atual):** `vwxgrjjwbvdiaqxqbryk` — projeto `febracis-dre`, org `nayypuosrfhhrkorfszw`, região `sa-east-1`. Manter este projeto como produção; `gjocbbipuguapypxfbub` foi uma migração abortada/não canônica nesta rodada.
 - **Contas históricas / não canônicas:** `richardrios10000-5421s-projects` (`febracis-dre-phi`) e `deivithilopes-6933s-projects` (`febracis-dre-rho`) não são fonte de produção nesta decisão.
 - **Tela preta / envs ausentes no bundle:** [`src/lib/supabase.ts`](../src/lib/supabase.ts) **não** aborta mais o carregamento do módulo: expõe `getSupabaseConfig()` / `getSupabaseClient()` e um proxy `supabase` que só falha ao **usar** o cliente sem `VITE_*`. O login mostra aviso quando a configuração falta; `AppErrorBoundary` e o bootstrap em [`src/main.tsx`](../src/main.tsx) evitam `#root` vazio por exceções de render. **Para dados reais e auth**, continuam a ser obrigatórios `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` no **build** de Production e um deploy que os embuta — validar com `npm run smoke:prod` (opcional `SMOKE_STRICT=1`).
+
+### Go-live demo + gerência (Trilha A)
+
+Checklist consolidada (roteiro CEO, RBAC manual, smoke, ops): [`references/go-live-trilha-a-checklist.md`](./go-live-trilha-a-checklist.md). Roadmap UX/a11y e ondas pós-demo (PRD §13 / §9-bis): [`references/ux-excellence-roadmap.md`](./ux-excellence-roadmap.md).
 
 ### Checklist — app “verde” no browser (resumo)
 

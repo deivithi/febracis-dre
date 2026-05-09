@@ -41,6 +41,7 @@ Referências institucionais para **mentalidade** (densidade hierárquica, não c
 
 ## 4. Próximos passos (fora deste passe mínimo)
 
+- Planeamento executivo consolidado com scorecard UX e PRD §13: [`references/ux-excellence-roadmap.md`](./ux-excellence-roadmap.md); go-live/demo: [`references/go-live-trilha-a-checklist.md`](./go-live-trilha-a-checklist.md).
 - Design tokens globais + redução gradual de vidro/gradiente decorativo paralelo onde não agrega marca.
 - RPC/materialized view apenas se volumetria real justificar medição antes (custo × ganho vs fetch paginado).
 

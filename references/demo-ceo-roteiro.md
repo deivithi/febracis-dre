@@ -1,5 +1,7 @@
 # Roteiro de demo — CEO / diretoria (DRE + assistente)
 
+**Checklist go-live / sign-off (Trilha A):** [go-live-trilha-a-checklist.md](./go-live-trilha-a-checklist.md).
+
 Duração sugerida: 8–12 minutos. Ambiente: produção ou staging com dados de demo.
 
 ## 1. Contexto (1 min)
