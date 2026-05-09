@@ -21,6 +21,7 @@ Ao finalizar QUALQUER tarefa neste projeto, o agente DEVE executar obrigatoriame
 - [ ] Todas as alterações commitadas?
 - [ ] Push feito para origin/main?
 - [ ] Deploy na Vercel iniciado (verificar se o build passou)?
+- [ ] Ao tocar em widgets do `CustomizableDashboard`, validar contrato de altura (ver `.cursor/rules/dashboard-widget-checklist.mdc`).
 
 > Esta regra existe porque o usuário pediu isso muitas vezes. NÃO IGNORE.
 

@@ -19,10 +19,11 @@ Instruções **específicas** desta pasta; combinam com o @AGENTS.md na raiz do 
 - [ ] Alterações commitadas?
 - [ ] `git push origin main` executado?
 - [ ] Build na Vercel passou?
+- [ ] Se a alteração tocou widgets do `CustomizableDashboard` / `defaultLayouts`, contrato de altura validado conforme `.cursor/rules/dashboard-widget-checklist.mdc`?
 
 > **Por que esta regra existe:** o usuário solicitou isso repetidamente. Ignorar este protocolo é uma falha grave do agente.
 >
-> Regra também em: `.cursor/rules/task-completion-checklist.mdc` (alwaysApply: true)
+> Regras também em: `.cursor/rules/task-completion-checklist.mdc` e `.cursor/rules/dashboard-widget-checklist.mdc` (ambas `alwaysApply: true`).
 
 ---
 

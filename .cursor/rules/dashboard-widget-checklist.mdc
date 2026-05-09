@@ -1,0 +1,83 @@
+---
+description: Contrato de altura para widgets do CustomizableDashboard (RGL) — evita gap residual entre cartões e a próxima secção da página.
+globs: ["src/features/dashboard/**", "src/features/dashboard/customizable/**"]
+alwaysApply: true
+---
+
+# Dashboard widgets — regra inviolável de altura
+
+> Existe porque o gap residual abaixo do painel customizável já voltou em mais de um deploy. Toda alteração em `CustomizableDashboard`, em widgets do painel ou em `defaultLayouts` DEVE passar por este contrato antes de subir para produção.
+
+## Contexto técnico
+
+`CustomizableDashboard` usa `react-grid-layout` (RGL). O RGL **reserva um slot fixo** para cada widget com altura calculada por:
+
+```
+slotHeight = h * rowHeight + (h - 1) * marginY
+```
+
+Se o `.card` interno do widget NÃO flexar para preencher 100 % do slot, o utilizador vê espaço transparente entre o último cartão do painel e a próxima secção da página (ex.: «Vista do escopo»). Aumentar `h` sem corrigir o flex **agrava** o gap em vez de eliminar.
+
+Padrão canónico já existente: `.holding-bento ... > .card { height: 100% }` em `DashboardPage.css`. Padrão canónico actual do painel customizável: bloco `.dashboard-grid-tile__lazy > .card` em `src/features/dashboard/customizable/CustomizableDashboard.css` (commit `bacaabe`).
+
+## Regra 1 — Slot vs Card (CSS)
+
+Todo widget renderizado dentro de `.dashboard-grid-tile` (RGL) que use o `.card` padrão DEVE manter este bloco intacto:
+
+```css
+.dashboard-grid-tile__lazy {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-grid-tile__lazy > .card {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.dashboard-grid-tile__lazy > .card > .card__body {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+```
+
+Sem `min-height: 0` em flex column, o conteúdo interno (tabelas, listas) impede o card de encolher e o slot continua maior que o card.
+
+## Regra 2 — Antes de mudar `h` em `defaultLayouts`
+
+1. Confirmar **visualmente em refresh real do browser** (não só DevTools redimensionado) que o card preenche 100 % do slot actual.
+2. Só depois subir `h` em `src/features/dashboard/customizable/defaultLayouts.ts`.
+3. Aumentar `h` sem ter o flex da Regra 1 em ordem **AGRAVA** o gap.
+
+## Regra 3 — Lazy migration `MIN_HEIGHT_BY_TYPE`
+
+Layouts persistidos em `dashboard_layouts` (Supabase) por utilizadores antigos não recebem o novo default automaticamente. Por isso, ao subir `h` no `defaultLayouts.ts`:
+
+1. Subir o mínimo correspondente em `MIN_HEIGHT_BY_TYPE` dentro de `src/features/dashboard/customizable/CustomizableDashboard.tsx`.
+2. Isso força `isLayoutOutdated()` a detectar o layout antigo e re-aplicar o default — sem migração SQL.
+3. Não fazer isso ⇒ utilizadores existentes continuam com o layout «crushed» antigo.
+
+## Regra 4 — Excepções (`KpiWidget` / `SparklineWidget`)
+
+`KpiWidget` e `SparklineWidget` **não usam o padrão `.card` cheio** — têm pintura própria do conteúdo. A Regra 1 não se aplica a esses tipos. Os mínimos `kpi: 4` e `sparkline: 3` em `MIN_HEIGHT_BY_TYPE` continuam válidos por outros motivos (legibilidade do número e do gráfico).
+
+## Checklist de PR (obrigatório)
+
+Para qualquer PR que toque em `CustomizableDashboard.tsx`, `CustomizableDashboard.css`, `defaultLayouts.ts`, widgets do painel ou estilos do `.card` consumidos pelo painel:
+
+- [ ] Card flexa para 100 % do slot (validação visual em refresh real do browser, não só DevTools).
+- [ ] Sem espaço transparente entre o último widget e a próxima secção da página (ex.: «Vista do escopo»).
+- [ ] Se mudou `h` em `defaultLayouts.ts`, `MIN_HEIGHT_BY_TYPE` foi actualizado em conjunto.
+- [ ] Tipografia, padding e copy interna dos cartões NÃO foram alterados sem nota explícita no PRD §18.
+- [ ] `npm run lint` && `npm run build` && `npm run test` passam.
+- [ ] Entrada em `docs/PRD-canonical.md` §18 (changelog) registando a mudança.
+
+## Referências
+
+- Padrão espelho: `.holding-bento ... > .card` em `src/features/dashboard/DashboardPage.css`.
+- Implementação canónica: `src/features/dashboard/customizable/CustomizableDashboard.css` (linhas 21–47).
+- Lazy migration: `src/features/dashboard/customizable/CustomizableDashboard.tsx` (`MIN_HEIGHT_BY_TYPE`, `isLayoutOutdated`).
+- Histórico: PRD §18 entradas `2.2-ux2`, `2.2-ux4`, `2.2-ux5`.
