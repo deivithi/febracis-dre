@@ -1,4 +1,4 @@
-import { toNumber } from '../../utils/formatters';
+import { toNumber } from '../../utils/formatters.js';
 
 const currencyInputFormatter = new Intl.NumberFormat('pt-BR', {
   minimumFractionDigits: 2,

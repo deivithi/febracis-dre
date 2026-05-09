@@ -1,4 +1,4 @@
-import { BRAZIL_IANA_TIMEZONE } from './brazilTimezone';
+import { BRAZIL_IANA_TIMEZONE } from './brazilTimezone.js';
 
 const currencyFormatter = new Intl.NumberFormat('pt-BR', {
   style: 'currency',

@@ -1,4 +1,4 @@
-import type { FranchiseRecord, RegionalRecord, RoleRecord } from '../auth/auth.types';
+import type { FranchiseRecord, RegionalRecord, RoleRecord } from '../auth/auth.types.js';
 
 export type NumericValue = number | string | null;
 

@@ -1,4 +1,4 @@
-import type { AccessProfile, DashboardScope, RoleCode, RoleRecord, ScopeRecord } from './auth.types';
+import type { AccessProfile, DashboardScope, RoleCode, RoleRecord, ScopeRecord } from './auth.types.js';
 
 const ROLE_PRIORITY: RoleCode[] = [
   'system_admin',
