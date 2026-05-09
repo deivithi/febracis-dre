@@ -9,8 +9,8 @@ import {
   Loader2,
   MapPin,
   RefreshCw,
+  ScrollText,
   SkipForward,
-  Sparkles,
   List,
 } from 'lucide-react';
 import type { AgentMessageRow, DreInputCatalogLine } from '../shared/portal.types';
@@ -236,12 +236,12 @@ export function DreAssistantPanel({
         {!enabled ? (
           <div className="dre-assistant__empty">
             <div className="dre-assistant__empty-icon">
-              <Sparkles />
+              <ScrollText aria-hidden />
             </div>
-            <h4>Abra um rascunho para ativar o assistente</h4>
+            <h4>Abra um rascunho para usar o painel de orientação</h4>
             <p>
-              Com uma submissão ativa, indico o próximo campo, o formato da resposta e mantenho o histórico desta
-              jornada.
+              Com uma submissão ativa, indico o próximo campo, o formato esperado e mantenho o histórico desta
+              submissão — em linha com o catálogo e as validações oficiais.
             </p>
           </div>
         ) : (

@@ -40,6 +40,22 @@ Pontuação **subjetiva até auditoria formal**; atualizar após cada onda. Refe
 | **2.5.5 Alvo (44×44 CSS px)** | `--touch-target-min` em `tokens.css`; botões segmento hub `.assistant-hub-segment__btn` com `min-height` do token |
 | **2.3.3 Animar por interação** | `@media (prefers-reduced-motion: reduce)` em `SubmissionsPage.css`: mensagens, composer `--pending` (animação **e** sombra desativadas), hover do enviar |
 
+### 1.2 Shell visual / anti-padrão “demo de IA”
+
+Objetivo: **chrome institucional** (fundo e navegação refinados) sem competir com cards/KPIs; linguagem visual e textual **à prova de “produto genérico de IA”** (menos ícones decorativos tipo “magia”, mesh premium **só** onde o produto já isolava — painel do assistente / login).
+
+| Critério | Evidência / onde olhar |
+|----------|-------------------------|
+| **Tokens de shell** | `tokens.css`: `--shell-bg-base`, `--shell-bg-gradient`, `--shell-vignette`, `--shell-edge-highlight`, `--shell-sidebar-*`, `--shell-main-wash`, `--shell-header-*`, `--shell-login-mesh` |
+| **Backdrop da app autenticada** | `.app-layout::before` / `::after` em `layouts/app/AppLayout.css` — gradiente + vignette discreta; ruído SVG com opacidade baixa **desligado** em `prefers-reduced-motion: reduce` |
+| **Sidebar / header / área principal** | `styles/components/layout.css` — sidebar com gradiente + highlight de borda; item ativo com **barra lateral** ouro (menos “glow” genérico); header translúcido com `--shell-header-bg`; `.page-container` com lavagem `--shell-main-wash` e `z-index` sobre o backdrop |
+| **Login alinhado** | `LoginPage.css` usa `--shell-bg-base` e `--shell-login-mesh` (mesma família que o shell, sem espelhar `--chat-canvas-mesh` no dashboard) |
+| **Ícones / copy** | `DreAssistantPanel`, `GuidePage`, `AdminPage`: ícones institucionais (`ScrollText`, `Landmark`, `ShieldCheck`, `BookOpenText`); copy orientada a **controladoria / auditoria**, não “efeito mágico” |
+| **Contraste** | Texto da navegação continua sobre superfícies `--bg-surface` / sidebar existentes — validar AA em smoke manual após mudança de fundo |
+| **Motion** | Sem animação nova no fundo; ruído estático removido para utilizadores com reduced-motion |
+
+Checklist rápido de smoke visual: Dashboard → Submissões (painel orientação) → Assistente com thread → Login (logout); confirmar que apenas o canvas do chat mantém `--chat-canvas-mesh` onde já aplicado.
+
 ---
 
 ## 2. Backlog ondulado (P0 / P1 / P2)
@@ -101,4 +117,4 @@ Roadmap institucional completo na tabela **§13** do PRD (coleta guiada → scor
 
 ---
 
-**Última revisão:** 08/05/2026 BRT — scorecard preenchido (evidência onda 0–3 + [audit-routes-states-ux-wave](./audit-routes-states-ux-wave.md)); P0 benchmark §2 tickado; WCAG §1.1 documentado.
+**Última revisão:** 09/05/2026 BRT — §1.2 Shell visual / anti-demo IA (tokens + backdrop + sidebar/header + login mesh compartilhado); scorecard e WCAG §1.1 mantidos.

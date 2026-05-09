@@ -5,8 +5,8 @@ import {
   Calculator,
   ClipboardCheck,
   Eye,
+  Landmark,
   ShieldCheck,
-  Sparkles,
   Users,
 } from 'lucide-react';
 import { useAccessProfile } from '../auth/useAccessProfile';
@@ -37,10 +37,10 @@ const platformPillars = [
     icon: Building2,
   },
   {
-    title: 'Assistente guiado (chat)',
+    title: 'Orientação na submissão',
     description:
-      'Em Submissões, o assistente usa a paleta Febracis e compositor fixo. Quem opera a submissão pode gravar campos pela conversa; quem está só em leitura fica em modo orientação. Com API: respostas online; sem chave: modo guiado local.',
-    icon: Sparkles,
+      'Em Submissões, o painel orienta o preenchimento com comandos estáveis e histórico por submissão. Quem edita pode registrar valores pela conversa; só leitura permanece em modo orientação. Com API: motor online; sem chave: modo guiado local determinístico.',
+    icon: BookOpenText,
   },
   {
     title: 'Revisão e governança',
@@ -72,7 +72,7 @@ const roleMatrix: RoleMatrixRow[] = [
   {
     role: 'Regional manager',
     scope: 'Regional vinculada',
-    can: 'Compara franquias da carteira, acompanha dashboards e enxerga submissões do escopo em modo de leitura; o assistente DRE responde só em orientação (sem preencher a DRE por conversa).',
+    can: 'Compara franquias da carteira, acompanha dashboards e enxerga submissões do escopo em modo de leitura; o painel DRE responde só em orientação (sem aplicar valores por conversa).',
     accent: 'gold',
   },
   {
@@ -92,7 +92,7 @@ const roleMatrix: RoleMatrixRow[] = [
 const franchiseJourney = [
   'Seleciona a coligada, a competência e o evento.',
   'Cria ou reutiliza a versão corrente da submissão.',
-  'Preenche somente as linhas de input da DRE — pode usar o assistente (Olá, atalhos ou texto livre; Enter envia, Shift+Enter quebra linha).',
+  'Preenche somente as linhas de input da DRE — pode usar o painel de orientação (Olá, atalhos ou texto livre; Enter envia, Shift+Enter quebra linha).',
   'Vê o preview de RBV, MC1, MC2 e EBITDA em tempo real.',
   'Salva rascunho, executa validações e envia para revisão.',
 ];
@@ -181,8 +181,8 @@ const mondayDemoScript = [
   {
     stepNumber: 3,
     title: 'Simular a jornada da franquia',
-    description:
-      'Abrir Submissões, selecionar coligada, competência e evento, mostrar o assistente (thread + compositor), editar linhas da DRE e destacar o preview automático.',
+      description:
+      'Abrir Submissões, selecionar coligada, competência e evento, mostrar o painel de orientação (thread + compositor), editar linhas da DRE e destacar o preview automático.',
   },
   {
     stepNumber: 4,
@@ -229,7 +229,7 @@ export function GuidePage() {
 
         <div className="guide-hero__panel glass">
           <div className="guide-hero__panel-header">
-            <Sparkles size={16} aria-hidden />
+            <Landmark size={16} aria-hidden />
             <span>Tese central</span>
           </div>
           <p className="guide-hero__panel-text">
