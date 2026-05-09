@@ -189,20 +189,20 @@ function defaultBlueprint(type: WidgetType): Omit<WidgetConfig, 'id'> {
     case 'trend-chart':
       return {
         type,
-        layout: { x: 0, y: 0, w: 8, h: 7, minW: 4, minH: 5 },
+        layout: { x: 0, y: 0, w: 8, h: 8, minW: 6, minH: 6 },
         props: { metric: 'ebitda_2' },
       };
     case 'pending-queue':
       return {
         type,
-        layout: { x: 0, y: 0, w: 12, h: 7, minW: 4, minH: 5 },
-        props: { limit: 10 },
+        layout: { x: 0, y: 8, w: 12, h: 8, minW: 6, minH: 6 },
+        props: { limit: 5 },
       };
     case 'audit-feed':
       return {
         type,
-        layout: { x: 0, y: 0, w: 6, h: 7, minW: 4, minH: 5 },
-        props: { limit: 8 },
+        layout: { x: 8, y: 0, w: 4, h: 8, minW: 3, minH: 6 },
+        props: { limit: 5 },
       };
     default:
       return {
