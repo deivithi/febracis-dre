@@ -42,6 +42,14 @@ import {
 import type { ApiLogContext } from './lib/log.js';
 import { logContext, logJson } from './lib/log.js';
 
+/**
+ * Função pode demorar (LLM + Supabase). Produção deve alinhar com `maxDuration` na Vercel
+ * (`vercel.json`) e opcionalmente `export const config` abaixo.
+ */
+export const config = {
+  maxDuration: 60,
+};
+
 /** Re-export para contratos/testes que importam a partir deste módulo. */
 export {
   AGENT_USER_MESSAGE_MAX_LENGTH,
@@ -56,6 +64,11 @@ const DEFAULT_OPENAI_MODEL = 'gpt-5.4-mini';
 
 /** URL canónica para cabeçalhos OpenRouter quando `OPENROUTER_APP_URL` não está definida. */
 const DEFAULT_OPENROUTER_APP_URL = 'https://febracis-dre.vercel.app';
+
+/** Evita ocupar até ao limite da função só com espera pelo LLM; alinha com cliente ~55s + margem servidor. */
+const parsedLlmTimeout = Number.parseInt(process.env.DRE_AGENT_LLM_HTTP_TIMEOUT_MS ?? '', 10);
+const DRE_AGENT_LLM_HTTP_TIMEOUT_MS =
+  Number.isFinite(parsedLlmTimeout) && parsedLlmTimeout > 2_000 ? Math.min(parsedLlmTimeout, 54_000) : 52_000;
 
 const DRE_AGENT_ROUTE = '/api/dre-agent';
 
@@ -127,7 +140,16 @@ const TurnState = Annotation.Root({
 });
 
 function jsonResponse(res: AgentApiResponse, status: number, body: unknown) {
-  return res.status(status).json(body);
+  try {
+    JSON.stringify(body);
+    return res.status(status).json(body);
+  } catch {
+    /** Corpo incomum (ex.: ciclo em objeto) não deve derrubar a função com 500 HTML opaco. */
+    return res.status(500).json({
+      error: 'Erro ao serializar resposta do assistente.',
+      code: 'RESPONSE_SERIALIZATION',
+    });
+  }
 }
 
 interface SafeError {
@@ -199,6 +221,22 @@ export function classifyAgentError(error: unknown): SafeError {
   }
   if (lower.includes('invalid request') || lower.includes('zod')) {
     return { status: 400, code: 'INVALID_INPUT', message: 'Dados invalidos.' };
+  }
+
+  /** Evita mismatch com timeout da Vercel / HTTP client (500 HTML sem JSON útil para o SPA). */
+  if (
+    lower.includes('abort') ||
+    lower.includes('timeout') ||
+    lower.includes('timed out') ||
+    lower.includes('etimedout') ||
+    lower.includes('econnreset') ||
+    lower.includes('socket hang up')
+  ) {
+    return {
+      status: 504,
+      code: 'UPSTREAM_TIMEOUT',
+      message: 'O assistente demorou a responder. Tente novamente em alguns segundos.',
+    };
   }
 
   return { status: 500, code: 'INTERNAL', message: 'Erro interno no assistente.' };
@@ -610,11 +648,15 @@ async function computeInlineFieldSuggestion(input: {
           apiKey: openAiSdkKey!,
           model: getEnv('OPENAI_MODEL', DEFAULT_OPENAI_MODEL) ?? DEFAULT_OPENAI_MODEL,
           temperature: 0.1,
+          timeout: DRE_AGENT_LLM_HTTP_TIMEOUT_MS,
+          maxRetries: 1,
         })
       : new ChatOpenAI({
           apiKey: openrouterKey!,
           model: getEnv('OPENROUTER_MODEL', DEFAULT_OPENROUTER_MODEL) ?? DEFAULT_OPENROUTER_MODEL,
           temperature: 0.1,
+          timeout: DRE_AGENT_LLM_HTTP_TIMEOUT_MS,
+          maxRetries: 1,
           configuration: {
             baseURL: 'https://openrouter.ai/api/v1',
             defaultHeaders: {
@@ -769,11 +811,15 @@ async function runModelTurn(input: {
           apiKey: openAiSdkKey!,
           model: getEnv('OPENAI_MODEL', DEFAULT_OPENAI_MODEL) ?? DEFAULT_OPENAI_MODEL,
           temperature: 0.15,
+          timeout: DRE_AGENT_LLM_HTTP_TIMEOUT_MS,
+          maxRetries: 1,
         })
       : new ChatOpenAI({
           apiKey: openrouterKey!,
           model: getEnv('OPENROUTER_MODEL', DEFAULT_OPENROUTER_MODEL) ?? DEFAULT_OPENROUTER_MODEL,
           temperature: 0.15,
+          timeout: DRE_AGENT_LLM_HTTP_TIMEOUT_MS,
+          maxRetries: 1,
           configuration: {
             baseURL: 'https://openrouter.ai/api/v1',
             defaultHeaders: {
@@ -955,7 +1001,7 @@ const workflow = new StateGraph(TurnState)
   .addEdge('finalize_response', END)
   .compile();
 
-export default async function handler(req: AgentApiRequest, res: AgentApiResponse) {
+async function dreAgentHandlerCore(req: AgentApiRequest, res: AgentApiResponse) {
   const ctx = logContext(DRE_AGENT_ROUTE, req.headers);
 
   if (req.method !== 'POST') {
@@ -1330,5 +1376,28 @@ export default async function handler(req: AgentApiRequest, res: AgentApiRespons
       ...(isOp || !(error instanceof Error) ? {} : { errorName: error.name }),
     });
     return jsonResponse(res, safe.status, { error: safe.message, code: safe.code });
+  }
+}
+
+export default async function handler(req: AgentApiRequest, res: AgentApiResponse) {
+  try {
+    return await dreAgentHandlerCore(req, res);
+  } catch (fatal) {
+    const ctx = logContext(DRE_AGENT_ROUTE, req.headers);
+    try {
+      logJson({
+        ...ctx,
+        level: 'error',
+        msg: 'dre_agent_fatal',
+        event: 'handler_unhandled',
+        detail: fatal instanceof Error ? fatal.message : String(fatal),
+      });
+    } catch {
+      /* logging failure must not mask a JSON error body */
+    }
+    return jsonResponse(res, 500, {
+      error: 'Erro interno no assistente.',
+      code: 'INTERNAL',
+    });
   }
 }

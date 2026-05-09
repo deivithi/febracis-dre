@@ -57,9 +57,23 @@ async function fetchFieldSuggestion(params: {
       context: {},
     }),
   });
-  const body = (await res.json()) as FieldSuggestApiResponse & { error?: string; code?: string };
+  const rawText = await res.text();
+  let body: FieldSuggestApiResponse & { error?: string; code?: string };
+  try {
+    body = rawText
+      ? (JSON.parse(rawText) as FieldSuggestApiResponse & { error?: string; code?: string })
+      : ({} as FieldSuggestApiResponse & { error?: string; code?: string });
+  } catch {
+    const snippet = rawText.replace(/\s+/g, ' ').trim().slice(0, 180);
+    throw new Error(
+      snippet.length > 0
+        ? `Assistente (${res.status}). Resposta não-JSON. Trecho: ${snippet}`
+        : `Assistente (${res.status}). Corpo vazio ou ilegível.`,
+    );
+  }
   if (!res.ok) {
-    throw new Error(body.error ?? `Assistente (${res.status})`);
+    const ref = typeof body.code === 'string' && body.code.trim() ? ` (${body.code.trim()})` : '';
+    throw new Error(`${body.error ?? 'Falha ao sugerir campo.'}${ref}`);
   }
   return body;
 }

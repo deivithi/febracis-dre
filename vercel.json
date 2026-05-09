@@ -5,6 +5,11 @@
       "NODE_OPTIONS": "--max-old-space-size=8192"
     }
   },
+  "functions": {
+    "api/dre-agent.ts": {
+      "maxDuration": 60
+    }
+  },
   "rewrites": [
     {
       "source": "/((?!api/).*)",

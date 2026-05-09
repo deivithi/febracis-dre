@@ -270,6 +270,15 @@ describe('classifyAgentError + AgentOperationalError', () => {
     expect(classifyAgentError(new Error('Sessao do assistente nao encontrada.')).code).toBe('SESSION_NOT_FOUND');
     expect(classifyAgentError(new Error('Usuario autenticado nao encontrado')).code).toBe('UNAUTHENTICATED');
   });
+
+  it('mapeia timeout / socket como 504 UPSTREAM_TIMEOUT', () => {
+    expect(classifyAgentError(new Error('Request timed out'))).toEqual(
+      expect.objectContaining({ status: 504, code: 'UPSTREAM_TIMEOUT' }),
+    );
+    expect(classifyAgentError(new Error('socket hang up'))).toEqual(
+      expect.objectContaining({ status: 504, code: 'UPSTREAM_TIMEOUT' }),
+    );
+  });
 });
 
 function makeJsonRes() {

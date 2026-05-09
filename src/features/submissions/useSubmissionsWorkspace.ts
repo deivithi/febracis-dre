@@ -578,6 +578,7 @@ export function useSubmissionsWorkspace(opts?: SubmissionsWorkspaceOptions) {
         throw fetchError;
       }
 
+      const rawText = await response.text();
       let body: {
         error?: string;
         code?: string;
@@ -587,19 +588,24 @@ export function useSubmissionsWorkspace(opts?: SubmissionsWorkspaceOptions) {
         session_state_patch?: Record<string, unknown>;
       };
       try {
-        body = (await response.json()) as {
-          error?: string;
-          code?: string;
-          result?: DreAssistantTurnResult;
-          flow_checkpoint?: Record<string, unknown>;
-          interaction_mode?: string;
-          session_state_patch?: Record<string, unknown>;
-        };
+        body = rawText
+          ? (JSON.parse(rawText) as typeof body)
+          : {};
       } catch {
+        const snippet = rawText
+          .slice(0, 220)
+          .replace(/\s+/g, ' ')
+          .trim();
+        const hint504 =
+          response.status === 504 || /timeout|timed out|504/i.test(snippet || rawText.slice(0, 80))
+            ? ' Pedido ao servidor excedeu o tempo — tente novamente.'
+            : '';
         throw new Error(
           response.status === 404
             ? 'Rota do assistente nao encontrada. Em desenvolvimento local, confira o proxy do Vite ou use vercel dev.'
-            : `Assistente indisponivel (HTTP ${response.status}).`,
+            : snippet.length > 0
+              ? `Assistente indisponivel (HTTP ${response.status}). Resposta nao-JSON.${hint504} Trecho: ${snippet}`
+              : `Assistente indisponivel (HTTP ${response.status}). Corpo de resposta vazio ou ilegivel.${hint504}`,
         );
       }
 

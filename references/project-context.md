@@ -17,6 +17,12 @@ Checklist (auditoria automática neste repositório):
 
 **Nota:** smoke passou em **build + lint + testes + E2E smoke**; isto **não** garante cada botão ou fluxo manual na UI.
 
+### Assistente DRE — HTTP 500 / corpo não-JSON (correção 09/05/2026 BRT)
+
+Diagnóstico operacional típico: o cliente (`useSubmissionsWorkspace`) fazia `response.json()` sobre respostas **500/504/HTML** ou vazias (ex.: timeout da função na Vercel antes do handler devolver JSON), gerando mensagem genérica.
+
+Correções aplicadas no código: `maxDuration: 60` para `api/dre-agent.ts` (`vercel.json` + `export const config`); **`jsonResponse`** com validação prévia via `JSON.stringify`; **`handler` com `try/catch` fatal**; **`classifyAgentError`** mapeia timeout/socket → `504` + `UPSTREAM_TIMEOUT`; **`ChatOpenAI`** com `timeout`/`maxRetries`; cliente faz **`text()` + `JSON.parse`** com snippet e sugere retry em timeouts; igual padrão em `useFieldSuggestion`.
+
 ### Mapa de atividades — Guia `/app/guide` e subrotas (G01–G15)
 
 Leitura **evidence-based** a partir de comentários `Gxx` e ficheiros em `src/features/guide/` (lote UX “excelência Guia”). **Arquitectura actual:** **hub** em `/app/guide` (`GuideHubPage`) + **subpáginas** reais (`/app/guide/fluxo`, `pilares`, `acessos`, `jornadas`, `demo`, `logica-dre`) com layout partilhado `GuideShell.tsx`, breadcrumb estável por rota (`guideBreadcrumbForPathname` em `guideNav.ts`), **subnavegação** `GuideSubNav` e metadados `useGuideShellMeta.ts`. Links antigos `#âncora` na página única são redireccionados via `LEGACY_GUIDE_HASH_TO_PATH`. Estilos globais: **`GuidePage.css`**. O projeto **não** usa Tailwind na Guia — layout via CSS e tokens (`tokens.css`, `typography.css`).
