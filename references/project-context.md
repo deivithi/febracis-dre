@@ -1,5 +1,7 @@
 # Febracis DRE — contexto do projeto (fonte de verdade operacional)
 
+**PRD canónico (produto + arquitetura consolidados):** [`docs/PRD-canonical.md`](../docs/PRD-canonical.md).
+
 Última revisão documental: **08/05/2026 BRT** — datas e competências alinhadas ao calendário civil em **America/Sao_Paulo** (`brazilTimezone.ts`, `resolveDefaultReportingPeriod`, `formatDate`/`formatDateTime` em `formatters.ts`); cockpit **Holding** deriva competência `YYYY-MM` do mês BRT quando existe no snapshot. Auditoria lógica anterior: [`references/audit-app-logic-2026-05-08.md`](./audit-app-logic-2026-05-08.md). Dashboard: [`references/dashboard-ux-benchmark.md`](./dashboard-ux-benchmark.md); **Produção READY** — ver linha mais recente em **Raiz e URLs** após deploy.
 
 ## Raiz e URLs

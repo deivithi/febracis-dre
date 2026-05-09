@@ -29,4 +29,5 @@ Lista completa e excepções na secção **“Protocolo de encerramento obrigat�
 
 ## Referências
 
+- **PRD canónico único de produto+arquitetura (consolidado):** [`docs/PRD-canonical.md`](./docs/PRD-canonical.md) — ler antes de grandes épicos; operação/deploy continua dominada por `references/project-context.md`.
 - Regras com glob no monorepo: `.cursor/rules/stack-febracis-dre.mdc`
