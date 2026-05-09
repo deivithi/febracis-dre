@@ -2,12 +2,12 @@ import { ClipboardList } from 'lucide-react';
 import type { CurrentSubmissionRow } from '../../shared/portal.types';
 import { formatPeriodLabel, formatStatusLabel, getStatusVariant } from '../../../utils/formatters';
 
-type Props = { rows: CurrentSubmissionRow[] };
+type Props = { rows: CurrentSubmissionRow[]; className?: string };
 
-export function RecentSubmissionsCard({ rows }: Props) {
+export function RecentSubmissionsCard({ rows, className = '' }: Props) {
   if (!rows.length) {
     return (
-      <div className="card card--v-kpi">
+      <div className={`card card--v-kpi ${className}`.trim()}>
         <div className="card__header">
           <h3 className="card__title">Últimas DREs do período</h3>
         </div>
@@ -24,7 +24,7 @@ export function RecentSubmissionsCard({ rows }: Props) {
   }
 
   return (
-    <div className="card card--v-kpi">
+    <div className={`card card--v-kpi ${className}`.trim()}>
       <div className="card__header">
         <h3 className="card__title">Últimas DREs do período</h3>
       </div>

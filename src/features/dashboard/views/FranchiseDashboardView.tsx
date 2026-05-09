@@ -139,12 +139,12 @@ export function FranchiseDashboardView({
         }
         sidebar={
           <div className="dashboard__side">
-            <Card variant="kpi">
-              <div className="card__header">
+            <Card variant="kpi" className="card--dense">
+              <div className="card__header card__header--dense">
                 <h3 className="card__title">Status do período</h3>
               </div>
-              <div className="card__body">
-                <div className="detail-list">
+              <div className="card__body card__body--dense-static">
+                <div className="detail-list detail-list--tight">
                   <div className="detail-list__item">
                     <span className="detail-list__label">Competência</span>
                     <span className="detail-list__value competence-etiquette">
@@ -194,7 +194,7 @@ export function FranchiseDashboardView({
               </div>
             </Card>
 
-            <RecentSubmissionsCard rows={snapshot.currentSubmissions} />
+            <RecentSubmissionsCard rows={snapshot.currentSubmissions} className="card--dense" />
           </div>
         }
       />

@@ -1,6 +1,9 @@
+import type { ColumnDef } from '@tanstack/react-table';
 import { ClipboardList } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Card } from '../../components/ui/card';
+import { DataTable } from '../../components/ui/DataTable';
 import './DashboardPage.css';
 import type { DerivedHoldingView, HoldingFilterState } from './holdingDerivations';
 import type { FranchiseDashboardRow } from '../shared/portal.types';
@@ -13,7 +16,7 @@ import {
   getStatusVariant,
   toNumber,
 } from '../../utils/formatters';
-import { ScopeLayout } from './components/ScopeLayout';
+import { HoldingBento } from './components/HoldingBento';
 
 function useIsViewportMax767() {
   const [narrow, setNarrow] = useState(false);
@@ -42,6 +45,78 @@ type Props = {
 
 export function HoldingCockpitView({ derived, onPatchFilters, hideFilters = false }: Props) {
   const isMobile = useIsViewportMax767();
+
+  const rankingColumns = useMemo<ColumnDef<FranchiseDashboardRow>[]>(
+    () => [
+      {
+        id: 'franchise',
+        header: 'Franquia',
+        accessorFn: (r) => r.franchise_name,
+        cell: ({ row }) => (
+          <>
+            <div className="list-row__title">{row.original.franchise_name}</div>
+            <div className="list-row__meta">{row.original.franchise_code}</div>
+          </>
+        ),
+      },
+      {
+        id: 'regional',
+        header: 'Regional',
+        accessorFn: (r) => r.regional_name,
+      },
+      {
+        id: 'rbv',
+        header: 'RBV',
+        accessorFn: (r) => r.gross_revenue,
+        meta: { tdClassName: 'align-right num-tabular' },
+        cell: ({ row }) => <span className="num-tabular">{formatCurrency(row.original.gross_revenue)}</span>,
+      },
+      {
+        id: 'mc2',
+        header: 'MC2',
+        accessorFn: (r) => r.mc2,
+        meta: { tdClassName: 'align-right num-tabular' },
+        cell: ({ row }) => <span className="num-tabular">{formatCurrency(row.original.mc2)}</span>,
+      },
+      {
+        id: 'ebitda',
+        header: 'EBITDA 2',
+        accessorFn: (r) => r.ebitda_2,
+        meta: { tdClassName: 'align-right num-tabular' },
+        cell: ({ row }) => <span className="num-tabular">{formatCurrency(row.original.ebitda_2)}</span>,
+      },
+      {
+        id: 'margem',
+        header: 'Margem',
+        accessorFn: (r) => r.ebitda2_pct,
+        meta: { tdClassName: 'align-right num-tabular' },
+        cell: ({ row }) => <span className="num-tabular">{formatPercent(row.original.ebitda2_pct)}</span>,
+      },
+      {
+        id: 'status',
+        header: 'Status',
+        accessorFn: (r) => r.submission_status,
+        cell: ({ row }) => (
+          <span className={`status-badge status-badge--${getStatusVariant(row.original.submission_status)}`}>
+            <span className="status-badge__dot" />
+            {formatStatusLabel(row.original.submission_status)}
+          </span>
+        ),
+      },
+    ],
+    [],
+  );
+
+  const sortedRankingRows = useMemo(() => {
+    const rows = derived?.filteredRows ?? [];
+    return [...rows].sort((left, right) => toNumber(right.ebitda_2) - toNumber(left.ebitda_2));
+  }, [derived]);
+
+  const queuePreview = useMemo(() => {
+    const pending = derived?.filteredPendingReviews ?? [];
+    return pending.slice(0, 3);
+  }, [derived]);
+
   if (!derived) {
     return (
       <div className="dashboard__content page-stack">
@@ -144,6 +219,144 @@ export function HoldingCockpitView({ derived, onPatchFilters, hideFilters = fals
       </Card>
   );
 
+  const rankingCard = (
+    <Card variant="hero" className="card--accent" data-tour-id="holding-ranking">
+      <div className="card__header">
+        <div>
+          <h3 className="card__title">Ranking e status por unidade</h3>
+          <p className="card__subtitle">
+            Ranking, margem e status oficial das unidades visíveis no filtro atual.
+          </p>
+        </div>
+        <span className="badge badge--gold">{formatInteger(filteredRows.length)} unidades</span>
+      </div>
+      <div className="card__body">
+        {filteredRows.length === 0 ? (
+          <div className="empty-state empty-state--compact">
+            <div className="empty-state__icon">
+              <ClipboardList />
+            </div>
+            <h3 className="empty-state__title">Nenhuma unidade neste recorte</h3>
+            <p className="empty-state__description">
+              Ajuste os filtros de competência, regional ou unidade. Se a competência ainda não tiver submissões
+              registadas, os dados aparecem aqui após o primeiro envio ou rascunho salvo no escopo visível.
+            </p>
+          </div>
+        ) : (
+          <DataTable<FranchiseDashboardRow>
+            columns={rankingColumns}
+            data={sortedRankingRows}
+            getRowId={(row) => row.submission_id}
+            stickyHeader
+            virtualize={false}
+            paginated
+            pageSize={8}
+            initialSort={[{ id: 'ebitda', desc: true }]}
+          />
+        )}
+      </div>
+    </Card>
+  );
+
+  const statusCard = (
+    <Card variant="kpi" className="card--dense">
+      <div className="card__header card__header--dense">
+        <h3 className="card__title">Status do recorte</h3>
+      </div>
+      <div className="card__body card__body--dense-static">
+        <div className="detail-list detail-list--tight">
+          <div className="detail-list__item">
+            <span className="detail-list__label">Franquias</span>
+            <span className="detail-list__value num-tabular">{formatInteger(summary.totalFranchises)}</span>
+          </div>
+          <div className="detail-list__item">
+            <span className="detail-list__label">Regionais</span>
+            <span className="detail-list__value num-tabular">{formatInteger(summary.totalRegionals)}</span>
+          </div>
+          <div className="detail-list__item">
+            <span className="detail-list__label">Aprovadas</span>
+            <span className="detail-list__value num-tabular">{formatInteger(summary.approvedCount)}</span>
+          </div>
+          <div className="detail-list__item">
+            <span className="detail-list__label">Pendentes</span>
+            <span className="detail-list__value num-tabular">{formatInteger(summary.pendingCount)}</span>
+          </div>
+          <div className="detail-list__item">
+            <span className="detail-list__label">Melhor margem</span>
+            <span className="detail-list__value num-tabular">{formatPercent(summary.maxMarginPct)}</span>
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+
+  const topCard = (
+    <Card variant="default" className="card--dense">
+      <div className="card__header card__header--dense">
+        <h3 className="card__title">Top 5 EBITDA 2</h3>
+      </div>
+      <div className="card__body card__body--dense-static">
+        <div className="list-stack list-stack--dense">
+          {getTopFranchises(filteredRows).map((row) => (
+            <div key={row.submission_id} className="list-row">
+              <div>
+                <div className="list-row__title">{row.franchise_name}</div>
+                <div className="list-row__meta">{row.regional_name}</div>
+              </div>
+              <div className="list-row__value">
+                <div className="num-tabular">{formatCurrency(row.ebitda_2)}</div>
+                <div className="list-row__meta num-tabular">{formatPercent(row.ebitda2_pct)}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </Card>
+  );
+
+  const queueCard = (
+    <Card variant="inline" className="card--dense">
+      <div className="card__header card__header--dense">
+        <h3 className="card__title">Fila de revisão</h3>
+        <span className="badge badge--warning">{formatInteger(filteredPendingReviews.length)}</span>
+      </div>
+      <div className="card__body card__body--dense-static">
+        {filteredPendingReviews.length === 0 ? (
+          <div className="inline-message inline-message--success inline-message--compact">
+            Nenhuma unidade aguardando revisão neste recorte.
+          </div>
+        ) : (
+          <div className="list-stack list-stack--dense">
+            {queuePreview.map((row) => (
+              <div key={row.submission_id} className="list-row">
+                <div>
+                  <div className="list-row__title">{row.franchise_name}</div>
+                  <div className="list-row__meta competence-etiquette">{formatPeriodLabel(row.period_label)}</div>
+                </div>
+                <div className="list-row__value">
+                  <div className="num-tabular">{formatCurrency(row.ebitda_2)}</div>
+                  <div className="list-row__meta num-tabular">{formatInteger(row.open_issues_count)} pendências</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        {filteredPendingReviews.length > 3 ? (
+          <p className="holding-queue-hint muted">
+            A mostrar 3 entradas.{' '}
+            <Link className="link-inline" to="/app/workflow">
+              Abrir fila completa no workflow
+            </Link>
+          </p>
+        ) : filteredPendingReviews.length > 0 ? (
+          <Link className="btn btn--secondary btn--small holding-queue-btn" to="/app/workflow">
+            Abrir fluxo de aprovação
+          </Link>
+        ) : null}
+      </div>
+    </Card>
+  );
+
   return (
     <div className="dashboard__content page-stack">
       {!hideFilters && isMobile ? (
@@ -154,161 +367,7 @@ export function HoldingCockpitView({ derived, onPatchFilters, hideFilters = fals
       ) : null}
       {!hideFilters && !isMobile ? filterCard : null}
 
-      <ScopeLayout
-        primary={
-        <Card variant="hero" className="card--accent" data-tour-id="holding-ranking">
-          <div className="card__header">
-            <div>
-              <h3 className="card__title">Ranking e status por unidade</h3>
-              <p className="card__subtitle">
-                Ranking, margem e status oficial das unidades visíveis no filtro atual.
-              </p>
-            </div>
-            <span className="badge badge--gold">{formatInteger(filteredRows.length)} unidades</span>
-          </div>
-          <div className="card__body card__body--table-scroll">
-            {filteredRows.length === 0 ? (
-              <div className="empty-state empty-state--compact">
-                <div className="empty-state__icon">
-                  <ClipboardList />
-                </div>
-                <h3 className="empty-state__title">Nenhuma unidade neste recorte</h3>
-                <p className="empty-state__description">
-                  Ajuste os filtros de competência, regional ou unidade. Se a competência ainda não tiver
-                  submissões registadas, os dados aparecem aqui após o primeiro envio ou rascunho salvo no
-                  escopo visível.
-                </p>
-              </div>
-            ) : (
-              <div className="table-shell table-shell--scroll">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Franquia</th>
-                      <th>Regional</th>
-                      <th className="align-right">RBV</th>
-                      <th className="align-right">MC2</th>
-                      <th className="align-right">EBITDA 2</th>
-                      <th className="align-right">Margem</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[...filteredRows]
-                      .sort((left, right) => toNumber(right.ebitda_2) - toNumber(left.ebitda_2))
-                      .map((row) => (
-                        <tr key={row.submission_id}>
-                          <td>
-                            <div className="list-row__title">{row.franchise_name}</div>
-                            <div className="list-row__meta">{row.franchise_code}</div>
-                          </td>
-                          <td>{row.regional_name}</td>
-                          <td className="align-right num-tabular">{formatCurrency(row.gross_revenue)}</td>
-                          <td className="align-right num-tabular">{formatCurrency(row.mc2)}</td>
-                          <td className="align-right num-tabular">{formatCurrency(row.ebitda_2)}</td>
-                          <td className="align-right num-tabular">{formatPercent(row.ebitda2_pct)}</td>
-                          <td>
-                            <span className={`status-badge status-badge--${getStatusVariant(row.submission_status)}`}>
-                              <span className="status-badge__dot" />
-                              {formatStatusLabel(row.submission_status)}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </Card>
-        }
-        sidebar={
-        <div className="dashboard__side">
-          <Card variant="kpi">
-            <div className="card__header">
-              <h3 className="card__title">Status do recorte</h3>
-            </div>
-            <div className="card__body">
-              <div className="detail-list">
-                <div className="detail-list__item">
-                  <span className="detail-list__label">Franquias</span>
-                  <span className="detail-list__value num-tabular">{formatInteger(summary.totalFranchises)}</span>
-                </div>
-                <div className="detail-list__item">
-                  <span className="detail-list__label">Regionais</span>
-                  <span className="detail-list__value num-tabular">{formatInteger(summary.totalRegionals)}</span>
-                </div>
-                <div className="detail-list__item">
-                  <span className="detail-list__label">Aprovadas</span>
-                  <span className="detail-list__value num-tabular">{formatInteger(summary.approvedCount)}</span>
-                </div>
-                <div className="detail-list__item">
-                  <span className="detail-list__label">Pendentes</span>
-                  <span className="detail-list__value num-tabular">{formatInteger(summary.pendingCount)}</span>
-                </div>
-                <div className="detail-list__item">
-                  <span className="detail-list__label">Melhor margem</span>
-                  <span className="detail-list__value num-tabular">{formatPercent(summary.maxMarginPct)}</span>
-                </div>
-              </div>
-            </div>
-          </Card>
-
-          <Card variant="default">
-            <div className="card__header">
-              <h3 className="card__title">Top 5 EBITDA 2</h3>
-            </div>
-            <div className="card__body">
-              <div className="list-stack">
-                {getTopFranchises(filteredRows).map((row) => (
-                  <div key={row.submission_id} className="list-row">
-                    <div>
-                      <div className="list-row__title">{row.franchise_name}</div>
-                      <div className="list-row__meta">{row.regional_name}</div>
-                    </div>
-                    <div className="list-row__value">
-                      <div className="num-tabular">{formatCurrency(row.ebitda_2)}</div>
-                      <div className="list-row__meta num-tabular">{formatPercent(row.ebitda2_pct)}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </Card>
-
-          <Card variant="inline">
-            <div className="card__header">
-              <h3 className="card__title">Fila de revisão</h3>
-              <span className="badge badge--warning">{formatInteger(filteredPendingReviews.length)}</span>
-            </div>
-            <div className="card__body">
-              {filteredPendingReviews.length === 0 ? (
-                <div className="inline-message inline-message--success">
-                  Nenhuma unidade aguardando revisão neste recorte.
-                </div>
-              ) : (
-                <div className="list-stack">
-                  {filteredPendingReviews.slice(0, 6).map((row) => (
-                    <div key={row.submission_id} className="list-row">
-                      <div>
-                        <div className="list-row__title">{row.franchise_name}</div>
-                        <div className="list-row__meta competence-etiquette">
-                          {formatPeriodLabel(row.period_label)}
-                        </div>
-                      </div>
-                      <div className="list-row__value">
-                        <div className="num-tabular">{formatCurrency(row.ebitda_2)}</div>
-                        <div className="list-row__meta num-tabular">{formatInteger(row.open_issues_count)} pendências</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </Card>
-        </div>
-        }
-      />
+      <HoldingBento ranking={rankingCard} sidebarStatus={statusCard} sidebarTop={topCard} sidebarQueue={queueCard} />
     </div>
   );
 }

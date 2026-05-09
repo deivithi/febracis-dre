@@ -87,15 +87,16 @@
    ========================================================= */
 
 .kpi-card {
-  --kpi-min-height: 200px;
+  --kpi-min-height: 168px;
   min-height: var(--kpi-min-height);
   background: var(--bg-surface);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
-  padding: var(--space-5) var(--space-6);
+  padding: 16px 20px;
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  justify-content: space-between;
+  gap: var(--space-2);
   transition: all var(--transition-base);
   position: relative;
   overflow: hidden;
@@ -184,12 +185,22 @@
   height: 20px;
 }
 
+.kpi-card__middle {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-3);
+  min-height: 0;
+  padding-block: var(--space-2);
+}
+
 .kpi-card__value {
   font-family: var(--font-mono);
   font-size: var(--text-3xl);
   font-weight: var(--weight-bold);
   color: var(--text-primary);
-  line-height: 1;
+  line-height: 1.12;
   font-variant-numeric: tabular-nums;
 }
 
@@ -235,10 +246,30 @@
 }
 
 .kpi-card__sparkline-slot {
-  margin-top: var(--space-3);
+  flex-shrink: 0;
+  margin-top: auto;
+  padding-top: var(--space-2);
   margin-inline: calc(var(--space-1) * -1);
   display: flex;
   justify-content: flex-end;
   align-items: center;
   min-height: 32px;
+}
+
+.card--dense .card__header {
+  padding: var(--space-3) var(--space-5);
+}
+
+.card__header.card__header--dense {
+  padding-block: var(--space-3);
+  padding-inline: var(--space-4);
+}
+
+.card--dense .card__body {
+  padding: var(--space-4);
+}
+
+.card__body.card__body--dense-static {
+  overflow: visible;
+  max-height: none;
 }

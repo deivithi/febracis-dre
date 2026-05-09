@@ -4,9 +4,11 @@ import {
   flexRender,
   functionalUpdate,
   getCoreRowModel,
+  getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
   type ColumnDef,
+  type PaginationState,
   type Row,
   type SortingState,
   type Updater,
@@ -50,6 +52,13 @@ export type DataTableProps<T> = {
   getRowAriaLabel?: (row: T) => string;
   className?: string;
   tableClassName?: string;
+  /**
+   * Paginação explícita (TanStack client-side). Não altera tabelas existentes até `paginated={true}`.
+   * Independente da paginação automática para dados muito grandes (`> LARGE_DATA`).
+   */
+  paginated?: boolean;
+  /** Tamanho da página quando `paginated`. Default 10. */
+  pageSize?: number;
 };
 
 function parseUrlSorting(searchParams: URLSearchParams, urlSort: DataTableUrlSortConfig): SortingState | undefined {
@@ -80,6 +89,8 @@ function DataTableInner<T>({
   getRowAriaLabel,
   className = '',
   tableClassName = '',
+  paginated = false,
+  pageSize: pageSizeProp = 10,
 }: DataTableProps<T>) {
   const [searchParams, setSearchParams] = useSearchParams();
   const skipUrlReconcileRef = useRef(false);
@@ -94,9 +105,19 @@ function DataTableInner<T>({
     return initialSort;
   });
 
-  const [page, setPage] = useState(0);
+  const [largeDataPage, setLargeDataPage] = useState(0);
+  const [pagination, setPagination] = useState<PaginationState>(() => ({
+    pageIndex: 0,
+    pageSize: pageSizeProp,
+  }));
   const scrollRef = useRef<HTMLDivElement>(null);
   const [focusRowIndex, setFocusRowIndex] = useState(0);
+
+  useEffect(() => {
+    if (paginated) {
+      setPagination((prev) => ({ ...prev, pageSize: pageSizeProp }));
+    }
+  }, [paginated, pageSizeProp]);
 
   useEffect(() => {
     if (!urlSort) {
@@ -156,29 +177,40 @@ function DataTableInner<T>({
   );
 
   useEffect(() => {
-    setPage(0);
-  }, [data.length, sorting]);
+    setLargeDataPage(0);
+    if (paginated) {
+      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    }
+  }, [data.length, sorting, paginated]);
 
-  const { needsPagination, pageCount, pageData } = useMemo(() => {
+  const { needsPagination, pageCount: largeDataPageCount, pageData } = useMemo(() => {
+    if (paginated) {
+      return { needsPagination: false, pageCount: 1, pageData: data };
+    }
     const needs = data.length > LARGE_DATA;
     const count = needs ? Math.max(1, Math.ceil(data.length / PAGE_SIZE)) : 1;
-    const slice = needs ? data.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE) : data;
+    const slice = needs ? data.slice(largeDataPage * PAGE_SIZE, largeDataPage * PAGE_SIZE + PAGE_SIZE) : data;
     return { needsPagination: needs, pageCount: count, pageData: slice };
-  }, [data, page]);
+  }, [data, largeDataPage, paginated]);
 
   const tableData = isLoading ? [] : pageData;
 
   const useVirtual =
-    !isLoading && virtualize !== false && (virtualize === true || pageData.length > VIRTUAL_THRESHOLD);
+    !paginated &&
+    !isLoading &&
+    virtualize !== false &&
+    (virtualize === true || pageData.length > VIRTUAL_THRESHOLD);
 
   const table = useReactTable({
     data: tableData,
     columns,
-    state: { sorting },
+    state: paginated ? { sorting, pagination } : { sorting },
     onSortingChange,
+    onPaginationChange: paginated ? setPagination : undefined,
     getRowId,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: paginated ? getPaginationRowModel() : undefined,
   });
 
   const rows = table.getRowModel().rows;
@@ -206,14 +238,14 @@ function DataTableInner<T>({
     }
     const idx = Math.max(0, Math.min(focusRowIndex, rows.length - 1));
     rowVirtualizer.scrollToIndex(idx, { align: 'auto' });
-  }, [focusRowIndex, page, rowVirtualizer, rows.length, useVirtual]);
+  }, [focusRowIndex, largeDataPage, rowVirtualizer, rows.length, useVirtual]);
 
   useEffect(() => {
     if (rows.length === 0) {
       return;
     }
     setFocusRowIndex((i) => Math.max(0, Math.min(i, rows.length - 1)));
-  }, [rows.length, page]);
+  }, [rows.length, largeDataPage]);
 
   const cycleHeaderSort = (columnId: string) => {
     if (isLoading) {
@@ -419,24 +451,49 @@ function DataTableInner<T>({
         </table>
       </div>
 
-      {!isLoading && needsPagination ? (
-        <div className="data-table-pagination">
+      {!isLoading && paginated && data.length > 0 ? (
+        <div className="data-table-pagination" role="navigation" aria-label="Paginação da tabela">
           <span>
-            Página {page + 1} de {pageCount} ({data.length} registros)
+            Página {table.getState().pagination.pageIndex + 1} de {table.getPageCount()} ({data.length}{' '}
+            registros)
           </span>
           <button
             type="button"
             className="data-table-pagination__btn"
-            disabled={page <= 0}
-            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            disabled={!table.getCanPreviousPage()}
+            onClick={() => table.previousPage()}
           >
             Anterior
           </button>
           <button
             type="button"
             className="data-table-pagination__btn"
-            disabled={page >= pageCount - 1}
-            onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+            disabled={!table.getCanNextPage()}
+            onClick={() => table.nextPage()}
+          >
+            Próxima
+          </button>
+        </div>
+      ) : null}
+
+      {!isLoading && needsPagination ? (
+        <div className="data-table-pagination" role="navigation" aria-label="Paginação da tabela">
+          <span>
+            Página {largeDataPage + 1} de {largeDataPageCount} ({data.length} registros)
+          </span>
+          <button
+            type="button"
+            className="data-table-pagination__btn"
+            disabled={largeDataPage <= 0}
+            onClick={() => setLargeDataPage((p) => Math.max(0, p - 1))}
+          >
+            Anterior
+          </button>
+          <button
+            type="button"
+            className="data-table-pagination__btn"
+            disabled={largeDataPage >= largeDataPageCount - 1}
+            onClick={() => setLargeDataPage((p) => Math.min(largeDataPageCount - 1, p + 1))}
           >
             Próxima
           </button>
@@ -457,8 +514,8 @@ function DataTableInner<T>({
 /**
  * Tabela TanStack com ordenação tri-estado (asc → desc → sem sort), opcional virtualização e sincronização de sort na URL.
  *
- * Paginação interna de 50 linhas quando `data.length > 1000`; a virtualização aplica-se apenas ao slice da página atual
- * (comentário no código: dados paginados antes do virtualizer).
+ * Paginação interna de 50 linhas quando `data.length > 1000` (salvo `paginated`, que usa TanStack em todo o conjunto).
+ * Com `paginated` e `pageSize`, usar para tabelas compactas sem alterar as restantes.
  */
 export function DataTable<T>(props: DataTableProps<T>) {
   return <DataTableInner {...props} />;

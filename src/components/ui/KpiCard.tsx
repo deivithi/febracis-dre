@@ -77,26 +77,28 @@ export function KpiCard({
         </div>
       </div>
 
-      <div
-        className={`kpi-card__value num-tabular ${
-          variant === 'gold'
-            ? 'kpi-card__value--gold'
-            : variant === 'success'
-              ? 'kpi-card__value--success'
-              : ''
-        }`}
-      >
-        {value}
-      </div>
-
-      <div className="kpi-card__footer">
-        <span className="kpi-card__percent num-tabular">{percent}</span>
-        <span
-          className={`kpi-card__trend num-tabular ${trendUp ? 'kpi-card__trend--up' : 'kpi-card__trend--down'}`}
+      <div className="kpi-card__middle">
+        <div
+          className={`kpi-card__value num-tabular ${
+            variant === 'gold'
+              ? 'kpi-card__value--gold'
+              : variant === 'success'
+                ? 'kpi-card__value--success'
+                : ''
+          }`}
         >
-          {trendUp ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-          {trend}
-        </span>
+          {value}
+        </div>
+
+        <div className="kpi-card__footer">
+          <span className="kpi-card__percent num-tabular">{percent}</span>
+          <span
+            className={`kpi-card__trend num-tabular ${trendUp ? 'kpi-card__trend--up' : 'kpi-card__trend--down'}`}
+          >
+            {trendUp ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+            {trend}
+          </span>
+        </div>
       </div>
 
       {sparkline.enabled ? (

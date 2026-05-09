@@ -142,7 +142,7 @@ export default async function handler(req: InsightsApiRequest, res: InsightsApiR
         event: 'supabase_error',
         detail: ebitdaErr.message,
       });
-      return jsonResponse(res, 500, { error: 'Falha ao carregar serie de KPI.', code: 'KPI_HISTORY_ERROR' });
+      return jsonResponse(res, 500, { error: 'Falha ao carregar série de KPI.', code: 'KPI_HISTORY_ERROR' });
     }
 
     const ebitdaHistory = asKpiHistory(ebitdaRpc);

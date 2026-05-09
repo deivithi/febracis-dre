@@ -39,6 +39,19 @@
   color: var(--text-primary);
 }
 
+.inline-message--compact {
+  padding: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.detail-list--tight {
+  gap: var(--space-2);
+}
+
+.detail-list--tight .detail-list__item {
+  padding-bottom: var(--space-2);
+}
+
 .inline-message--warning {
   border-color: rgba(245, 158, 11, 0.35);
   background: var(--status-warning-soft);

@@ -1,9 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
 import { useElementInView } from '../../../hooks/useElementInView';
 import type { AccessProfile } from '../../auth/auth.types';
 import type { DerivedHoldingView } from '../holdingDerivations';
+import { Card } from '../../../components/ui/card';
 import { DashboardInsightCard } from './InsightCard';
 import {
   buildDreInsightsRequest,
@@ -82,6 +84,7 @@ export function InsightsPanel({
     enabled: fetchEnabled,
     staleTime: INSIGHTS_CLIENT_STALE_MS,
     gcTime: 1000 * 60 * 60 * 6,
+    retry: 1,
   });
 
   useEffect(() => {
@@ -158,17 +161,35 @@ export function InsightsPanel({
       ) : null}
 
       {fetchEnabled && insightsQuery.isLoading ? (
-        <div className="insights-panel__empty" aria-busy="true">
-          Analisando séries aprovadas e montando cartões…
+        <div className="insights-panel__loading" aria-busy="true">
+          <Loader2 className="insights-panel__loading-icon" size={22} aria-hidden />
+          <p className="insights-panel__loading-text">Analisando séries aprovadas e montando cartões…</p>
         </div>
       ) : null}
 
       {fetchEnabled && insightsQuery.isError ? (
-        <div className="insights-panel__error" role="alert">
-          {insightsQuery.error instanceof Error
-            ? insightsQuery.error.message
-            : 'Não foi possível carregar insights.'}
-        </div>
+        <Card variant="inline" className="insights-panel__error-card" role="alert">
+          <div className="insights-panel__error-card-body">
+            <p className="insights-panel__error-title">Não foi possível atualizar insights</p>
+            <p className="insights-panel__error-msg">
+              {insightsQuery.error instanceof Error
+                ? insightsQuery.error.message
+                : 'Ocorreu um erro ao comunicar com o servidor.'}
+            </p>
+            <p className="insights-panel__error-hint text-secondary">
+              Causas frequentes quando aparece erro de KPI: falha na RPC{' '}
+              <code className="font-mono">get_kpi_history</code> no Supabase (ver logs ou migrações).
+            </p>
+            <button
+              type="button"
+              className="btn btn--secondary btn--small"
+              disabled={insightsQuery.isFetching}
+              onClick={() => void insightsQuery.refetch()}
+            >
+              Tentar novamente
+            </button>
+          </div>
+        </Card>
       ) : null}
 
       {fetchEnabled && !insightsQuery.isLoading && visible.length === 0 && !insightsQuery.isError ? (

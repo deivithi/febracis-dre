@@ -97,6 +97,12 @@ export async function fetchDreInsights(accessToken: string, body: DreInsightsReq
   const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
 
   if (!res.ok) {
+    const code = typeof json.code === 'string' ? json.code : '';
+    if (code === 'KPI_HISTORY_ERROR') {
+      throw new Error(
+        'O motor de insights não conseguiu carregar o histórico de KPI (EBITDA 2). O Supabase pode ter falhado na RPC get_kpi_history.',
+      );
+    }
     const err =
       typeof json.error === 'string' ? json.error : 'Não foi possível carregar os insights agora.';
     throw new Error(err);

@@ -69,7 +69,9 @@ export function PendingReviewsCard({ rows }: Props) {
             data={rows}
             getRowId={(row) => row.submission_id}
             stickyHeader
-            virtualize={rows.length > 25}
+            virtualize={false}
+            paginated
+            pageSize={8}
             className="pending-reviews-table"
           />
         )}

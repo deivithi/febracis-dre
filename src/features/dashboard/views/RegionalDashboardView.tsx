@@ -101,7 +101,9 @@ export function RegionalDashboardView({ snapshot }: Props) {
                 data={currentRows}
                 getRowId={(row) => row.submission_id}
                 stickyHeader
-                virtualize={currentRows.length > 25}
+                virtualize={false}
+                paginated
+                pageSize={8}
                 className="regional-compare-table"
               />
             </div>
@@ -109,12 +111,12 @@ export function RegionalDashboardView({ snapshot }: Props) {
         }
         sidebar={
           <div className="dashboard__side">
-            <Card variant="default">
-              <div className="card__header">
+            <Card variant="default" className="card--dense">
+              <div className="card__header card__header--dense">
                 <h3 className="card__title">Resumo regional</h3>
               </div>
-              <div className="card__body">
-                <div className="detail-list">
+              <div className="card__body card__body--dense-static">
+                <div className="detail-list detail-list--tight">
                   <div className="detail-list__item">
                     <span className="detail-list__label">Franquias na carteira</span>
                     <span className="detail-list__value num-tabular">{formatInteger(current.total_franchises)}</span>
@@ -139,12 +141,12 @@ export function RegionalDashboardView({ snapshot }: Props) {
               </div>
             </Card>
 
-            <Card variant="default">
-              <div className="card__header">
+            <Card variant="default" className="card--dense">
+              <div className="card__header card__header--dense">
                 <h3 className="card__title">Top 5 unidades por margem</h3>
               </div>
-              <div className="card__body">
-                <div className="list-stack">
+              <div className="card__body card__body--dense-static">
+                <div className="list-stack list-stack--dense">
                   {getTopFranchises(currentRows).map((row) => (
                     <div key={row.submission_id} className="list-row">
                       <div>
