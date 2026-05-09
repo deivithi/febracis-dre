@@ -99,7 +99,11 @@ export function formatDate(value: string | null | undefined) {
     return '—';
   }
 
-  return dateFormatter.format(new Date(value));
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) {
+    return value;
+  }
+  return dateFormatter.format(d);
 }
 
 export function formatDateTime(value: string | null | undefined) {
@@ -107,7 +111,11 @@ export function formatDateTime(value: string | null | undefined) {
     return '—';
   }
 
-  return dateTimeFormatter.format(new Date(value));
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) {
+    return value;
+  }
+  return dateTimeFormatter.format(d);
 }
 
 export function formatStatusLabel(status: string | null | undefined) {

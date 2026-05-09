@@ -4,6 +4,47 @@
 
 **Contrato de avaliações do agente / cenários (ENTREGA 2):** [`docs/dre-agent-evals.yaml`](../docs/dre-agent-evals.yaml).
 
+## Dashboard customizável — reset automático de layouts antigos + audit filter defensivo (09/05/2026 BRT)
+
+**Sintoma reportado pelo utilizador (após deploy `ffb76bf`):**
+
+1. Trilho de auditoria continuava esmagado (altura mínima muito baixa) mesmo depois de aumentarmos as defaults de `audit-feed.h` para 8.
+2. Widget de auditoria mostrava sempre **"Sem eventos neste período"** — mesmo selecionando "Últimos 30 dias".
+3. Proporções dos blocos analíticos visualmente erradas.
+
+**Causa raiz #1 — layout salvo na DB (`dashboard_layouts`):**
+`CustomizableDashboard.tsx` carrega o layout do utilizador via `fetchDashboardLayout(user.id, scope)`. Quando a UI subiu novas defaults com alturas maiores, **utilizadores que já tinham linha persistida continuavam a ver a versão antiga** — `coerceWidgets` aceitava o JSON salvo sem validar mínimos. Resultado: cada vez que a UI mudava defaults, era preciso reset manual por utilizador.
+
+**Correção aplicada (este commit):**
+
+- Constante `MIN_HEIGHT_BY_TYPE` define mínimo canónico de altura por tipo de widget (`trend-chart: 6`, `audit-feed: 6`, `pending-queue: 6`, `ranking: 5`, `kpi: 4`, `sparkline: 3`).
+- Função `isLayoutOutdated(widgets)` retorna `true` se qualquer widget persistido tem `h` abaixo do mínimo do seu tipo.
+- No `useEffect` de carregamento: se `isLayoutOutdated(persisted)` for verdadeiro, substituímos por `cloneDefaultWidgets(roleCode, scope)`, persistimos via `upsertDashboardLayout` e mostramos um banner discreto: *"Layout do painel atualizado para o novo padrão."*.
+- Esta validação age como **schema migration lazy do lado cliente** — sem precisar de migração SQL nem coluna de versão.
+- Quando subirmos novas defaults no futuro, basta atualizar `MIN_HEIGHT_BY_TYPE` para invalidar layouts antigos automaticamente.
+
+**Causa raiz #2 — filtro do AuditFeedWidget descartando 100% das linhas:**
+Em `AuditFeedWidget.tsx`, o `useMemo` filtrava `rows` por `(now - new Date(row.performed_at).getTime()) / 86400000 <= 30`. Quando `performed_at` chega `null`/`undefined` ou em formato não-parseável, `new Date(...).getTime()` retorna `NaN`, e qualquer comparação com `NaN` é `false` → todos os eventos eram silenciosamente eliminados, mostrando "Sem eventos neste período".
+
+**Correção aplicada (este commit):**
+
+- Filtro defensivo: linhas com `performed_at` ausente ou `NaN` agora são **incluídas** (treated-as-recent) em vez de descartadas.
+- Fallback estrutural: se `filtered.length === 0` mas `rows.length > 0`, devolvemos `rows` cru — nunca escondemos dados disponíveis por falha de filtro.
+- Em desenvolvimento, `console.warn` regista o `performed_at` problemático para diagnóstico.
+- `formatDateTime` / `formatDate` em `src/utils/formatters.ts` ganham proteção contra `Invalid Date` — devolvem o valor cru em vez de lançar `RangeError`.
+- Mensagem da UI mudou de *"Sem eventos neste período."* para *"Sem eventos registados."* — só aparece quando o backend de facto não devolveu nada.
+
+**Validação local:** `npm run lint` (0 erros, 15 warnings pré-existentes), `npm run build` (OK em 18 s).
+
+**Arquivos tocados:**
+
+- `src/features/dashboard/customizable/CustomizableDashboard.tsx` (constante de mínimos + reset automático + banner)
+- `src/features/dashboard/customizable/widgets/AuditFeedWidget.tsx` (filtro defensivo + fallback)
+- `src/utils/formatters.ts` (proteção `Invalid Date`)
+- `references/project-context.md` (esta secção)
+
+---
+
 ## Build Vercel limpo de TS errors — 09/05/2026 (BRT)
 
 **Sintoma anterior:** o último deploy READY (`dpl_GJGZ4mK7xMvcwV7gLjDkzqPfPs4T`, commit `dea140a`) ficou Ready apesar de o log de build emitir três `error TS` durante a compilação dos handlers em `api/*.ts`:

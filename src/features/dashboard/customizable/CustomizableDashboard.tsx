@@ -44,6 +44,38 @@ const ALLOWED_WIDGET_TYPES = new Set<WidgetType>([
   'audit-feed',
 ]);
 
+/**
+ * Mínimos canónicos por tipo de widget (em "rows" do react-grid-layout).
+ * Layouts persistidos com altura abaixo destes valores são considerados desatualizados
+ * e são automaticamente substituídos pelo template padrão do papel/escopo.
+ *
+ * **Por que existe:** quando subimos novas defaults (ex.: aumentamos a altura do
+ * trend-chart de 4 para 8), utilizadores que já tinham layout salvo continuavam
+ * a ver a versão antiga (crushed). Esta validação age como "schema migration"
+ * lazy do lado cliente, sem precisar de migração SQL ou versionamento explícito.
+ */
+const MIN_HEIGHT_BY_TYPE: Partial<Record<WidgetType, number>> = {
+  'trend-chart': 6,
+  'audit-feed': 6,
+  'pending-queue': 6,
+  ranking: 5,
+  kpi: 4,
+  sparkline: 3,
+};
+
+function isLayoutOutdated(widgets: WidgetConfig[]): boolean {
+  if (!widgets.length) {
+    return true;
+  }
+  for (const w of widgets) {
+    const min = MIN_HEIGHT_BY_TYPE[w.type];
+    if (min !== undefined && (w.layout.h ?? 0) < min) {
+      return true;
+    }
+  }
+  return false;
+}
+
 const lazyWidgets: Record<
   WidgetType,
   React.LazyExoticComponent<React.ComponentType<DashboardWidgetRuntimeProps>>
@@ -237,6 +269,7 @@ export function CustomizableDashboard({
   const [galleryOpen, setGalleryOpen] = useState(false);
   const debounceTimer = useRef<number | null>(null);
   const [importBanner, setImportBanner] = useState<{ ok: boolean; detail?: string } | null>(null);
+  const [layoutResetNotice, setLayoutResetNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user?.id) {
@@ -249,7 +282,27 @@ export function CustomizableDashboard({
         return;
       }
       if (row?.widgets?.length) {
-        setWidgets(coerceWidgets(row.widgets));
+        const persisted = coerceWidgets(row.widgets);
+        if (isLayoutOutdated(persisted)) {
+          /**
+           * Layout salvo está com alturas abaixo do mínimo canónico actual.
+           * Substituímos pelo template padrão e gravamos para o utilizador não
+           * voltar a ver a versão antiga em próximas sessões.
+           */
+          const fresh = cloneDefaultWidgets(roleCode, dashboardScope);
+          setWidgets(fresh);
+          setLayoutResetNotice(
+            'Layout do painel atualizado para o novo padrão (alturas dos widgets foram normalizadas).',
+          );
+          void upsertDashboardLayout({
+            userId: user.id,
+            scope: dashboardScope,
+            roleCode,
+            widgets: fresh,
+          });
+          return;
+        }
+        setWidgets(persisted);
       } else {
         setWidgets(cloneDefaultWidgets(roleCode, dashboardScope));
       }
@@ -510,6 +563,19 @@ export function CustomizableDashboard({
       {!importBanner?.ok && importBanner?.detail ? (
         <div className="inline-message inline-message--danger" role="alert">
           {importBanner.detail}
+        </div>
+      ) : null}
+
+      {layoutResetNotice ? (
+        <div className="dashboard-custom-toolbar__notice" role="status">
+          {layoutResetNotice}{' '}
+          <button
+            type="button"
+            className="btn btn--ghost btn--small"
+            onClick={() => setLayoutResetNotice(null)}
+          >
+            Ok
+          </button>
         </div>
       ) : null}
 

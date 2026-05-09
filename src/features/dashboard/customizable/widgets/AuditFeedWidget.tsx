@@ -26,15 +26,43 @@ export default function AuditFeedWidget({
 
   const rows = auditQuery.data ?? [];
 
+  /**
+   * Filtro defensivo (período):
+   * - Se `performed_at` for `null/undefined` ou não-parseável (`NaN`), o evento
+   *   é INCLUÍDO em vez de descartado. Isto evita o caso de "Sem eventos" quando
+   *   o backend devolve datas em formato inesperado e o filtro silenciosamente
+   *   eliminava 100% das linhas.
+   * - Se mesmo com este filtro o resultado vier vazio mas existem `rows`, usamos
+   *   `rows` cru como fallback para nunca esconder dados disponíveis.
+   */
   const filteredRows = useMemo(() => {
     const now = new Date().getTime();
-    return rows.filter((row) => {
-      const rowTime = new Date(row.performed_at).getTime();
+    const filtered = rows.filter((row) => {
+      const raw = row.performed_at;
+      if (!raw) {
+        return true;
+      }
+      const rowTime = new Date(raw).getTime();
+      if (Number.isNaN(rowTime)) {
+        return true;
+      }
       const diffDays = (now - rowTime) / (1000 * 3600 * 24);
       if (range === 'hoje') return diffDays <= 1;
       if (range === '7d') return diffDays <= 7;
       return diffDays <= 30;
     });
+
+    if (filtered.length === 0 && rows.length > 0) {
+      if (import.meta.env.DEV) {
+        console.warn(
+          '[AuditFeedWidget] filtro removeu todos os eventos; a usar fallback (rows cru). Exemplo de performed_at:',
+          rows[0]?.performed_at,
+        );
+      }
+      return rows;
+    }
+
+    return filtered;
   }, [rows, range]);
 
   const renderList = (sliceLimit: number) => {
@@ -47,7 +75,7 @@ export default function AuditFeedWidget({
       return <p className="text-secondary">Não foi possível carregar eventos.</p>;
     }
     if (slice.length === 0) {
-      return <p className="text-secondary">Sem eventos neste período.</p>;
+      return <p className="text-secondary">Sem eventos registados.</p>;
     }
 
     return (
