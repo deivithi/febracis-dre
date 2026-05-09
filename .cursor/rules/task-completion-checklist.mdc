@@ -1,0 +1,58 @@
+---
+description: Checklist obrigatório ao finalizar qualquer tarefa no febracis-dre
+globs: ["**/*"]
+alwaysApply: true
+---
+
+# Protocolo de Finalização de Tarefas — febracis-dre
+
+## REGRA INVIOLÁVEL
+
+Ao finalizar QUALQUER tarefa neste projeto, o agente DEVE executar obrigatoriamente:
+
+1. **Atualizar documentação** — PRD, README, CHANGELOG ou qualquer doc relevante afetado pela mudança
+2. **Commit** — commitar todas as alterações com mensagem descritiva e sem caracteres especiais problemáticos no PowerShell (sem < > no corpo do commit)
+3. **Push para GitHub** — `git push origin main`
+4. **Deploy em produção** — o push para main aciona o deploy automático na Vercel (febracis-dre.vercel.app)
+
+## Checklist antes de declarar qualquer tarefa como concluída
+
+- [ ] Documentação atualizada (PRD / README / CHANGELOG)?
+- [ ] Todas as alterações commitadas?
+- [ ] Push feito para origin/main?
+- [ ] Deploy na Vercel iniciado (verificar se o build passou)?
+
+> Esta regra existe porque o usuário pediu isso muitas vezes. NÃO IGNORE.
+
+## Contexto do projeto
+
+- **Repositório:** `deivithi/febracis-dre` (GitHub)
+- **URL produção:** https://febracis-dre.vercel.app
+- **Vercel team:** `deivithis-projects`
+- **Deploy automático:** qualquer push para `main` aciona build na Vercel
+- **Raiz local:** `C:\Users\PC\Documents\VS CODE\febracis-dre`
+
+## Comandos de finalização padrão (PowerShell)
+
+```powershell
+# 1. Build + testes (se tocou código crítico)
+npm run build
+npm run test
+
+# 2. Commit (SEM < > no PowerShell — use aspas simples ou here-string)
+git add -A
+git commit -m "tipo: descricao da mudanca"
+
+# 3. Push
+git push origin main
+
+# 4. Vercel deploy (se o auto-deploy falhar ou precisar forcar)
+npx vercel --prod --yes
+```
+
+## Documentação canônica do projeto
+
+- **PRD canônico:** `docs/PRD-canonical.md`
+- **Contexto operacional:** `references/project-context.md`
+- **Runbook de incidentes:** `RUNBOOK.md`
+- **Stack e deploy:** `AGENTS.md` (este diretório)

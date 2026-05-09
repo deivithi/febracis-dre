@@ -2,6 +2,30 @@
 
 Instruções **específicas** desta pasta; combinam com o @AGENTS.md na raiz do workspace.
 
+---
+
+## 🚨 REGRA INVIOLÁVEL — PROTOCOLO DE FINALIZAÇÃO (leia isto primeiro)
+
+**Ao concluir QUALQUER tarefa neste projeto, o agente DEVE — sem exceção e sem pedir confirmação:**
+
+1. **Atualizar documentação** — PRD (`docs/PRD-canonical.md`), README, CHANGELOG ou doc relevante afetado pela mudança
+2. **Commit** — commitar TODAS as alterações com mensagem descritiva (sem `<` `>` no PowerShell)
+3. **Push para GitHub** — `git push origin main`
+4. **Deploy em produção** — o push para `main` aciona deploy automático na Vercel (`febracis-dre.vercel.app`)
+
+### Checklist antes de declarar a tarefa concluída
+
+- [ ] Documentação atualizada?
+- [ ] Alterações commitadas?
+- [ ] `git push origin main` executado?
+- [ ] Build na Vercel passou?
+
+> **Por que esta regra existe:** o usuário solicitou isso repetidamente. Ignorar este protocolo é uma falha grave do agente.
+>
+> Regra também em: `.cursor/rules/task-completion-checklist.mdc` (alwaysApply: true)
+
+---
+
 ## Stack
 
 - Vite, React 19, TypeScript, Supabase, TanStack, Zod; testes com Vitest/Playwright conforme `package.json`.
