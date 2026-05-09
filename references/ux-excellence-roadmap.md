@@ -6,6 +6,8 @@
 
 **Go-live imediato:** [go-live-trilha-a-checklist.md](./go-live-trilha-a-checklist.md).
 
+**Guia `/app/guide` (lote G01–G15):** mapa evidence-based e âncoras de ficheiros em [project-context.md](./project-context.md) (secção **Mapa de atividades — Guia**). Relatórios Lighthouse opcionais: `public/lighthouse-report-guide*.html`; capturas: `public/screenshots/guide/` e `npm run screenshot:guide`.
+
 ---
 
 ## 1. Scorecard (0 = gap relevante, 3 = alinhado ao alvo declarado)

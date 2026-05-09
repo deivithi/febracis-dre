@@ -1,0 +1,227 @@
+/* G04 — trilha compacta horizontal (≥768px) */
+
+.journey-track .journey-track__row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-4);
+  margin: 0;
+}
+
+.journey-track__segment {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0;
+  min-width: 0;
+}
+
+.journey-track__connector {
+  display: none;
+}
+
+.journey-track__cell {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (min-width: 768px) {
+  .journey-track .journey-track__row {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 0;
+  }
+
+  .journey-track__segment {
+    flex: 1;
+    min-width: 0;
+    align-items: flex-start;
+  }
+
+  .journey-track__connector {
+    display: flex;
+    flex: 0 0 1.25rem;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 15px;
+    align-self: flex-start;
+  }
+
+  .journey-track__connector-line {
+    display: block;
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      var(--border-subtle) 0%,
+      color-mix(in srgb, var(--primary-gold) 20%, var(--border-subtle)) 50%,
+      var(--border-subtle) 100%
+    );
+  }
+
+  .journey-track__cell {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+/* Step card — alvo ~30% footprint; altura desktop alvo abaixo de ~250px */
+.journey-step-card {
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated, var(--bg-secondary));
+  padding: var(--space-4);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.journey-step-card__top {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-height: 0;
+}
+
+.journey-step-card__badge {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-elevated, var(--bg-surface));
+  border: 1px solid color-mix(in srgb, var(--primary-gold) 40%, transparent);
+  box-sizing: border-box;
+}
+
+.journey-step-card__badge-num {
+  color: var(--primary-gold, var(--accent-gold));
+  line-height: 1;
+}
+
+.journey-step-card__headings {
+  min-width: 0;
+  flex: 1;
+}
+
+.journey-step-card__eyebrow {
+  margin: 0 0 2px;
+}
+
+.journey-step-card__title {
+  margin: 0;
+}
+
+.journey-step-card__desc {
+  margin: 0;
+  max-width: 20rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.journey-step-card__bullets {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.journey-step-card__bullet {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.journey-step-card__check {
+  flex-shrink: 0;
+  margin-top: 3px;
+  color: var(--primary-gold, var(--accent-gold));
+}
+
+.journey-step-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  margin-top: auto;
+  padding-top: var(--space-1);
+}
+
+.journey-step-card__cta {
+  border: none;
+  background: none;
+  padding: 0;
+  font-weight: var(--weight-medium);
+  color: var(--accent-secondary, var(--text-accent));
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.journey-step-card__cta:hover {
+  color: var(--accent-gold);
+}
+
+.journey-step-card__anchor {
+  font-weight: var(--weight-medium);
+  color: var(--accent-gold);
+  text-decoration: none;
+  border-bottom: 1px solid var(--border-gold);
+  white-space: nowrap;
+}
+
+.journey-step-card__anchor:hover {
+  color: var(--accent-gold-hover);
+}
+
+@media (max-width: 767.98px) {
+  .journey-step-card {
+    max-height: none;
+  }
+}
+
+/* Detalhe no painel lateral */
+.journey-detail-sheet {
+  padding: var(--space-5) var(--space-5) var(--space-6);
+  padding-right: calc(var(--space-5) + 44px);
+}
+
+.journey-detail-sheet__header {
+  margin-bottom: var(--space-4);
+}
+
+.journey-detail-sheet__eyebrow {
+  margin: 0 0 var(--space-2);
+}
+
+.journey-detail-sheet__title {
+  margin: 0;
+}
+
+.journey-detail-sheet__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.journey-detail-sheet__para {
+  margin: 0;
+}
+
+.journey-detail-sheet__list {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+

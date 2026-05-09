@@ -1,5 +1,7 @@
-import type { DashboardSnapshot, FranchiseDashboardRow } from '../shared/portal.types';
+import type { DashboardSnapshot, FranchiseDashboardRow, ReportingPeriodRow } from '../shared/portal.types';
 import { toNumber } from '../../utils/formatters';
+import { resolveDefaultReportingPeriod } from '../../utils/reportingPeriodResolve';
+import { filterFranchiseRowsForExecutiveRollup } from './dashboardQuery';
 
 export type HoldingFilterState = {
   selectedPeriodLabel: string;
@@ -45,6 +47,12 @@ export function buildHoldingTotals(rows: FranchiseDashboardRow[]) {
   };
 }
 
+export type DeriveHoldingViewOptions = {
+  /** Quando definido, filtra a competência por ano/mês civil (ignora `selectedPeriodLabel` para o conjunto base). */
+  anchorYear?: number;
+  anchorMonth?: number;
+};
+
 export type DerivedHoldingView = {
   periodOptions: string[];
   activePeriodLabel: string;
@@ -55,6 +63,9 @@ export type DerivedHoldingView = {
   effectiveFranchiseId: string;
   filteredRows: FranchiseDashboardRow[];
   filteredPreviousRows: FranchiseDashboardRow[];
+  /** Subconjunto com estados oficiais apenas (allowlist KPI executivo — ver `dashboardQuery`). */
+  executiveRollupRows: FranchiseDashboardRow[];
+  executiveRollupPreviousRows: FranchiseDashboardRow[];
   filteredPendingReviews: DashboardSnapshot['pendingReviews'];
   summary: ReturnType<typeof buildHoldingTotals>;
 };
@@ -65,6 +76,8 @@ export type DerivedHoldingView = {
 export function deriveHoldingView(
   snapshot: DashboardSnapshot,
   filters: HoldingFilterState,
+  reportingPeriods?: ReportingPeriodRow[] | null,
+  options?: DeriveHoldingViewOptions | null,
 ): DerivedHoldingView | null {
   const current = snapshot.latestNetwork;
 
@@ -72,16 +85,49 @@ export function deriveHoldingView(
     return null;
   }
 
-  const periodOptions = getHoldingPeriodOptions(snapshot.franchiseRows);
+  const basePeriodOptions = getHoldingPeriodOptions(snapshot.franchiseRows);
+  const resolvedDefault = resolveDefaultReportingPeriod(reportingPeriods ?? null);
+  const defaultPeriodLabel = resolvedDefault?.label ?? null;
+  const periodOptions =
+    defaultPeriodLabel && !basePeriodOptions.includes(defaultPeriodLabel)
+      ? [defaultPeriodLabel, ...basePeriodOptions]
+      : basePeriodOptions;
 
-  const activePeriodLabel = periodOptions.includes(filters.selectedPeriodLabel)
-    ? filters.selectedPeriodLabel
-    : current.period_label;
+  const useAnchor =
+    options != null &&
+    typeof options.anchorYear === 'number' &&
+    typeof options.anchorMonth === 'number' &&
+    Number.isFinite(options.anchorYear) &&
+    Number.isFinite(options.anchorMonth);
 
-  const previousPeriodLabel =
-    periodOptions[periodOptions.findIndex((label) => label === activePeriodLabel) + 1] ?? null;
+  let activePeriodLabel: string;
+  let previousPeriodLabel: string | null;
+  let currentPeriodRows: FranchiseDashboardRow[];
 
-  const currentPeriodRows = snapshot.franchiseRows.filter((row) => row.period_label === activePeriodLabel);
+  if (useAnchor) {
+    const y = options!.anchorYear!;
+    const m = options!.anchorMonth!;
+    currentPeriodRows = snapshot.franchiseRows.filter(
+      (row) => row.period_year === y && row.period_month === m,
+    );
+    activePeriodLabel =
+      currentPeriodRows[0]?.period_label ?? `${y}-${String(m).padStart(2, '0')}`;
+    previousPeriodLabel = null;
+  } else {
+    const trimmedPeriod = filters.selectedPeriodLabel.trim();
+    activePeriodLabel =
+      trimmedPeriod && periodOptions.includes(trimmedPeriod)
+        ? trimmedPeriod
+        : defaultPeriodLabel && periodOptions.includes(defaultPeriodLabel)
+          ? defaultPeriodLabel
+          : current.period_label;
+
+    previousPeriodLabel =
+      periodOptions[periodOptions.findIndex((label) => label === activePeriodLabel) + 1] ?? null;
+
+    currentPeriodRows = snapshot.franchiseRows.filter((row) => row.period_label === activePeriodLabel);
+  }
+
   const regionalOptions = [...new Map(
     currentPeriodRows.map((row) => [row.regional_id, { id: row.regional_id, name: row.regional_name }]),
   ).values()].sort((left, right) => left.name.localeCompare(right.name));
@@ -121,6 +167,9 @@ export function deriveHoldingView(
       })
     : [];
 
+  const executiveRollupRows = filterFranchiseRowsForExecutiveRollup(filteredRows);
+  const executiveRollupPreviousRows = filterFranchiseRowsForExecutiveRollup(filteredPreviousRows);
+
   const filteredPendingReviews = snapshot.pendingReviews.filter((row) => {
     const matchesPeriod = row.period_label === activePeriodLabel;
     const matchesFranchise = effectiveFranchiseId === 'all' || row.franchise_id === effectiveFranchiseId;
@@ -131,7 +180,7 @@ export function deriveHoldingView(
     return matchesPeriod && matchesFranchise && matchesRegional;
   });
 
-  const summary = buildHoldingTotals(filteredRows);
+  const summary = buildHoldingTotals(executiveRollupRows);
 
   return {
     periodOptions,
@@ -143,6 +192,8 @@ export function deriveHoldingView(
     effectiveFranchiseId,
     filteredRows,
     filteredPreviousRows,
+    executiveRollupRows,
+    executiveRollupPreviousRows,
     filteredPendingReviews,
     summary,
   };

@@ -1,0 +1,132 @@
+/* =========================================================
+   G12 — Sistema tipográfico do Guia (utilitários .typo-*)
+   Tokens: design-tokens.css / tokens.css (carregados via globals).
+   OpenType: Inter (@fontsource/inter) inclui ss01 e cv11 no pacote
+   padrão — se um subset customizado remover features, apague o bloco
+   marcado abaixo e documente no commit.
+   ========================================================= */
+
+.typo-eyebrow {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-normal);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--primary-gold, var(--accent-gold)) 80%, transparent);
+}
+
+.typo-display {
+  font-family: var(--font-sans);
+  font-size: var(--text-5xl);
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.025em;
+  line-height: 1.05;
+  color: var(--text-primary);
+}
+
+@media (min-width: 768px) {
+  .typo-display {
+    font-size: 3.75rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .typo-display {
+    font-size: 4.5rem;
+  }
+}
+
+.typo-h1 {
+  font-family: var(--font-sans);
+  font-size: var(--text-4xl);
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.025em;
+  line-height: var(--leading-tight);
+  color: var(--text-primary);
+}
+
+@media (min-width: 768px) {
+  .typo-h1 {
+    font-size: var(--text-5xl);
+  }
+}
+
+.typo-h2 {
+  font-family: var(--font-sans);
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.025em;
+  line-height: var(--leading-tight);
+  color: var(--text-primary);
+}
+
+@media (min-width: 768px) {
+  .typo-h2 {
+    font-size: var(--text-4xl);
+  }
+}
+
+.typo-h3 {
+  font-family: var(--font-heading);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  line-height: 1.375;
+  color: var(--text-primary);
+}
+
+@media (min-width: 768px) {
+  .typo-h3 {
+    font-size: var(--text-2xl);
+  }
+}
+
+.typo-h4 {
+  font-family: var(--font-heading);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  line-height: 1.375;
+  color: var(--text-primary);
+}
+
+.typo-body-lg {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-normal);
+  line-height: var(--leading-relaxed);
+  color: var(--text-primary);
+}
+
+.typo-body {
+  font-size: var(--text-base);
+  font-weight: var(--weight-normal);
+  line-height: var(--leading-relaxed);
+  color: var(--text-primary);
+}
+
+.typo-body-sm {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-normal);
+  line-height: var(--leading-relaxed);
+  color: var(--text-secondary);
+}
+
+.typo-caption {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-normal);
+  line-height: var(--leading-normal);
+  color: var(--text-muted);
+}
+
+.typo-mono {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+}
+
+/* --- OpenType (Inter): apenas display / h1 / h2 --- */
+.typo-display,
+.typo-h1,
+.typo-h2 {
+  font-feature-settings: 'ss01' 1, 'cv11' 1;
+}

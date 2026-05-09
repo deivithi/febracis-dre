@@ -1,0 +1,98 @@
+/* =========================================================
+   U01 | Tokens semânticos canônicos — Febracis DRE
+   Valores espelham a paleta existente (Navy Premium + ouro institucional).
+   Motion easing alinhado a curvas tipo Material / estado reduzido.
+   ========================================================= */
+
+@layer base {
+  :root {
+    color-scheme: dark;
+
+    /* Background hierarchy */
+    --bg-base: rgb(6 11 24);
+    --bg-surface: rgb(26 31 46);
+    --bg-elevated: rgb(42 49 72);
+
+    --border-subtle: rgb(30 41 59 / 0.6);
+
+    /* Brand / feedback */
+    --primary-gold: rgb(240 183 62);
+    --accent-blue: rgb(46 123 246);
+    --success: rgb(16 185 129);
+    --danger: rgb(239 68 68);
+    --warning: rgb(245 158 11);
+
+    /* Typography — legível */
+    --text-primary: rgb(241 245 249);
+    --text-secondary: rgb(148 163 184);
+    /* Contraste próximo ao legado (~#94A3B9) em superfícies navy */
+    --text-muted: rgb(148 163 185);
+
+    --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+
+    /* Radius (px) */
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+    --radius-2xl: 20px;
+
+    /* Motion — cubic-bezier estado reduzido + transição média */
+    --motion-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --motion-normal: 280ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+/* Números alinhados em colunas (moeda, %, KPI) — sem forçar monoespaçada */
+.num-tabular {
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* =========================================================
+   Tema claro (next-themes: class .light em <html>)
+   Sobrescreve apenas os mesmos núcleos semânticos U01.
+   ========================================================= */
+
+html.light {
+  color-scheme: light;
+
+  --bg-base: rgb(250 251 252);
+  --bg-surface: rgb(255 255 255);
+  --bg-elevated: rgb(241 245 249);
+
+  --border-subtle: rgb(226 232 240);
+
+  --primary-gold: rgb(212 169 60);
+  --accent-blue: rgb(37 99 235);
+  --success: rgb(21 128 61);
+  --danger: rgb(185 28 28);
+  --warning: rgb(180 83 9);
+
+  --text-primary: rgb(15 23 42);
+  --text-secondary: rgb(71 85 105);
+  --text-muted: rgb(100 116 139);
+
+  --motion-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --motion-normal: 260ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/*
+ * Sem logo “claro” dedicado — apenas ícones no repositório.
+ * Reforço leve de contraste no tema claro (sidebar / login).
+ */
+html.light .sidebar__logo-image,
+html.light .login-page__brand-logo {
+  filter: brightness(0.97) contrast(1.06) drop-shadow(0 1px 2px rgb(15 23 42 / 0.1));
+}
+
+html.light .glass {
+  background: rgb(255 255 255 / 0.82);
+  border-color: var(--border-subtle);
+}
+
+html.light .glass-strong {
+  background: rgb(248 250 252 / 0.92);
+  border-color: var(--border-default, rgb(203 213 225));
+}

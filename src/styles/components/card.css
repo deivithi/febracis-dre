@@ -10,6 +10,23 @@
   transition: all var(--transition-base);
 }
 
+/* --- ATIVIDADE U11 — hierarquia de border-radius (valores px canónicos) --- */
+.card--v-kpi {
+  border-radius: 12px;
+}
+
+.card--v-hero {
+  border-radius: 16px;
+}
+
+.card--v-inline {
+  border-radius: 8px;
+}
+
+.card--v-modal {
+  border-radius: 20px;
+}
+
 .card:hover {
   border-color: var(--border-strong);
   box-shadow: var(--shadow-md);
@@ -213,4 +230,13 @@
 .kpi-card__trend svg {
   width: 14px;
   height: 14px;
+}
+
+.kpi-card__sparkline-slot {
+  margin-top: var(--space-3);
+  margin-inline: calc(var(--space-1) * -1);
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  min-height: 32px;
 }

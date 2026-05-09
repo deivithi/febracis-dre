@@ -95,3 +95,17 @@
   justify-content: center;
   margin-top: var(--space-2);
 }
+
+/* Banner demo (altura fixa para offset do header/conteúdo) */
+.app-layout--demo-banner {
+  --demo-banner-height: 48px;
+}
+
+.app-layout--demo-banner .app-header {
+  top: var(--demo-banner-height);
+}
+
+.app-layout--demo-banner .page-container {
+  margin-top: calc(var(--header-height) + var(--demo-banner-height));
+  min-height: calc(100vh - var(--header-height) - var(--demo-banner-height));
+}

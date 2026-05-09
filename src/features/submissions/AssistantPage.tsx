@@ -1,12 +1,16 @@
 import { Bot } from 'lucide-react';
+import { useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useBreadcrumb } from '../../layouts/app/BreadcrumbContext';
 import { AssistantDock } from './components/AssistantDock';
 import { SubmissionKpiSection } from './components/SubmissionKpiSection';
 import { SubmissionToolbar } from './components/SubmissionToolbar';
+import { SubmissionCatalogInputList } from './components/SubmissionCatalogInputList';
 import { SubmissionsScopeTable } from './components/SubmissionsScopeTable';
 import { useSubmissionsWorkspace } from './useSubmissionsWorkspace';
 import type { AssistantProductTab } from './agentPermissions';
 import { formatPeriodLabel } from '../../utils/formatters';
+import { useAuth } from '../auth/useAuth';
 import './SubmissionsPage.css';
 import './AssistantPage.css';
 
@@ -16,6 +20,10 @@ function parseProductTab(searchParams: URLSearchParams): AssistantProductTab {
 
 export function AssistantPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { session } = useAuth();
+  const inlineAssistantFeatureOn =
+    import.meta.env.VITE_INLINE_ASSISTANT === '1' || import.meta.env.VITE_INLINE_ASSISTANT === 'true';
+
   const submissionFromUrl = searchParams.get('submission');
   const productTab = parseProductTab(searchParams);
 
@@ -60,6 +68,30 @@ export function AssistantPage() {
     routeSubmissionId: submissionFromUrl,
     assistantProductTab: productTab,
   });
+
+  const assistantBreadcrumbSegments = useMemo(() => {
+    if (!w.access || !w.franchisesQuery.data?.length || !w.periodsQuery.data?.length || !w.submissionsQuery.data) {
+      return [];
+    }
+    const franchiseLabel = w.selectedFranchise?.trade_name ?? 'Franquia';
+    const periodLabel = w.selectedPeriod ? formatPeriodLabel(w.selectedPeriod.label) : 'Período';
+    const modeSuffix = productTab === 'duvidas' ? 'Dúvidas' : 'Preencher';
+    return [
+      { label: 'Portal', href: '/app/dashboard' },
+      { label: 'Assistente', href: '/app/assistant' },
+      { label: `${franchiseLabel} · ${periodLabel} (${modeSuffix})` },
+    ];
+  }, [
+    w.access,
+    w.franchisesQuery.data,
+    w.periodsQuery.data,
+    w.submissionsQuery.data,
+    w.selectedFranchise,
+    w.selectedPeriod,
+    productTab,
+  ]);
+
+  useBreadcrumb(assistantBreadcrumbSegments);
 
   if (
     w.accessProfileQuery.isLoading ||
@@ -112,7 +144,7 @@ export function AssistantPage() {
   const periodLabel = w.selectedPeriod ? formatPeriodLabel(w.selectedPeriod.label) : 'Período';
 
   return (
-    <div className="page-stack submissions-page-root assistant-hub-page">
+    <div className="page-stack submissions-page-root assistant-hub-page" data-testid="assistant-page">
       <div className="page-container__title-bar">
         <div>
           <h1 className="page-container__title">
@@ -238,9 +270,23 @@ export function AssistantPage() {
             onSubmitReview: () => w.submitMutation.mutate(),
             savePending: w.saveDraftMutation.isPending,
             submitPending: w.submitMutation.isPending,
+            workspaceLocked: w.activeSubmissionLocked,
           }}
         />
       </div>
+
+      <SubmissionCatalogInputList
+        submissionId={w.activeSubmissionId}
+        lines={w.workspaceQuery.data?.inputLines ?? []}
+        lineValueMap={w.effectiveLineValues}
+        isFinanceController={w.isFinanceController}
+        currentUserId={w.currentUserId}
+        workspaceLoading={w.workspaceQuery.isLoading}
+        canEditActiveSubmission={w.canEditActiveSubmission}
+        inlineAssistantEnabled={inlineAssistantFeatureOn && w.assistantEnabled && productTab === 'preencher'}
+        accessToken={session?.access_token ?? null}
+        onPatchLineValue={w.patchDraftLineValue}
+      />
 
       <SubmissionsScopeTable
         rows={currentRows}

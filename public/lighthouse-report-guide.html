@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>G14 · Lighthouse — Guia (/app/guide) · febracis-dre</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 52rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.55; color: #0f172a; }
+    code { background: #f1f5f9; padding: 0.15em 0.35em; border-radius: 4px; font-size: 0.93em; }
+    pre { background: #0f172a; color: #f8fafc; padding: 1rem; border-radius: 8px; overflow: auto; }
+    .note { border-left: 4px solid #ca8a04; padding-left: 1rem; margin: 1.5rem 0; }
+    table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: 0.95rem; }
+    th, td { border: 1px solid #cbd5e1; padding: 0.45rem 0.6rem; text-align: left; }
+    th { background: #f8fafc; }
+  </style>
+</head>
+<body>
+  <h1>G14 · Lighthouse para o Guia</h1>
+  <p>
+    Esta página está em <code>public/lighthouse-report-guide.html</code> porque a rota
+    <strong>/app/guide</strong> (<code>basename</code> + <code>/app/guide</code>) é
+    <strong>protegida por autenticação</strong>. Um relatório Lighthouse completo contra a página real
+    só é válido com <strong>sessão autenticada</strong>, cookie exportado ou instância de demo sem guard.
+    O agente automatizado não conseguiu concluir com êxito um run Lighthouse referente ao Guia em tempo útil nesta sessão;
+    as pontuações abaixo na tabela ficam como <strong>N/A</strong> até você gerar o HTML oficial localmente.
+  </p>
+
+  <h2>Tentativa de Lighthouse (automática, sessão atual)</h2>
+  <p>
+    Comando executado contra o preview local (porta pode variar; exemplo <code>http://127.0.0.1:4174/app/guide</code>):
+    <code>npx lighthouse … --output-path=public/lighthouse-report-guide-mobile.html --chrome-flags="--headless --no-sandbox"</code>.
+  </p>
+  <p>
+    <strong>Bloqueio no Windows:</strong> o Lighthouse encerrou com
+    <code>EBUSY: resource busy or locked, unlink …\Temp\lighthouse.*\Default\Account Web Data</code>
+    (perfil temporário do Chromium em uso ou bloqueado por outra instância). Possíveis mitigações: fechar janelas do Chrome/Chromium Edge,
+    fixar uma pasta limpa via <code>--user-data-dir</code>, ou rodar o mesmo comando no WSL. Sem HTML gerado pelo Lighthouse nesta máquina.
+  </p>
+
+  <div class="note">
+    <strong>Targets G14 (critérios de aceite técnico):</strong> Acessibilidade ≥95 · Performance desktop ≥90 e mobile (throttled) ≥80 ·
+    CLS &lt; 0,1 · LCP &lt; 2,5 s · INP é métrica de campo (Chrome UX Report): Lighthouse estima TBT/TTI, não substitui INP.
+  </div>
+
+  <h2>Pontuações (placeholder)</h2>
+  <table>
+    <thead>
+      <tr><th>Categoria</th><th>Desktop</th><th>Mobile simulado</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Accessibility</td><td>N/A</td><td>N/A</td></tr>
+      <tr><td>Performance</td><td>N/A</td><td>N/A</td></tr>
+      <tr><td>Best Practices</td><td>N/A</td><td>N/A</td></tr>
+      <tr><td>SEO</td><td>N/A</td><td>N/A</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Comando sugerido (Windows / PowerShell)</h2>
+  <p>Ajuste porta se o preview usar outra. Substitua a URL pela do preview com hash, se usar âncoras.</p>
+  <pre>cd "C:\Users\PC\Documents\VS CODE\febracis-dre"
+npm run build
+npm run preview
+# outro terminal — após login manual no navegador, cópia de cookie opcional --
+npx lighthouse http://localhost:4173/app/guide ^
+  --only-categories=accessibility,performance,best-practices,seo ^
+  --preset=desktop ^
+  --screenEmulation.disabled ^
+  --output=html ^
+  --output-path=./public/lighthouse-report-guide-desktop.html</pre>
+
+  <pre>npx lighthouse http://localhost:4173/app/guide ^
+  --only-categories=accessibility,performance,best-practices,seo ^
+  --form-factor=mobile ^
+  --throttling-method=simulate ^
+  --output=html ^
+  --output-path=./public/lighthouse-report-guide-mobile.html</pre>
+
+  <p>
+    Se o Chrome não estiver instalado ou o comando falhar com erro de navegador, instale Chromium ou use variável de ambiente
+    <code>CHROME_PATH</code> conforme a documentação do Lighthouse.
+  </p>
+
+  <h2>Gargalo provável até atingir as metas (honestidade de aceite)</h2>
+  <ul>
+    <li>[Não verificado em laboratório] Bundle do Guia inclui chunks lazy + framer-motion + diagrama; TBT pode puxar a nota.</li>
+    <li>Animações e layout shift inicial do hero / TOC podem contribuir para CLS até medição.</li>
+    <li>Sem campo real, INP não está “PASS” apenas por Lighthouse.</li>
+  </ul>
+</body>
+</html>

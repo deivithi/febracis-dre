@@ -1,5 +1,7 @@
 import { ShieldOff } from 'lucide-react';
+import { useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useBreadcrumb } from '../../layouts/app/BreadcrumbContext';
 import type { RoleCode } from './auth.types';
 import './AccessDeniedPage.css';
 
@@ -48,6 +50,16 @@ export function AccessDeniedPage() {
   const rawPath = state.attemptedPath;
   const attempted = rawPath ? labelForPath(rawPath) : 'esta área';
   const rolesHint = formatRoleList(state.allowedRoles);
+
+  const accessDeniedBreadcrumbSegments = useMemo(
+    () => [
+      { label: 'Portal', href: '/app/dashboard' },
+      { label: 'Acesso restrito', href: '/app/forbidden' },
+      { label: attempted },
+    ],
+    [attempted],
+  );
+  useBreadcrumb(accessDeniedBreadcrumbSegments);
 
   return (
     <div className="page-stack access-denied-page">

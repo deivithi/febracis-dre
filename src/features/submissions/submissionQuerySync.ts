@@ -18,6 +18,12 @@ export async function invalidateSubmissionRelatedQueries(
     OPERATIONAL_ROOT_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey: [...queryKey] })),
   );
 
+  if (franchiseId && periodId) {
+    await queryClient.invalidateQueries({
+      queryKey: ['submission-versions', franchiseId, periodId],
+    });
+  }
+
   if (activeSubmissionId) {
     await queryClient.invalidateQueries({ queryKey: ['submission-workspace', activeSubmissionId] });
   }

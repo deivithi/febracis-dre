@@ -1,17 +1,32 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import '@fontsource/inter/400.css';
+import '@fontsource/inter/500.css';
+import '@fontsource/inter/600.css';
+import '@fontsource/inter/700.css';
+import '@fontsource/jetbrains-mono/400.css';
+import '@fontsource/jetbrains-mono/500.css';
+import '@fontsource/jetbrains-mono/600.css';
+import '@fontsource/sora/300.css';
+import '@fontsource/sora/400.css';
+import '@fontsource/sora/500.css';
+import '@fontsource/sora/600.css';
+import '@fontsource/sora/700.css';
 import App from './App';
 import { AppErrorBoundary } from './components/AppErrorBoundary';
 import { renderOperationalErrorToRoot } from './components/operationalErrorDom';
 
 // Design System imports — ordem importa
 import './styles/globals.css';
+import './styles/typography.css';
+import './styles/print.css';
 import './styles/components/button.css';
 import './styles/components/card.css';
 import './styles/components/input.css';
 import './styles/components/layout.css';
 import './styles/components/module-pages.css';
 import './styles/components/validation-checklist.css';
+import './features/tour/shepherd-overrides.css';
 
 function mount() {
   const rootEl = document.getElementById('root');

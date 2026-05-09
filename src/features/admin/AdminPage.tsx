@@ -15,7 +15,9 @@ import {
 } from '../shared/portal.api';
 import type { AdminActionResult } from '../shared/portal.types';
 import { AdminAccessPanel } from './AdminAccessPanel';
+import { ThemeToggle } from '../settings/ThemeToggle';
 import { formatDateTime, formatInteger, formatStatusLabel } from '../../utils/formatters';
+import { useBreadcrumb } from '../../layouts/app/BreadcrumbContext';
 import './AdminPage.css';
 
 const operationQueryKeys = [
@@ -101,6 +103,22 @@ export function AdminPage() {
     onSuccess: refreshPortalData,
   });
 
+  const adminBreadcrumbSegments = useMemo(() => {
+    const snap = adminQuery.data;
+    if (!snap) {
+      return [];
+    }
+    return [
+      { label: 'Portal', href: '/app/dashboard' },
+      { label: 'Configurações', href: '/app/admin' },
+      {
+        label: `${formatInteger(snap.userCount)} usuários · ${formatInteger(snap.periodCount)} competências`,
+      },
+    ];
+  }, [adminQuery.data]);
+
+  useBreadcrumb(adminBreadcrumbSegments);
+
   const latestFeedback = useMemo(
     () => prepareDemoMutation.data ?? resetDemoMutation.data,
     [prepareDemoMutation.data, resetDemoMutation.data],
@@ -166,7 +184,7 @@ export function AdminPage() {
               onClick={() => prepareDemoMutation.mutate()}
               disabled={isMutating}
             >
-              <DatabaseZap size={18} />
+              <DatabaseZap size={18} aria-hidden />
               {prepareDemoMutation.isPending ? 'Preparando demo...' : 'Preparar ambiente demo'}
             </button>
             <button
@@ -176,7 +194,7 @@ export function AdminPage() {
               onClick={handleResetDemo}
               disabled={isMutating}
             >
-              <RefreshCcw size={18} />
+              <RefreshCcw size={18} aria-hidden />
               {resetDemoMutation.isPending ? 'Zerando demo...' : 'Zerar demonstração'}
             </button>
           </div>
@@ -185,6 +203,21 @@ export function AdminPage() {
 
       {currentError && <div className="inline-message inline-message--danger">{currentError}</div>}
       <OperationFeedback result={latestFeedback} />
+
+      <div className="card">
+        <div className="card__header">
+          <div>
+            <h3 className="card__title">Aparência</h3>
+            <p className="card__subtitle">
+              Sistema, escuro ou claro; sincroniza com o perfil quando autenticado. Atalho global:
+              Ctrl+Shift+L (⌘⇧L no macOS) alterna claro e escuro.
+            </p>
+          </div>
+        </div>
+        <div className="card__body">
+          <ThemeToggle />
+        </div>
+      </div>
 
       <div className="kpi-grid">
         <div className="kpi-card">

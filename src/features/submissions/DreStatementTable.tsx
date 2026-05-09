@@ -22,7 +22,7 @@ export function DreStatementTable({ rows, source }: DreStatementTableProps) {
 
       <div className="table-shell statement-table-shell">
         <table className="statement-table">
-          <caption className="sr-only">Demonstração do resultado: linhas por secção com valor e percentagem da RBV</caption>
+          <caption className="sr-only">Quadro do resultado: linhas por secção com valor e percentagem da RBV</caption>
           <thead>
             <tr>
               <th scope="col" className="statement-table__col-line">
@@ -54,8 +54,8 @@ export function DreStatementTable({ rows, source }: DreStatementTableProps) {
                       <td className="statement-table__line">
                         <span className="statement-table__line-name">{line.line_name}</span>
                       </td>
-                      <td className="statement-table__value font-mono">{formatCurrency(line.value_currency)}</td>
-                      <td className="statement-table__pct font-mono">
+                      <td className="statement-table__value num-tabular">{formatCurrency(line.value_currency)}</td>
+                      <td className="statement-table__pct num-tabular">
                         {line.percent_of_gross_revenue === null
                           ? '—'
                           : `${toNumber(line.percent_of_gross_revenue).toFixed(2).replace('.', ',')}%`}

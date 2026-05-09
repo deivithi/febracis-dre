@@ -536,7 +536,7 @@ export function AdminAccessPanel({ snapshot }: AdminAccessPanelProps) {
 
         <div className="card__footer">
           <button type="button" className="btn btn--ghost" onClick={clearForm}>
-            <RefreshCcw size={18} />
+            <RefreshCcw size={18} aria-hidden />
             Limpar formulario
           </button>
           <button
@@ -546,7 +546,7 @@ export function AdminAccessPanel({ snapshot }: AdminAccessPanelProps) {
             disabled={isSubmitDisabled}
             data-testid="admin-access-submit"
           >
-            {mode === 'create' ? <PlusCircle size={18} /> : <KeyRound size={18} />}
+            {mode === 'create' ? <PlusCircle size={18} aria-hidden /> : <KeyRound size={18} aria-hidden />}
             {mode === 'create'
               ? createMutation.isPending
                 ? 'Criando acesso...'

@@ -37,3 +37,5 @@ tests/e2e/__screenshots__/
 # Dumps / ferramentas locais (nao versionar)
 cloud-dump-schema.sql
 .omc/
+.git-commit-msg.txt
+node_modules_lock_bak/

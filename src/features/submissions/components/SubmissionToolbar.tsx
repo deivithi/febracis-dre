@@ -115,7 +115,7 @@ export function SubmissionToolbar({
             onClick={onCreateDraft}
             disabled={!canPrepareDraft || isCreatingDraft}
           >
-            <PencilLine size={18} />
+            <PencilLine size={18} aria-hidden />
             {draftActionLabel}
           </button>
 

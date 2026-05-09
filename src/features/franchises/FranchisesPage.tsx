@@ -1,11 +1,25 @@
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Building2 } from 'lucide-react';
+import { EmptyState } from '../../components/EmptyState';
+import { useBreadcrumb } from '../../layouts/app/BreadcrumbContext';
 import { useAccessProfile } from '../auth/useAccessProfile';
 import { fetchAccessibleFranchises, fetchCurrentSubmissions } from '../shared/portal.api';
 import { formatInteger, formatPeriodLabel, formatStatusLabel, getStatusVariant } from '../../utils/formatters';
 
 export function FranchisesPage() {
   const accessProfileQuery = useAccessProfile();
+
+  const franchisesBreadcrumbSegments = useMemo(
+    () => [
+      { label: 'Portal', href: '/app/dashboard' },
+      { label: 'Franquias', href: '/app/franchises' },
+      { label: 'Carteira no escopo' },
+    ],
+    [],
+  );
+  useBreadcrumb(franchisesBreadcrumbSegments);
+
   const franchisesQuery = useQuery({
     queryKey: [
       'franchises',
@@ -87,15 +101,11 @@ export function FranchisesPage() {
         </div>
         <div className="card__body card__body--compact">
           {rows.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-state__icon">
-                <Building2 />
-              </div>
-              <h3 className="empty-state__title">Nenhuma franquia encontrada</h3>
-              <p className="empty-state__description">
-                Revise os escopos do usuário para liberar a visualização das unidades.
-              </p>
-            </div>
+            <EmptyState
+              icon={Building2}
+              title="Nenhuma unidade no seu escopo"
+              description="Sua atribuição RLS não retorna unidades. Contate seu administrador para verificar permissões."
+            />
           ) : (
             <div className="table-shell">
               <table className="data-table">
@@ -127,7 +137,7 @@ export function FranchisesPage() {
                             {formatStatusLabel(row.currentSubmission.status)}
                           </span>
                         ) : (
-                          <span className="badge badge--default">Sem submissão</span>
+                          <span className="text-muted">Aguardando primeira submissão</span>
                         )}
                       </td>
                     </tr>

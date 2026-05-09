@@ -2,6 +2,38 @@ import type { FranchiseRecord, RegionalRecord, RoleRecord } from '../auth/auth.t
 
 export type NumericValue = number | string | null;
 
+/** Métricas suportadas por `get_kpi_history` (sparklines do cockpit). */
+export const KPI_SPARKLINE_METRICS = [
+  'gross_revenue',
+  'mc1',
+  'mc2',
+  'ebitda_2',
+  'approved_submission_count',
+  'adjustment_pipeline_count',
+] as const;
+
+export type KpiSparklineMetric = (typeof KPI_SPARKLINE_METRICS)[number];
+
+/** Ponto cronológico retornado pelo RPC `get_kpi_history` (Supabase pode devolver `value` como string). */
+export interface KpiHistoryPoint {
+  period_label: string;
+  period_year: number;
+  period_month: number;
+  value: number | string;
+}
+
+export type FranchiseMetricTrendMetric = 'ebitda_1' | 'ebitda_2' | 'mc1' | 'mc2';
+
+/** Linha retornada por `get_franchise_metric_trend` (apenas submissões aprovadas). */
+export interface FranchiseMetricTrendRow {
+  franchise_id: string;
+  franchise_name: string;
+  regional_id: string;
+  /** Primeiro dia do mês competência (ISO). */
+  period_month: string;
+  metric_value: number | string;
+}
+
 export interface CurrentSubmissionRow {
   submission_id: string;
   franchise_id: string;
@@ -247,6 +279,18 @@ export interface SubmissionEditorRecord {
   created_at: string;
 }
 
+/** Resumo de uma linha em `submissions` (cadeia de versões por franquia + competência). */
+export interface SubmissionVersionSummaryRow {
+  id: string;
+  franchise_id: string;
+  reporting_period_id: string;
+  version_number: number;
+  status: string;
+  notes: string | null;
+  submitted_at: string | null;
+  created_at: string;
+}
+
 export interface DreInputCatalogLine {
   id: string;
   section_code: string;
@@ -304,6 +348,7 @@ export interface SubmissionHistoryRow {
   to_status: string;
   reason: string | null;
   changed_at: string;
+  changed_by: string | null;
 }
 
 export interface SubmissionWorkspaceSnapshot {

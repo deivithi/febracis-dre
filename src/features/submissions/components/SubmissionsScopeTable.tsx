@@ -16,7 +16,7 @@ type SubmissionsScopeTableProps = {
  */
 export function SubmissionsScopeTable({ rows, activeSubmissionId, onSelectRow, getAssistantHref }: SubmissionsScopeTableProps) {
   return (
-    <details className="submission-details">
+    <details className="submission-details" data-testid="submissions-scope-table">
       <summary className="submission-details__summary">Todas as DREs no seu acesso</summary>
       <p className="submission-details__meta">
         Toque numa linha para abrir aquela franquia e competência no painel principal. Recolha esta seção quando
@@ -36,16 +36,22 @@ export function SubmissionsScopeTable({ rows, activeSubmissionId, onSelectRow, g
             </div>
           ) : (
             <div className="table-shell">
-              <table className="data-table">
+              <table className="data-table" role="table">
                 <thead>
                   <tr>
-                    <th>Franquia</th>
-                    <th>Competência</th>
-                    <th>Regional</th>
-                    <th className="align-center">Versão</th>
-                    <th>Status</th>
-                    <th>Enviada em</th>
-                    {getAssistantHref ? <th className="align-right">Assistente</th> : null}
+                    <th scope="col">Franquia</th>
+                    <th scope="col">Competência</th>
+                    <th scope="col">Regional</th>
+                    <th className="align-center" scope="col">
+                      Versão
+                    </th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Enviada em</th>
+                    {getAssistantHref ? (
+                      <th className="align-right" scope="col">
+                        Assistente
+                      </th>
+                    ) : null}
                   </tr>
                 </thead>
                 <tbody>

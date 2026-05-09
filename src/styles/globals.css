@@ -5,16 +5,32 @@
    ========================================================= */
 
 @import './reset.css';
+@import './design-tokens.css';
 @import './tokens.css';
 
 /* ================================================
    BODY & ROOT
    ================================================ */
 
+html,
+body,
+.app-layout {
+  transition:
+    background-color 200ms ease,
+    color 200ms ease,
+    border-color 200ms ease;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
 body {
   background-color: var(--shell-bg-base);
   color: var(--text-primary);
-  font-family: var(--font-body);
+  font-family: var(--font-sans);
   font-size: var(--text-base);
   font-weight: var(--weight-normal);
   line-height: var(--leading-normal);
@@ -60,13 +76,23 @@ body {
 }
 
 /* ================================================
-   FOCUS STYLES
+   FOCUS STYLES — U10 WCAG (anular contorno até :focus-visible)
    ================================================ */
 
-:focus-visible {
-  outline: 2px solid var(--accent-primary);
+*:focus {
+  outline: none;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--primary-gold, var(--accent-gold));
   outline-offset: 2px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md, 8px);
+  transition: outline-offset var(--motion-fast, 150ms ease);
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline-offset: 3px;
 }
 
 /* ================================================
@@ -104,17 +130,18 @@ a:hover {
    MONOSPACE / MONETARY VALUES
    ================================================ */
 
-.font-mono,
-.currency,
-.percentage {
+.font-mono {
   font-family: var(--font-mono);
   font-weight: var(--weight-medium);
-  font-variant-numeric: tabular-nums;
 }
 
-.currency {
-  color: var(--text-primary);
-  letter-spacing: -0.02em;
+/* Moeda e %: sans + números tabulares (alinhamento em colunas) */
+.currency,
+.percentage {
+  font-family: var(--font-sans);
+  font-weight: var(--weight-medium);
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
 .currency.positive { color: var(--status-success); }
@@ -281,6 +308,34 @@ a:hover {
   border-width: 0;
 }
 
+/* Skip link (padrão Stripe / WCAG 2.4.1) */
+.skip-link {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: calc(var(--z-modal, 300) + 20);
+  padding: var(--space-3, 12px) var(--space-4, 16px);
+  transform: translateY(-120%);
+  background: var(--bg-surface, #1a1f2e);
+  color: var(--text-primary, #f1f5f9);
+  border: 1px solid var(--border-default, #1e293b);
+  border-radius: var(--radius-md, 8px);
+  font-weight: var(--weight-semibold, 600);
+  text-decoration: none;
+  box-shadow: var(--shadow-lg, none);
+}
+
+.skip-link:focus {
+  outline: none;
+}
+
+.skip-link:focus-visible {
+  transform: translateY(var(--space-2, 8px));
+  left: var(--space-3, 12px);
+  outline: 2px solid var(--primary-gold, var(--accent-gold));
+  outline-offset: 2px;
+}
+
 /* ================================================
    GLASSMORPHISM
    ================================================ */
@@ -297,4 +352,23 @@ a:hover {
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border: 1px solid var(--border-default);
+}
+
+/* =========================================================
+   CONTENT REVEAL — post-skeleton fade (CLS-friendly swap)
+   ========================================================= */
+
+@keyframes u-content-reveal {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.u-content-reveal {
+  opacity: 0;
+  animation: u-content-reveal 200ms ease forwards;
 }

@@ -1,0 +1,21 @@
+/* Lightweight pulse blocks (design token — elevated surface at 40% mix). */
+.ui-skeleton-block {
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-elevated) 40%, transparent);
+  animation: ui-skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+.ui-skeleton-line {
+  display: block;
+  max-width: 100%;
+}
+
+@keyframes ui-skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.42;
+  }
+}

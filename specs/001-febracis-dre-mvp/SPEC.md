@@ -19,7 +19,7 @@ O portal já cobre grande parte do PRD §6 (cockpit, submissões, assistente), m
 
 1. **Runner de evals YAML em CI** — O PRD §9-bis e §14 exigem, quando o harness existir, passagem binária e gates por `severity`. A auditoria Fase 1 regista **lacuna**: 50 cenários em `docs/dre-agent-evals.yaml` **sem** execução automatizada equivalente end-to-end (`research.md` §1 matriz §9/§9-bis, §3 ítem 1, §4 taxa YAML **[Não verificado]**).
 2. **Segurança e resiliência do assistente** — Gaps Major: fall-open de rate-limit quando RPC falha (`api/dre-agent.ts` ~659–686), dependência de segredos/env para `validate:*` (`research.md` §3 ítem 2 e 4); documento dedicado `references/audit-dre-agent-2026-05-08.md`.
-3. **Ambiguidade de migrações `015_*`** — Coexistem `supabase/migrations/015_harden_audit_log_insert.sql` e `supabase/migrations/015_agent_rate_limits.sql`; risco de ordem aplicada diferente entre clones (`research.md` §2 ítem 1, §3 ítem 3). O `project-context` documenta convenção **015 = rate limits**, **016 = harden audit**, mas o tree Git mantém ficheiro duplicado de prefixo.
+3. **Ambiguidade de migrações `015_*`** — No estado actual do arquivo existe **um** ficheiro `015_agent_rate_limits.sql` e `016_harden_audit_log_insert.sql` (o duplicado de prefixo foi removido — ver `references/project-context.md`). Em clones antigos, alinhar com `supabase migration list` / `npm run validate:migrations`.
 4. **Tipos TS vs DDL** — Ausência documentada de geração Supabase → drift até runtime (`research.md` §2 último parágrafo).
 5. **Cobertura E2E auth** — Playwright com skips sem `E2E_DRE_EMAIL` / `E2E_DRE_PASSWORD` (`research.md` §3 ítem 5).
 6. **Submissões / cockpit** — Cobertura ~60% relativa ao texto PRD na área §6.2 com dívidas de polish e separação Submissões/Assistente (`research.md` §1 tabela, §3 ítem 8 template vs stack real).
@@ -40,7 +40,7 @@ O portal já cobre grande parte do PRD §6 (cockpit, submissões, assistente), m
 **Fora do âmbito / não prometer na sala de demo** (alinhado ao PRD):
 
 - Itens explícitos **§4 Fora do âmbito atual** do PRD: substituir ERP; sign-off legal de auditoria externa; serviço dedicado LangGraph/Python **obrigatório**; app **nativo** iOS/Android neste ciclo; vector store sem validação (`docs/PRD-canonical.md` §4, §13-bis **#14**).
-- **Notificações** incompletas / desactivadas com copy honesta (ver histórico `project-context` sobre UX).
+- **Notificações in-app** com UI (`/app/notifications`, sino, Realtime) e DDL em `supabase/migrations/020_create_notifications.sql` — dependem de migração aplicada no projecto; matriz RLS: `docs/notifications-rls-test-matrix.md`. Não há canal push nativo descrito no SQL legado de comentários (outbox).
 - **Paridade linha-a-linha** eventos planilha vs motor — matriz de gaps em `references/dre-modelo-gerencial-gap-matrix.md`, não closure nesta janela.
 - **Evaluator YAML completo** como gate de merge — só após implementação do harness (PRD §14 ítem 11–12 condicionado à existência de CI).
 
@@ -219,7 +219,7 @@ graph LR
 
 - Preferir migrações **aditivas** (`add column` nullable → backfill → NOT NULL num passo posterior) quando possível.
 - **Evitar** `DROP`/`RENAME` sem janela; confirmar locks em horário de baixo uso.
-- **Resolver `015_*` duplicado** antes de aplicar em ambiente novo — risco de histórico incomparável.
+- **Resolver histórico `015_*` duplicado** em clones que ainda tenham dois ficheiros com o mesmo prefixo — risco de ordem; no canónico atual: um único `015_` + `016_` (ver `project-context`).
 
 ### Observabilidade
 
@@ -267,8 +267,8 @@ Qualquer resposta que mude decisão de produto deve gerar entrada em **§13-bis*
 
 - [ ] **S1** Cabeçalhos HTTP (CSP / X-Frame-Options / Referrer-Policy) planeados em `vercel.json` ou equivalente.
 - [ ] **S2** CORS da Edge `admin-provision-user` restrito a origens em **`ADMIN_PROVISION_ALLOWED_ORIGINS`** (sem `*` em produção).
-- [ ] **S3** Limite de tamanho de `message` no Zod (**implementado** `max(12000)` — revalidar vs recomendação 8–16k da review histórica).
-- [ ] **S4** Coerência `session.submission_id === submissionId` no handler (**implementado** ~245–247 — manter teste de regressão).
+- [x] **S3** Limite de tamanho de `message` no Zod (**implementado** `max(12000)` — revalidar vs recomendação 8–16k da review histórica).
+- [x] **S4** Coerência `session.submission_id === submissionId` no handler (**implementado** ~245–247 — manter teste de regressão).
 - [ ] **S5** Documentado: RBAC React ≠ segurança; RLS + API são fonte de verdade.
 - [ ] **S6** Revisão periódica de prompts / custo OpenRouter.
 - [ ] **S7** Modularizar `SubmissionsPage` / `dreAssistant` em roadmap (redução de superfície de erro).

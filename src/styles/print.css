@@ -1,0 +1,102 @@
+/* Impressão — Guia e restante do app embutido em app-layout */
+
+@media print {
+  @page {
+    size: A4 landscape;
+  }
+  .skip-link,
+  .sidebar,
+  .app-header,
+  .demo-banner,
+  .no-print,
+  .guide-toc-aside,
+  .guide-toc-fab,
+  .guide-toc--mobile,
+  .guide-toc--desktop,
+  .guide-toc-drawer-btn,
+  .febracis-sheet__overlay,
+  .guide-hero__cta--no-print,
+  .notifications-bell,
+  .app-layout__drawer-edge {
+    display: none !important;
+  }
+
+  body,
+  html {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  body {
+    overflow: visible !important;
+  }
+
+  .app-layout {
+    display: block !important;
+  }
+
+  main.page-container {
+    margin: 0 !important;
+    padding: 0.5rem !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .page-container__motion {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .card,
+  .guide-pillar-card,
+  .guide-trail__card {
+    page-break-inside: avoid;
+    break-inside: avoid;
+    border: 1px solid #ccc !important;
+    box-shadow: none !important;
+  }
+
+  .guide-hero.card--gold,
+  .guide-hero-g01.card--gold,
+  .badge,
+  .glass {
+    box-shadow: none !important;
+    background: #fafafa !important;
+  }
+
+  /* Conteúdo legível em monocromático */
+  .guide-formulas__item,
+  .role-card__trigger {
+    border-color: #999 !important;
+  }
+
+  /* G02 — fluxo visual: diagrama em fileira no papel */
+  .guide-flow-print {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .guide-flow-print .guide-flow-connector__arrow--pulse {
+    animation: none !important;
+    opacity: 0.85 !important;
+  }
+
+  .guide-flow-print .guide-flow-diagram__mobile {
+    display: none !important;
+  }
+
+  .guide-flow-print .guide-flow-diagram__track {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+  }
+
+  .guide-flow-print .guide-flow-connector--vertical {
+    display: none !important;
+  }
+
+  .guide-flow-print .guide-flow-connector--horizontal {
+    display: flex !important;
+  }
+}

@@ -1,0 +1,58 @@
+/* Faixa demo — alinhada à coluna principal (à direita da sidebar). */
+.demo-banner {
+  position: fixed;
+  top: 0;
+  left: var(--sidebar-width);
+  right: 0;
+  z-index: calc(var(--z-sticky) + 10);
+  display: flex;
+  align-items: center;
+  min-height: var(--demo-banner-height);
+  padding: var(--space-2) var(--space-6);
+  box-sizing: border-box;
+  background: color-mix(in srgb, var(--status-warning) 10%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--status-warning) 30%, transparent);
+}
+
+.demo-banner__inner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-width: 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.demo-banner__icon {
+  flex-shrink: 0;
+  color: var(--status-warning);
+}
+
+.demo-banner__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.demo-banner__link {
+  flex-shrink: 0;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--status-warning);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.demo-banner__link:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 767px) {
+  .demo-banner {
+    left: 0;
+  }
+}
+
+.app-layout--sidebar-collapsed .demo-banner {
+  left: var(--sidebar-collapsed);
+}

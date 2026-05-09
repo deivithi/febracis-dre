@@ -1,0 +1,98 @@
+/* Scroll + virtualização: altura limitada para o corpo virtualizado medir e reciclar linhas. */
+.data-table-virtual-scroll {
+  max-height: min(70vh, 720px);
+  overflow: auto;
+}
+
+.data-table-row {
+  outline: none;
+}
+
+.data-table-row:focus-visible {
+  box-shadow: inset 0 0 0 2px rgba(46, 123, 246, 0.45);
+}
+
+.data-table-row--clickable {
+  cursor: pointer;
+}
+
+.data-table-row--clickable:hover {
+  background: color-mix(in srgb, var(--bg-surface-hover) 40%, transparent) !important;
+}
+
+.data-table thead.data-table-head--sticky th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg-surface);
+  box-shadow: 0 1px 0 var(--border-default);
+}
+
+.data-table-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.data-table-pagination__btn {
+  min-height: var(--touch-target-min);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.data-table-pagination__btn:hover:not(:disabled) {
+  background: var(--bg-surface-hover);
+  border-color: var(--border-strong);
+}
+
+.data-table-pagination__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.sort-header-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: inherit;
+  width: 100%;
+}
+
+.sort-header-btn svg {
+  flex-shrink: 0;
+  opacity: 0.45;
+  width: 14px;
+  height: 14px;
+}
+
+.sort-header-btn--active svg {
+  opacity: 1;
+  color: var(--accent-primary);
+}
+
+.data-table th.align-right .sort-header-btn {
+  justify-content: flex-end;
+  width: 100%;
+}

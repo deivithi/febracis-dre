@@ -1,0 +1,48 @@
+.delta-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.125rem;
+  min-width: 4.5rem;
+  text-align: center;
+  font-size: var(--text-xs, 0.75rem);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-semibold, 600);
+}
+
+.delta-indicator__pct {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+  line-height: 1.2;
+}
+
+.delta-indicator__pct-text {
+  white-space: nowrap;
+}
+
+.delta-indicator__abs {
+  font-size: 0.6875rem;
+  font-weight: var(--weight-medium, 500);
+  opacity: 0.92;
+}
+
+.delta-indicator__abs--tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.delta-indicator--success .delta-indicator__pct-text,
+.delta-indicator--success .delta-indicator__abs {
+  color: var(--color-success, #15803d);
+}
+
+.delta-indicator--danger .delta-indicator__pct-text,
+.delta-indicator--danger .delta-indicator__abs {
+  color: var(--color-danger, #b91c1c);
+}
+
+.delta-indicator--neutral .delta-indicator__pct-text,
+.delta-indicator--neutral .delta-indicator__abs {
+  color: var(--text-secondary, #64748b);
+}

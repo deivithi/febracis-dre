@@ -5,6 +5,13 @@
   align-items: start;
 }
 
+/* STOP (U05): abaixo de 1366px a grelha empilha — colunas Franquia/Regional com max-width + ellipsis. */
+@media (max-width: 1365px) {
+  .workflow-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
 .workflow-sidebar {
   display: flex;
   flex-direction: column;
@@ -30,8 +37,167 @@
   margin-top: var(--space-5);
 }
 
-@media (max-width: 1280px) {
-  .workflow-layout {
-    grid-template-columns: 1fr;
-  }
+/* --- U05 inbox / atalhos --- */
+
+.workflow-approval-page {
+  position: relative;
+}
+
+.approval-queue-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.approval-queue-card-header__intro {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.approval-queue-card-header__search {
+  flex: 1 1 min(280px, 100%);
+  max-width: min(360px, 100%);
+}
+
+.approval-queue-search-input {
+  width: 100%;
+  min-height: var(--touch-target-min, 44px);
+}
+
+.workflow-approval-queue .table-shell {
+  max-height: min(58vh, 540px);
+  overflow: auto;
+}
+
+.workflow-approval-queue .data-table--inbox th {
+  padding: 0.5rem var(--space-4);
+  font-size: var(--text-xs);
+}
+
+/* Design system: `text-base` = 14px (equiv. pedido “sm 14px”). */
+.workflow-approval-queue .data-table--inbox td {
+  padding: 0.625rem var(--space-4);
+  font-size: var(--text-base);
+}
+
+.workflow-approval-queue .data-table tbody tr.data-table-row--clickable {
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.workflow-approval-queue .data-table tbody tr.data-table-row--clickable:hover {
+  background: color-mix(in srgb, var(--bg-surface-hover) 40%, transparent) !important;
+}
+
+.workflow-approval-queue .data-table tbody tr.data-table-row--clickable td {
+  min-height: 44px;
+}
+
+.workflow-approval-queue .data-table tbody tr.data-row--active {
+  background: color-mix(in srgb, var(--primary-gold, var(--accent-gold)) 12%, transparent);
+  box-shadow: inset 3px 0 0 0 var(--primary-gold, var(--accent-gold));
+}
+
+.workflow-approval-queue .data-table tbody tr.data-row--active td {
+  box-shadow: none;
+}
+
+.workflow-approval-queue .approval-queue-col-franchise,
+.workflow-approval-queue .approval-queue-col-regional {
+  max-width: min(14rem, 28vw);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.approval-shortcuts-intro {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  margin: 0 0 var(--space-4);
+}
+
+.approval-shortcuts-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.approval-shortcuts-table td {
+  padding: var(--space-2) var(--space-2) var(--space-2) 0;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.approval-shortcuts-table td:first-child {
+  width: 6.5rem;
+  white-space: nowrap;
+}
+
+.approval-shortcuts-kbd {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-default);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  background: var(--bg-secondary);
+}
+
+.approval-shortcuts-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.approval-kbd-hint-banner {
+  position: fixed;
+  right: var(--space-5);
+  bottom: var(--space-5);
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-elevated) 92%, transparent);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-md);
+}
+
+.approval-kbd-hint-banner__action {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.approval-kbd-hint-banner__action:hover {
+  color: var(--text-primary);
+}
+
+.approval-kbd-hint-banner__dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 1.125rem;
+  line-height: 1;
+  color: var(--text-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.approval-kbd-hint-banner__dismiss:hover {
+  background: var(--bg-surface-hover);
+  color: var(--text-primary);
 }

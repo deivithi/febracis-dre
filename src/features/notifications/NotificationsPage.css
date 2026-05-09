@@ -1,0 +1,12 @@
+.notifications-page__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.notifications-page__empty {
+  margin: 0;
+  padding: 1.5rem 0;
+  text-align: center;
+  color: var(--text-secondary, #94a3b8);
+}

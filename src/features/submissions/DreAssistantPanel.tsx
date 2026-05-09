@@ -6,7 +6,6 @@ import {
   ChevronRight,
   CornerDownLeft,
   HelpCircle,
-  Loader2,
   MapPin,
   RefreshCw,
   ScrollText,
@@ -14,7 +13,6 @@ import {
   List,
 } from 'lucide-react';
 import type { AgentMessageRow, DreInputCatalogLine } from '../shared/portal.types';
-import { AssistantProse } from './AssistantProse';
 import type { AssistantInteractionMode } from './agentPermissions';
 import {
   DRE_PHASE_COUNT,
@@ -22,14 +20,15 @@ import {
   getFieldGuide,
   getPhaseProgress,
   mapLineToPhase,
-  stripInternalLineCodesFromUserText,
   type DreAssistantCitation,
   type ProposedAssistantValue,
 } from './dreAssistant';
+import { AssistantChat } from './components/AssistantChat';
 import { CurrencyKeypad } from './components/CurrencyKeypad';
-
-/** Comando canónico equivalente ao cumprimento inicial. */
-const CMD_START = 'cmd:start';
+import {
+  SUBMISSION_WORKSPACE_BODY_TRANSITION,
+  SUBMISSION_WORKSPACE_LOCKED_BODY_CLASSES,
+} from './submissionLockUi';
 
 function formatBrl(amount: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(amount);
@@ -75,6 +74,8 @@ export interface DreAssistantPanelProps {
   onSubmitReview: () => void;
   savePending: boolean;
   submitPending: boolean;
+  /** Submissão em estado de workflow bloqueado (ex.: em revisão) — esmaece o bloco de workspace guiado sem bloquear o chat. */
+  workspaceLocked?: boolean;
 }
 
 /** Altura máxima do textarea (~8 linhas) em px, alinhada ao line-height do composer. */
@@ -116,6 +117,7 @@ export function DreAssistantPanel({
   onSubmitReview,
   savePending,
   submitPending,
+  workspaceLocked = false,
 }: DreAssistantPanelProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [keypadOpen, setKeypadOpen] = useState(false);
@@ -183,6 +185,10 @@ export function DreAssistantPanel({
     [draftValue, onSend, pending],
   );
 
+  const lockedWorkspaceClass = workspaceLocked
+    ? SUBMISSION_WORKSPACE_LOCKED_BODY_CLASSES
+    : SUBMISSION_WORKSPACE_BODY_TRANSITION;
+
   const insertTargetLine = focusLine ?? catalogLines[0] ?? null;
 
   const toolbarDisabled = loading || pending || !enabled;
@@ -246,6 +252,7 @@ export function DreAssistantPanel({
           </div>
         ) : (
           <div className="dre-assistant__shell">
+            <div className={lockedWorkspaceClass}>
             {interactionMode === 'explain_only' ? (
               <div className="inline-message dre-assistant__mode-banner" role="status">
                 <strong>Modo orientação.</strong> Sem aplicar valores na submissão — use o painel para acompanhar os
@@ -266,6 +273,7 @@ export function DreAssistantPanel({
                     type="button"
                     className={pillClass}
                     title={phase.title}
+                    aria-label={`Ir para fase ${phase.id}: ${phase.title}`}
                     disabled={toolbarDisabled || catalogLines.length === 0}
                     onClick={() => onCommand(`cmd:phase_summary ${phase.id}`)}
                   >
@@ -480,94 +488,17 @@ export function DreAssistantPanel({
                 </>
               ) : null}
             </div>
-
-            {realignHint ? (
-              <p className="dre-assistant__realign-hint" role="status">
-                {realignHint}
-              </p>
-            ) : null}
-
-            <div className="dre-assistant__thread-wrap">
-              <div
-                className="dre-assistant__messages"
-                data-testid="dre-assistant-messages"
-                role="log"
-                aria-live="polite"
-                aria-relevant="additions"
-                aria-label="Histórico do assistente DRE"
-              >
-                {loading ? (
-                  <div className="dre-assistant__thread-placeholder">
-                    <div className="inline-message">Carregando histórico…</div>
-                  </div>
-                ) : messages.length === 0 ? (
-                  <div className="dre-assistant__ola-gate">
-                    <p className="dre-assistant__ola-gate-text">
-                      {interactionMode === 'explain_only'
-                        ? 'Explore as fases no stepper ou peça uma explicação do campo atual.'
-                        : 'Siga o roteiro: confirme cada valor proposto antes de avançar. Toque em “Olá” para posicionar o assistente.'}
-                    </p>
-                    <button
-                      type="button"
-                      className="dre-assistant__chip dre-assistant__chip--primary dre-assistant__ola-btn"
-                      disabled={pending}
-                      onClick={() => onCommand(CMD_START)}
-                    >
-                      Olá
-                    </button>
-                    <p className="dre-assistant__ola-gate-hint">
-                      As acções rápidas usam comandos <code className="dre-assistant__code-snippet">cmd:*</code> à prova de
-                      variação de texto.
-                    </p>
-                    {pending ? (
-                      <p className="dre-assistant__thinking" role="status" aria-live="polite">
-                        <Loader2 className="dre-assistant__thinking-icon" size={16} aria-hidden />
-                        A processar a sua mensagem…
-                      </p>
-                    ) : null}
-                  </div>
-                ) : (
-                  <>
-                    {messages.map((message) => {
-                      if (message.role !== 'user' && message.role !== 'assistant') {
-                        return null;
-                      }
-                      return (
-                        <article
-                          key={message.id}
-                          className={`dre-assistant__message dre-assistant__message--${message.role}`}
-                        >
-                          <span className="dre-assistant__message-role">
-                            {message.role === 'assistant' ? 'Assistente' : 'Você'}
-                          </span>
-                          <div className="dre-assistant__message-body">
-                            {message.role === 'assistant' ? (
-                              <AssistantProse
-                                text={
-                                  stripInternalLineCodesFromUserText(message.content, lineCodes) || message.content
-                                }
-                              />
-                            ) : (
-                              message.content
-                            )}
-                          </div>
-                        </article>
-                      );
-                    })}
-                    {pending ? (
-                      <div
-                        className="dre-assistant__thinking dre-assistant__thinking--row"
-                        role="status"
-                        aria-live="polite"
-                      >
-                        <Loader2 className="dre-assistant__thinking-icon" size={16} aria-hidden />
-                        A preparar a resposta do assistente…
-                      </div>
-                    ) : null}
-                  </>
-                )}
-              </div>
             </div>
+
+            <AssistantChat
+              loading={loading}
+              messages={messages}
+              lineCodes={lineCodes}
+              pending={pending}
+              realignHint={realignHint}
+              interactionMode={interactionMode}
+              onCommand={onCommand}
+            />
 
             {lastCitations.length > 0 ? (
               <details className="dre-assistant__citations-details">

@@ -1,0 +1,43 @@
+.notifications-bell {
+  position: relative;
+}
+
+.notifications-bell__icon {
+  display: block;
+}
+
+.notifications-bell__badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 1.1rem;
+  height: 1.1rem;
+  padding: 0 4px;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1.1rem;
+  text-align: center;
+  background: var(--primary-gold, #d4a93c);
+  color: var(--shell-bg-base, #0f1419);
+}
+
+.notifications-bell__popover {
+  z-index: 10050;
+  outline: none;
+}
+
+.notifications-bell__arrow {
+  fill: var(--surface-panel, var(--shell-bg-base));
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}

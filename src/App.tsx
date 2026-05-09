@@ -1,7 +1,12 @@
 import { lazy, Suspense } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { AppToastsProvider } from './components/ui/AppToasts';
+import { TooltipProvider } from './components/ui/tooltip';
 import { AuthProvider } from './features/auth/AuthProvider';
+import { AppThemeProvider } from './providers/ThemeProvider';
+import { ShortcutsProfileSync } from './providers/ShortcutsProfileSync';
+import { ThemeProfileSync } from './providers/ThemeProfileSync';
 import { ProtectedRoute } from './router/ProtectedRoute';
 
 const queryClient = new QueryClient({
@@ -58,6 +63,10 @@ const AccessDeniedPage = lazy(async () => ({
   default: (await import('./features/auth/AccessDeniedPage')).AccessDeniedPage,
 }));
 
+const NotificationsPage = lazy(async () => ({
+  default: (await import('./features/notifications/NotificationsPage')).NotificationsPage,
+}));
+
 function RouteFallback() {
   return (
     <div className="page-loading">
@@ -69,11 +78,16 @@ function RouteFallback() {
 
 function App() {
   return (
+    <AppToastsProvider>
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <BrowserRouter basename={import.meta.env.BASE_URL}>
-          <Suspense fallback={<RouteFallback />}>
-            <Routes>
+      <AppThemeProvider>
+        <TooltipProvider delayDuration={300} skipDelayDuration={100}>
+          <AuthProvider>
+            <ThemeProfileSync />
+            <ShortcutsProfileSync />
+            <BrowserRouter basename={import.meta.env.BASE_URL}>
+              <Suspense fallback={<RouteFallback />}>
+              <Routes>
               <Route path="/" element={<LoginPage />} />
               <Route path="/login" element={<LoginPage />} />
 
@@ -88,6 +102,7 @@ function App() {
                 <Route index element={<Navigate to="/app/dashboard" replace />} />
                 <Route path="dashboard" element={<DashboardPage />} />
                 <Route path="guide" element={<GuidePage />} />
+                <Route path="notifications" element={<NotificationsPage />} />
                 <Route path="forbidden" element={<AccessDeniedPage />} />
                 <Route
                   path="submissions"
@@ -146,11 +161,14 @@ function App() {
               </Route>
 
               <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </Suspense>
-        </BrowserRouter>
-      </AuthProvider>
+              </Routes>
+              </Suspense>
+            </BrowserRouter>
+          </AuthProvider>
+        </TooltipProvider>
+      </AppThemeProvider>
     </QueryClientProvider>
+    </AppToastsProvider>
   );
 }
 

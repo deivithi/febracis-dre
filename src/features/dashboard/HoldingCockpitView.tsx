@@ -1,4 +1,5 @@
 import { ClipboardList } from 'lucide-react';
+import { Card } from '../../components/ui/card';
 import './DashboardPage.css';
 import type { DerivedHoldingView, HoldingFilterState } from './holdingDerivations';
 import type { FranchiseDashboardRow } from '../shared/portal.types';
@@ -21,13 +22,15 @@ function getTopFranchises(rows: FranchiseDashboardRow[]) {
 type Props = {
   derived: DerivedHoldingView | null;
   onPatchFilters: (patch: Partial<HoldingFilterState>) => void;
+  /** Não renderiza o cartão de filtros (modo comparativo: filtros ficam no cabeçalho). */
+  hideFilters?: boolean;
 };
 
-export function HoldingCockpitView({ derived, onPatchFilters }: Props) {
+export function HoldingCockpitView({ derived, onPatchFilters, hideFilters = false }: Props) {
   if (!derived) {
     return (
       <div className="dashboard__content page-stack">
-        <div className="card card--accent">
+        <Card variant="hero" className="card--accent">
           <div className="card__body">
             <div className="empty-state empty-state--spaced">
               <div className="empty-state__icon">
@@ -41,7 +44,7 @@ export function HoldingCockpitView({ derived, onPatchFilters }: Props) {
               </p>
             </div>
           </div>
-        </div>
+        </Card>
       </div>
     );
   }
@@ -60,7 +63,8 @@ export function HoldingCockpitView({ derived, onPatchFilters }: Props) {
 
   return (
     <div className="dashboard__content page-stack">
-      <div className="card card--accent dashboard-filters">
+      {!hideFilters && (
+      <Card variant="hero" className="card--accent dashboard-filters" data-tour-id="holding-cockpit-filters">
         <div className="card__header">
           <div>
             <h3 className="card__title">Cockpit executivo da rede</h3>
@@ -120,13 +124,14 @@ export function HoldingCockpitView({ derived, onPatchFilters }: Props) {
             </select>
           </label>
         </div>
-      </div>
+      </Card>
+      )}
 
       <div className="content-grid content-grid--sidebar">
-        <div className="card card--accent">
+        <Card variant="hero" className="card--accent" data-tour-id="holding-ranking">
           <div className="card__header">
             <div>
-              <h3 className="card__title">Radar executivo do recorte</h3>
+              <h3 className="card__title">Ranking e status por unidade</h3>
               <p className="card__subtitle">
                 Ranking, margem e status oficial das unidades visíveis no filtro atual.
               </p>
@@ -170,10 +175,10 @@ export function HoldingCockpitView({ derived, onPatchFilters }: Props) {
                             <div className="list-row__meta">{row.franchise_code}</div>
                           </td>
                           <td>{row.regional_name}</td>
-                          <td className="align-right font-mono">{formatCurrency(row.gross_revenue)}</td>
-                          <td className="align-right font-mono">{formatCurrency(row.mc2)}</td>
-                          <td className="align-right font-mono">{formatCurrency(row.ebitda_2)}</td>
-                          <td className="align-right font-mono">{formatPercent(row.ebitda2_pct)}</td>
+                          <td className="align-right num-tabular">{formatCurrency(row.gross_revenue)}</td>
+                          <td className="align-right num-tabular">{formatCurrency(row.mc2)}</td>
+                          <td className="align-right num-tabular">{formatCurrency(row.ebitda_2)}</td>
+                          <td className="align-right num-tabular">{formatPercent(row.ebitda2_pct)}</td>
                           <td>
                             <span className={`status-badge status-badge--${getStatusVariant(row.submission_status)}`}>
                               <span className="status-badge__dot" />
@@ -187,10 +192,10 @@ export function HoldingCockpitView({ derived, onPatchFilters }: Props) {
               </div>
             )}
           </div>
-        </div>
+        </Card>
 
         <div className="dashboard__side">
-          <div className="card">
+          <Card variant="kpi">
             <div className="card__header">
               <h3 className="card__title">Status do recorte</h3>
             </div>
@@ -198,29 +203,29 @@ export function HoldingCockpitView({ derived, onPatchFilters }: Props) {
               <div className="detail-list">
                 <div className="detail-list__item">
                   <span className="detail-list__label">Franquias</span>
-                  <span className="detail-list__value">{formatInteger(summary.totalFranchises)}</span>
+                  <span className="detail-list__value num-tabular">{formatInteger(summary.totalFranchises)}</span>
                 </div>
                 <div className="detail-list__item">
                   <span className="detail-list__label">Regionais</span>
-                  <span className="detail-list__value">{formatInteger(summary.totalRegionals)}</span>
+                  <span className="detail-list__value num-tabular">{formatInteger(summary.totalRegionals)}</span>
                 </div>
                 <div className="detail-list__item">
                   <span className="detail-list__label">Aprovadas</span>
-                  <span className="detail-list__value">{formatInteger(summary.approvedCount)}</span>
+                  <span className="detail-list__value num-tabular">{formatInteger(summary.approvedCount)}</span>
                 </div>
                 <div className="detail-list__item">
                   <span className="detail-list__label">Pendentes</span>
-                  <span className="detail-list__value">{formatInteger(summary.pendingCount)}</span>
+                  <span className="detail-list__value num-tabular">{formatInteger(summary.pendingCount)}</span>
                 </div>
                 <div className="detail-list__item">
                   <span className="detail-list__label">Melhor margem</span>
-                  <span className="detail-list__value">{formatPercent(summary.maxMarginPct)}</span>
+                  <span className="detail-list__value num-tabular">{formatPercent(summary.maxMarginPct)}</span>
                 </div>
               </div>
             </div>
-          </div>
+          </Card>
 
-          <div className="card">
+          <Card variant="default">
             <div className="card__header">
               <h3 className="card__title">Top 5 EBITDA 2</h3>
             </div>
@@ -233,16 +238,16 @@ export function HoldingCockpitView({ derived, onPatchFilters }: Props) {
                       <div className="list-row__meta">{row.regional_name}</div>
                     </div>
                     <div className="list-row__value">
-                      <div className="font-mono">{formatCurrency(row.ebitda_2)}</div>
-                      <div className="list-row__meta">{formatPercent(row.ebitda2_pct)}</div>
+                      <div className="num-tabular">{formatCurrency(row.ebitda_2)}</div>
+                      <div className="list-row__meta num-tabular">{formatPercent(row.ebitda2_pct)}</div>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-          </div>
+          </Card>
 
-          <div className="card">
+          <Card variant="inline">
             <div className="card__header">
               <h3 className="card__title">Fila de revisão</h3>
               <span className="badge badge--warning">{formatInteger(filteredPendingReviews.length)}</span>
@@ -258,18 +263,20 @@ export function HoldingCockpitView({ derived, onPatchFilters }: Props) {
                     <div key={row.submission_id} className="list-row">
                       <div>
                         <div className="list-row__title">{row.franchise_name}</div>
-                        <div className="list-row__meta">{formatPeriodLabel(row.period_label)}</div>
+                        <div className="list-row__meta competence-etiquette">
+                          {formatPeriodLabel(row.period_label)}
+                        </div>
                       </div>
                       <div className="list-row__value">
-                        <div className="font-mono">{formatCurrency(row.ebitda_2)}</div>
-                        <div className="list-row__meta">{formatInteger(row.open_issues_count)} pendências</div>
+                        <div className="num-tabular">{formatCurrency(row.ebitda_2)}</div>
+                        <div className="list-row__meta num-tabular">{formatInteger(row.open_issues_count)} pendências</div>
                       </div>
                     </div>
                   ))}
                 </div>
               )}
             </div>
-          </div>
+          </Card>
         </div>
       </div>
     </div>

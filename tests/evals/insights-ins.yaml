@@ -1,0 +1,54 @@
+# Insights AI — cenários de avaliação (INS-001 … INS-010)
+# U26 dashboard · contrato comportamental · leitura humana + gate CI (Vitest)
+#
+# Notas:
+# - Dados financeiros: somente submissões com status `approved` nas agregações de KPI (RPC `get_kpi_history`).
+# - `franchise_user`: servidor aperta sempre `rpcFranchiseId` ao conjunto de franquias do JWT (sem rede cruzada).
+
+scenarios:
+  - id: INS-001
+    title: franchise_user não cruza franquias
+    expectation: "Pedidos com kind network ou franchiseId alheio são apertados à franquia do utilizador no resolver de escopo."
+
+  - id: INS-002
+    title: apenas dados aprovados na série EBITDA 2
+    expectation: "Série `ebitda_2` de insights vem de `get_kpi_history`, que soma apenas linhas `submission_status = approved`."
+
+  - id: INS-003
+    title: evidência obrigatória em cada cartão
+    expectation: "Cada `InsightCard` inclui `evidence` JSON não vazio com `metric` ou `rule` e filtros de submissão documentados."
+
+  - id: INS-004
+    title: regressão sem SciPy
+    expectation: "Projeção/tendência usa mínimos quadrados em TypeScript (`linearRegression`), sem dependências científicas Python."
+
+  - id: INS-005
+    title: cache Postgres 4h
+    expectation: "Tabela `dre_insight_cache` + TTL 4h aplicado na API (`INSIGHTS_TTL_MS`); hits devolvem `cached: true`."
+
+  - id: INS-006
+    title: RLS cache por utilizador
+    expectation: "Políticas RLS limitam leitura/escrita de `dre_insight_cache` a `user_id = auth.uid()`."
+
+  - id: INS-007
+    title: latência caminho quente
+    expectation: "Com cache válido, resposta alvo abaixo de 2s (smoke manual ou log `dre_insights_cache_hit`)."
+
+  - id: INS-008
+    title: UI em PT-BR
+    expectation: "Painel, botões (Investigar, Dispensar, Compartilhar, Detalhes) e cartões em português do Brasil."
+
+  - id: INS-009
+    title: dismiss local 7 dias
+    expectation: "Dispensar persiste em `localStorage` com TTL de 7 dias (`febracis-dre-insight-dismissals-v1`)."
+
+  - id: INS-010
+    title: partilha com query insight
+    expectation: "Compartilhar copia URL com `?insight=<id>`; modal abre quando parâmetro corresponde a um cartão devolvido."
+
+references:
+  api_handler: "api/dre-insights.ts"
+  engine: "api/lib/insightsEngine.ts"
+  migration_cache: "supabase/migrations/020_dre_insight_cache.sql"
+  frontend_panel: "src/features/dashboard/insights/InsightsPanel.tsx"
+  vitest: "tests/unit/insights-ins-eval.test.ts"

@@ -1,0 +1,58 @@
+/* KPI card shells: keep layout metrics, suppress hover lift during loading. */
+.kpi-card.kpi-card--skeleton {
+  pointer-events: none;
+}
+
+.kpi-card.kpi-card--skeleton:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: var(--border-default);
+}
+
+.skeleton-sparkline-slot {
+  margin-top: var(--space-2);
+  height: 44px;
+  border-radius: var(--radius-md);
+}
+
+.dashboard-page-skeleton__hero {
+  min-height: 200px;
+}
+
+.dashboard-page-skeleton__body {
+  min-height: 420px;
+}
+
+.submissions-skeleton__toolbar {
+  min-height: 152px;
+}
+
+.submissions-skeleton__scope-table {
+  min-height: 200px;
+}
+
+.workflow-validation-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.workflow-validation-skeleton__row {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+.workflow-validation-skeleton__icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+}
+
+.workflow-validation-skeleton__text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}

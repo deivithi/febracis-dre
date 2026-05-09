@@ -87,7 +87,7 @@ export function CurrencyKeypad({
           </div>
         </div>
         <button type="button" className="currency-keypad__close" onClick={onCancel} aria-label="Fechar teclado">
-          <X size={18} />
+          <X size={18} aria-hidden />
         </button>
       </header>
       <div className="currency-keypad__preview" aria-live="polite">
@@ -119,7 +119,7 @@ export function CurrencyKeypad({
           onClick={pressBackspace}
           aria-label="Apagar último dígito"
         >
-          <Delete size={18} />
+          <Delete size={18} aria-hidden />
         </button>
       </div>
       <div className="currency-keypad__shortcuts">

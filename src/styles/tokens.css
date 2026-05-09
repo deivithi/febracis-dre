@@ -1,215 +1,272 @@
 /* =========================================================
-   FEBRACIS DRE | Design Tokens
-   =========================================================
-   Paleta: Navy Premium Dark + Gold Febracis
+   FEBRACIS DRE | Tokens de produto (camada `@layer base`)
+   Núcleo semântico U01: `design-tokens.css` (carregado antes).
    ========================================================= */
 
-@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@layer base {
+  :root {
+    /* ================================================
+       COLORS — Background Hierarchy (extensões)
+       ================================================ */
+    --bg-primary: #0a0e1a;
+    --bg-secondary: #111827;
+    --bg-surface-hover: #242b3d;
+    --bg-overlay: rgb(6 11 24 / 0.85);
 
-:root {
-  /* ================================================
-     COLORS — Background Hierarchy
-     ================================================ */
-  --bg-base:             #060B18;
-  --bg-primary:          #0A0E1A;
-  --bg-secondary:        #111827;
-  --bg-surface:          #1A1F2E;
-  --bg-surface-hover:    #242B3D;
-  --bg-elevated:         #2A3148;
-  --bg-overlay:          rgba(6, 11, 24, 0.85);
+    /* ================================================
+       COLORS — Accent & Brand
+       ================================================ */
+    --accent-primary: var(--accent-blue);
+    --accent-primary-hover: #4a91ff;
+    --accent-primary-soft: rgb(46 123 246 / 0.15);
+    --accent-secondary: #60a5fa;
+    --accent-gold: var(--primary-gold);
+    --accent-gold-hover: #f5c862;
+    --accent-gold-soft: rgb(240 183 62 / 0.12);
+    --accent-gold-border: rgb(240 183 62 / 0.25);
 
-  /* ================================================
-     COLORS — Accent & Brand
-     ================================================ */
-  --accent-primary:      #2E7BF6;
-  --accent-primary-hover:#4A91FF;
-  --accent-primary-soft: rgba(46, 123, 246, 0.15);
-  --accent-secondary:    #60A5FA;
-  --accent-gold:         #F0B73E;
-  --accent-gold-hover:   #F5C862;
-  --accent-gold-soft:    rgba(240, 183, 62, 0.12);
-  --accent-gold-border:  rgba(240, 183, 62, 0.25);
-  /* Destaque amarelo âmbar (CTAs secundários, chips de período) */
-  --accent-amber:        #EAB308;
-  --accent-amber-soft:   rgba(234, 179, 8, 0.14);
-  --text-amber:          #FDE047;
+    --accent-amber: #eab308;
+    --accent-amber-soft: rgb(234 179 8 / 0.14);
+    --text-amber: #fde047;
 
-  /* Variação / métrica (evitar competir com ouro da marca) */
-  --metric-positive:     #34D399;
-  --metric-positive-soft: rgba(52, 211, 153, 0.12);
-  --metric-negative:     #F87171;
-  --metric-negative-soft: rgba(248, 113, 113, 0.12);
+    --metric-positive: #34d399;
+    --metric-positive-soft: rgb(52 211 153 / 0.12);
+    --metric-negative: #f87171;
+    --metric-negative-soft: rgb(248 113 113 / 0.12);
 
-  /* Income statement / tabela DRE */
-  --statement-surface:       rgba(26, 31, 46, 0.65);
-  --statement-border:        rgba(46, 123, 246, 0.12);
-  --statement-section-bg:    rgba(46, 123, 246, 0.08);
-  --statement-subtotal-bg:   rgba(240, 183, 62, 0.06);
-  --statement-total-bg:      rgba(240, 183, 62, 0.1);
-  --statement-indicator-fg:  var(--text-amber);
+    /* Income statement / tabela DRE */
+    --statement-surface: rgb(26 31 46 / 0.65);
+    --statement-border: rgb(46 123 246 / 0.12);
+    --statement-section-bg: rgb(46 123 246 / 0.08);
+    --statement-subtotal-bg: rgb(240 183 62 / 0.06);
+    --statement-total-bg: rgb(240 183 62 / 0.1);
+    --statement-indicator-fg: var(--text-amber);
 
-  /* Assistente / thread (paleta Febracis, UX tipo produto de chat) */
-  --chat-canvas:                 rgba(10, 14, 26, 0.72);
-  --chat-canvas-mesh:            radial-gradient(ellipse 85% 55% at 50% -15%, rgba(46, 123, 246, 0.14), transparent 55%),
-                                 radial-gradient(ellipse 50% 45% at 100% 40%, rgba(240, 183, 62, 0.1), transparent 50%),
-                                 radial-gradient(ellipse 40% 35% at 0% 80%, rgba(234, 179, 8, 0.06), transparent 45%);
-  --chat-thread-border:          rgba(46, 123, 246, 0.14);
-  --chat-bubble-user-bg:         rgba(46, 123, 246, 0.18);
-  --chat-bubble-user-border:     rgba(46, 123, 246, 0.35);
-  --chat-bubble-assistant-bg:    rgba(240, 183, 62, 0.1);
-  --chat-bubble-assistant-border: rgba(240, 183, 62, 0.28);
-  --chat-composer-bg:            rgba(17, 24, 39, 0.92);
-  --chat-composer-border:        rgba(46, 123, 246, 0.18);
-  --chat-focus-ring:             0 0 0 2px var(--bg-primary), 0 0 0 4px rgba(240, 183, 62, 0.45);
-  --chat-placeholder:            var(--text-muted);
+    /* Assistente / thread */
+    --chat-canvas: rgb(10 14 26 / 0.72);
+    --chat-canvas-mesh:
+      radial-gradient(ellipse 85% 55% at 50% -15%, rgb(46 123 246 / 0.14), transparent 55%),
+      radial-gradient(ellipse 50% 45% at 100% 40%, rgb(240 183 62 / 0.1), transparent 50%),
+      radial-gradient(ellipse 40% 35% at 0% 80%, rgb(234 179 8 / 0.06), transparent 45%);
+    --chat-thread-border: rgb(46 123 246 / 0.14);
+    --chat-bubble-user-bg: rgb(46 123 246 / 0.18);
+    --chat-bubble-user-border: rgb(46 123 246 / 0.35);
+    --chat-bubble-assistant-bg: rgb(240 183 62 / 0.1);
+    --chat-bubble-assistant-border: rgb(240 183 62 / 0.28);
+    --chat-composer-bg: rgb(17 24 39 / 0.92);
+    --chat-composer-border: rgb(46 123 246 / 0.18);
+    --chat-focus-ring:
+      0 0 0 2px var(--bg-primary), 0 0 0 4px rgb(240 183 62 / 0.45);
+    --chat-placeholder: var(--text-muted);
 
-  /* ================================================
-     COLORS — Status
-     ================================================ */
-  --status-success:      #10B981;
-  --status-success-soft: rgba(16, 185, 129, 0.12);
-  --status-warning:      #F59E0B;
-  --status-warning-soft: rgba(245, 158, 11, 0.12);
-  --status-danger:       #EF4444;
-  --status-danger-soft:  rgba(239, 68, 68, 0.12);
-  --status-info:         #3B82F6;
-  --status-info-soft:    rgba(59, 130, 246, 0.12);
+    /* ================================================
+       COLORS — Status
+       ================================================ */
+    --status-success: var(--success);
+    --status-success-soft: rgb(16 185 129 / 0.12);
+    --status-warning: var(--warning);
+    --status-warning-soft: rgb(245 158 11 / 0.12);
+    --status-danger: var(--danger);
+    --status-danger-soft: rgb(239 68 68 / 0.12);
+    --status-info: #3b82f6;
+    --status-info-soft: rgb(59 130 246 / 0.12);
 
-  /* ================================================
-     COLORS — Text
-     ================================================ */
-  --text-primary:        #F1F5F9;
-  --text-secondary:      #94A3B8;
-  --text-muted:          #64748B;
-  --text-inverse:        #0A0E1A;
-  --text-accent:         #60A5FA;
-  --text-gold:           #F0B73E;
+    /* ================================================
+       COLORS — Text (extensões)
+       ================================================ */
+    --text-inverse: #0a0e1a;
+    --text-accent: #60a5fa;
+    --text-gold: var(--primary-gold);
 
-  /* ================================================
-     COLORS — Borders & Dividers
-     ================================================ */
-  --border-default:      #1E293B;
-  --border-subtle:       rgba(30, 41, 59, 0.6);
-  --border-accent:       rgba(46, 123, 246, 0.2);
-  --border-gold:         rgba(240, 183, 62, 0.2);
-  --border-strong:       #334155;
+    /* ================================================
+       COLORS — Borders & Dividers
+       ================================================ */
+    --border-default: #1e293b;
+    --border-accent: rgb(46 123 246 / 0.2);
+    --border-gold: rgb(240 183 62 / 0.2);
+    --border-strong: #334155;
 
-  /* ================================================
-     TYPOGRAPHY
-     ================================================ */
-  --font-heading:        'Sora', system-ui, -apple-system, sans-serif;
-  --font-body:           'Inter', system-ui, -apple-system, sans-serif;
-  --font-mono:           'JetBrains Mono', 'Fira Code', monospace;
+    /* ================================================
+       TYPOGRAPHY
+       ================================================ */
+    --font-heading: 'Sora', var(--font-sans);
+    --font-body: var(--font-sans);
 
-  /* Font Sizes — modular scale */
-  --text-xs:             0.75rem;    /* 12px */
-  --text-sm:             0.8125rem;  /* 13px */
-  --text-base:           0.875rem;   /* 14px */
-  --text-md:             1rem;       /* 16px */
-  --text-lg:             1.125rem;   /* 18px */
-  --text-xl:             1.25rem;    /* 20px */
-  --text-2xl:            1.5rem;     /* 24px */
-  --text-3xl:            1.875rem;   /* 30px */
-  --text-4xl:            2.25rem;    /* 36px */
-  --text-5xl:            3rem;       /* 48px */
+    /* Font Sizes — modular scale */
+    --text-xs: 0.75rem;
+    --text-sm: 0.8125rem;
+    --text-base: 0.875rem;
+    --text-md: 1rem;
+    --text-lg: 1.125rem;
+    --text-xl: 1.25rem;
+    --text-2xl: 1.5rem;
+    --text-3xl: 1.875rem;
+    --text-4xl: 2.25rem;
+    --text-5xl: 3rem;
 
-  /* Font Weights */
-  --weight-light:        300;
-  --weight-normal:       400;
-  --weight-medium:       500;
-  --weight-semibold:     600;
-  --weight-bold:         700;
+    --weight-light: 300;
+    --weight-normal: 400;
+    --weight-medium: 500;
+    --weight-semibold: 600;
+    --weight-bold: 700;
 
-  /* Line Heights */
-  --leading-tight:       1.25;
-  --leading-normal:      1.5;
-  --leading-relaxed:     1.75;
+    --leading-tight: 1.25;
+    --leading-normal: 1.5;
+    --leading-relaxed: 1.75;
 
-  /* ================================================
-     SPACING — 4px base scale
-     ================================================ */
-  --space-1:   0.25rem;  /* 4px */
-  --space-2:   0.5rem;   /* 8px */
-  --space-3:   0.75rem;  /* 12px */
-  --space-4:   1rem;     /* 16px */
-  --space-5:   1.25rem;  /* 20px */
-  --space-6:   1.5rem;   /* 24px */
-  --space-8:   2rem;     /* 32px */
-  --space-10:  2.5rem;   /* 40px */
-  --space-12:  3rem;     /* 48px */
-  --space-16:  4rem;     /* 64px */
-  --space-20:  5rem;     /* 80px */
-  --space-24:  6rem;     /* 96px */
+    /* ================================================
+       SPACING — 4px base scale
+       ================================================ */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.25rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+    --space-10: 2.5rem;
+    --space-12: 3rem;
+    --space-16: 4rem;
+    --space-20: 5rem;
+    --space-24: 6rem;
 
-  /* ================================================
-     BORDERS & RADIUS
-     ================================================ */
-  --radius-sm:           6px;
-  --radius-md:           8px;
-  --radius-lg:           12px;
-  --radius-xl:           16px;
-  --radius-2xl:          20px;
-  --radius-full:         9999px;
+    /* ================================================
+       BORDERS & RADIUS (extensões; sm–2xl vêm do U01)
+       ================================================ */
+    --radius-xs: 4px;
+    --radius-full: 9999px;
+    --radius-pill: var(--radius-full);
 
-  /* ================================================
-     SHADOWS
-     ================================================ */
-  --shadow-sm:           0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md:           0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
-  --shadow-lg:           0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
-  --shadow-xl:           0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
-  --shadow-glow-blue:    0 0 20px rgba(46, 123, 246, 0.15);
-  --shadow-glow-gold:    0 0 20px rgba(240, 183, 62, 0.12);
+    /* ================================================
+       SHADOWS
+       ================================================ */
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.2);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.3);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.4);
+    --shadow-glow-blue: 0 0 20px rgb(46 123 246 / 0.15);
+    --shadow-glow-gold: 0 0 20px rgb(240 183 62 / 0.12);
 
-  /* ================================================
-     TRANSITIONS
-     ================================================ */
-  --transition-fast:     150ms ease;
-  --transition-base:     200ms ease;
-  --transition-slow:     300ms ease;
-  --transition-spring:   300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    /* ================================================
+       TRANSITIONS (derivam dos motion tokens U01)
+       ================================================ */
+    --transition-fast: var(--motion-fast);
+    --transition-base: var(--motion-normal);
+    --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-spring: 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
 
-  /* ================================================
-     Z-INDEX
-     ================================================ */
-  --z-dropdown:          50;
-  --z-sticky:            100;
-  --z-modal-backdrop:    200;
-  --z-modal:             300;
-  --z-toast:             400;
-  --z-tooltip:           500;
+    --z-dropdown: 50;
+    --z-sticky: 100;
+    --z-modal-backdrop: 200;
+    --z-modal: 300;
+    --z-toast: 400;
+    --z-tooltip: 500;
 
-  /* ================================================
-     LAYOUT
-     ================================================ */
-  --sidebar-width:       260px;
-  --sidebar-collapsed:   72px;
-  --header-height:       64px;
-  --content-max-width:   1440px;
+    --sidebar-width: 260px;
+    --sidebar-collapsed: 72px;
+    --header-height: 64px;
+    --content-max-width: 1440px;
 
-  /* ================================================
-     APP SHELL — chrome institucional (contraste com cards/KPI)
-     ================================================ */
-  --shell-bg-base:           var(--bg-base);
-  --shell-bg-gradient:       radial-gradient(ellipse 115% 70% at 50% -18%, rgba(46, 123, 246, 0.085), transparent 52%),
-                              radial-gradient(ellipse 65% 48% at 100% 100%, rgba(240, 183, 62, 0.055), transparent 48%);
-  --shell-vignette:          radial-gradient(ellipse 98% 98% at 50% 48%, transparent 58%, rgba(6, 11, 24, 0.42) 100%);
-  --shell-edge-highlight:    rgba(240, 183, 62, 0.07);
-  --shell-sidebar-bg:        linear-gradient(180deg, rgba(15, 20, 32, 0.99) 0%, rgba(10, 14, 26, 0.96) 100%);
-  --shell-sidebar-overlay:   rgba(46, 123, 246, 0.025);
-  --shell-main-wash:         linear-gradient(180deg, rgba(46, 123, 246, 0.045) 0%, transparent 36%);
-  --shell-header-bg:         rgba(15, 20, 32, 0.76);
-  --shell-header-border:     rgba(30, 41, 59, 0.75);
-  /* Alinha hero/login ao mesmo vocabulário de mesh da marca (sem `--chat-canvas-mesh`). */
-  --shell-login-mesh:        radial-gradient(circle at 14% 18%, rgba(240, 183, 62, 0.14), transparent 22%),
-                              radial-gradient(circle at 72% 22%, rgba(96, 165, 250, 0.11), transparent 26%),
-                              radial-gradient(circle at 48% 88%, rgba(46, 123, 246, 0.14), transparent 26%);
+    --shell-bg-base: var(--bg-base);
+    --shell-bg-gradient:
+      radial-gradient(ellipse 115% 70% at 50% -18%, rgb(46 123 246 / 0.085), transparent 52%),
+      radial-gradient(ellipse 65% 48% at 100% 100%, rgb(240 183 62 / 0.055), transparent 48%);
+    --shell-vignette: radial-gradient(
+      ellipse 98% 98% at 50% 48%,
+      transparent 58%,
+      rgb(6 11 24 / 0.42) 100%
+    );
+    --shell-edge-highlight: rgb(240 183 62 / 0.07);
+    --shell-sidebar-bg: linear-gradient(180deg, rgb(15 20 32 / 0.99) 0%, rgb(10 14 26 / 0.96) 100%);
+    --shell-sidebar-overlay: rgb(46 123 246 / 0.025);
+    --shell-main-wash: linear-gradient(180deg, rgb(46 123 246 / 0.045) 0%, transparent 36%);
+    --shell-header-bg: rgb(15 20 32 / 0.76);
+    --shell-header-border: rgb(30 41 59 / 0.75);
+    --shell-login-mesh:
+      radial-gradient(circle at 14% 18%, rgb(240 183 62 / 0.14), transparent 22%),
+      radial-gradient(circle at 72% 22%, rgb(96 165 250 / 0.11), transparent 26%),
+      radial-gradient(circle at 48% 88%, rgb(46 123 246 / 0.14), transparent 26%);
 
-  /* ================================================
-     TOUCH & ELEVATION (WCAG 2.5 / camadas UI)
-     ================================================ */
-  --touch-target-min:    44px; /* mínimo recomendado alvos interativos */
-  --elevation-caption:   0 1px 0 rgba(255, 255, 255, 0.04);
-  --elevation-surface-1: var(--shadow-sm);
-  --elevation-surface-2: var(--shadow-md);
+    --touch-target-min: 44px;
+    --elevation-caption: 0 1px 0 rgb(255 255 255 / 0.04);
+    --elevation-surface-1: var(--shadow-sm);
+    --elevation-surface-2: var(--shadow-md);
+  }
+}
+
+/*
+ * Overrides estendidos do tema claro (legado U23).
+ * Núcleo U01 em `design-tokens.css`; aqui apenas tokens de produto que variam entre temas.
+ */
+html.light {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #f1f5f9;
+  --bg-surface-hover: #eef2f7;
+  --bg-overlay: rgb(248 250 252 / 0.92);
+
+  --accent-gold-hover: #c49a32;
+  --accent-gold-soft: rgb(212 169 60 / 0.14);
+  --accent-gold-border: rgb(212 169 60 / 0.35);
+  --text-gold: rgb(154 115 22);
+
+  --accent-primary-hover: #1d4ed8;
+  --accent-secondary: #2563eb;
+  --text-accent: #2563eb;
+
+  --metric-positive: rgb(21 128 61);
+  --metric-positive-soft: rgb(34 197 94 / 0.12);
+  --metric-negative: rgb(185 28 28);
+  --metric-negative-soft: rgb(239 68 68 / 0.12);
+
+  --border-default: #cbd5e1;
+  --border-strong: #94a3b8;
+  --border-accent: rgb(37 99 235 / 0.22);
+  --border-gold: rgb(212 169 60 / 0.35);
+
+  --statement-surface: rgb(241 245 249 / 0.92);
+  --statement-border: rgb(37 99 235 / 0.12);
+  --statement-section-bg: rgb(37 99 235 / 0.06);
+  --statement-subtotal-bg: rgb(212 169 60 / 0.08);
+  --statement-total-bg: rgb(212 169 60 / 0.12);
+
+  --chat-canvas: rgb(248 250 252 / 0.96);
+  --chat-canvas-mesh:
+    radial-gradient(ellipse 85% 55% at 50% -15%, rgb(37 99 235 / 0.07), transparent 55%),
+    radial-gradient(ellipse 50% 45% at 100% 40%, rgb(212 169 60 / 0.05), transparent 50%),
+    radial-gradient(ellipse 40% 35% at 0% 80%, rgb(234 179 8 / 0.04), transparent 45%);
+  --chat-thread-border: rgb(37 99 235 / 0.12);
+  --chat-bubble-user-bg: rgb(37 99 235 / 0.1);
+  --chat-bubble-user-border: rgb(37 99 235 / 0.22);
+  --chat-bubble-assistant-bg: rgb(212 169 60 / 0.08);
+  --chat-bubble-assistant-border: rgb(212 169 60 / 0.26);
+  --chat-composer-bg: rgb(255 255 255 / 0.96);
+  --chat-composer-border: rgb(37 99 235 / 0.14);
+  --chat-focus-ring: 0 0 0 2px var(--bg-surface), 0 0 0 4px rgb(212 169 60 / 0.35);
+
+  --shell-bg-base: var(--bg-base);
+  --shell-bg-gradient:
+    radial-gradient(ellipse 115% 70% at 50% -18%, rgb(37 99 235 / 0.06), transparent 52%),
+    radial-gradient(ellipse 65% 48% at 100% 100%, rgb(212 169 60 / 0.05), transparent 48%);
+  --shell-vignette: radial-gradient(
+    ellipse 98% 98% at 50% 48%,
+    transparent 58%,
+    rgb(241 245 249 / 0.72) 100%
+  );
+  --shell-edge-highlight: rgb(212 169 60 / 0.08);
+  --shell-sidebar-bg: linear-gradient(180deg, rgb(255 255 255 / 0.99) 0%, rgb(248 250 252 / 0.97) 100%);
+  --shell-sidebar-overlay: rgb(37 99 235 / 0.025);
+  --shell-main-wash: linear-gradient(180deg, rgb(37 99 235 / 0.035) 0%, transparent 38%);
+  --shell-header-bg: rgb(255 255 255 / 0.9);
+  --shell-header-border: rgb(226 232 240 / 0.95);
+  --shell-login-mesh:
+    radial-gradient(circle at 14% 18%, rgb(212 169 60 / 0.11), transparent 22%),
+    radial-gradient(circle at 72% 22%, rgb(37 99 235 / 0.08), transparent 26%),
+    radial-gradient(circle at 48% 88%, rgb(37 99 235 / 0.06), transparent 26%);
+
+  --shadow-sm: 0 1px 2px rgb(15 23 42 / 0.06);
+  --shadow-md: 0 4px 6px -1px rgb(15 23 42 / 0.07), 0 2px 4px -2px rgb(15 23 42 / 0.05);
+  --shadow-lg: 0 10px 15px -3px rgb(15 23 42 / 0.08), 0 4px 6px -4px rgb(15 23 42 / 0.05);
+  --shadow-xl: 0 20px 25px -5px rgb(15 23 42 / 0.08), 0 8px 10px -6px rgb(15 23 42 / 0.05);
+  --shadow-glow-blue: 0 0 20px rgb(37 99 235 / 0.1);
+  --shadow-glow-gold: 0 0 20px rgb(212 169 60 / 0.1);
 }

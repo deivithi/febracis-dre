@@ -4,8 +4,11 @@ import { defineConfig, devices } from '@playwright/test';
  * Smoke E2E: landing/login em viewports grandes e ultra-wide.
  * Executar a partir da raiz do projeto: `npm run test:e2e` (instalar browsers: `npx playwright install`).
  */
+const e2eDisabled = process.env.E2E === '0';
+
 export default defineConfig({
   testDir: './tests/e2e',
+  testIgnore: e2eDisabled ? /.*/ : [],
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,

@@ -1,5 +1,5 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   ArrowRight,
@@ -14,15 +14,21 @@ import {
   Target,
   TrendingUp,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+import { useBreadcrumb } from '../../layouts/app/BreadcrumbContext';
+import { abbreviateBreadcrumbLabel } from '../../utils/breadcrumbFormat';
 import { getActiveScopeHeadline, getDashboardScopeLabel } from '../auth/access';
 import type { AccessProfile } from '../auth/auth.types';
 import { useAccessProfile } from '../auth/useAccessProfile';
-import { fetchDashboardSnapshot } from '../shared/portal.api';
+import { useAuth } from '../auth/useAuth';
+import { COMMAND_PALETTE_HOLDING_PERIOD, type HoldingPeriodDetail } from '../../lib/commandPaletteBridge';
+import { fetchDashboardSnapshot, fetchKpiHistory, fetchReportingPeriods } from '../shared/portal.api';
 import type {
   CurrentSubmissionRow,
   DashboardSnapshot,
+  DreStatementRow,
   FranchiseDashboardRow,
+  NetworkDashboardRow,
   PendingReviewRow,
 } from '../shared/portal.types';
 import {
@@ -38,24 +44,78 @@ import {
   isPositiveDelta,
   toNumber,
 } from '../../utils/formatters';
-import { formatBrazilYearMonthLabel } from '../../utils/brazilTimezone';
 import { HoldingCockpitView } from './HoldingCockpitView';
+import { buildHoldingTotals, deriveHoldingView, type DerivedHoldingView, type HoldingFilterState } from './holdingDerivations';
 import {
-  buildHoldingTotals,
-  deriveHoldingView,
-  getHoldingPeriodOptions,
-  type HoldingFilterState,
-} from './holdingDerivations';
-import { ExecutiveKpiGrid, type ExecutiveKpiItem } from './ExecutiveKpiGrid';
+  pickOfficialFranchiseRowsForExecutiveKpis,
+} from './dashboardQuery';
+import {
+  buildFranchiseCompareKpiItems,
+  buildHoldingCompareKpiItems,
+  buildNetworkCompareKpiItems,
+  buildRegionalCompareKpiItems,
+} from './dashboardCompareKpis';
+import type { ExecutiveKpiItem, ExecutiveKpiSparklinePlan } from './ExecutiveKpiGrid';
+import { CustomizableDashboard } from './customizable/CustomizableDashboard';
+import { InsightsPanel } from './insights/InsightsPanel';
+import { SaveViewDialog } from '../saved-views/SaveViewDialog';
+import { SavedViewsBar } from '../saved-views/SavedViewsBar';
+import {
+  emptyFiltersForPage,
+  parseSavedFilters,
+  SAVED_FILTERS_VERSION,
+  stableFiltersFingerprint,
+  type SavedViewFiltersV1,
+} from '../saved-views/savedViewFilters';
+import { applyFiltersToSearchParams, clearFilterParams } from '../saved-views/savedViewUrl';
+import { useSaveViewSuggestion } from '../saved-views/useSaveViewSuggestion';
+import { useCompareMode } from '../../hooks/useCompareMode';
+import { useSavedViewsList, useSavedViewsMutations } from '../../hooks/useSavedViews';
+import { parseReportingPeriodKey, reportingPeriodKey } from '../../utils/reportingPeriodKeys';
+import { ExportButton, formatDashboardPeriodDisplay } from '../export/ExportButton';
+import {
+  buildDashboardFiltersSnapshot,
+  buildDashboardRankingRows,
+} from '../export/dashboardExportModel';
+import type { DashboardKpiSparklineState } from '../../components/ui/KpiCard';
 import './DashboardPage.css';
+import { CockpitSkeleton, KpiCardSkeleton, TableRowSkeleton } from '../../components/skeletons';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { Card } from '../../components/ui/card';
+import '../../components/skeletons/skeleton-shared.css';
+
+function isKpiSparklineRpcEnabled(
+  profile: AccessProfile,
+  plan: ExecutiveKpiSparklinePlan | null,
+  snapshot: DashboardSnapshot,
+  holdingDerived: DerivedHoldingView | null,
+): boolean {
+  if (!plan) {
+    return false;
+  }
+  if (profile.dashboardScope === 'franchise') {
+    return plan.franchiseId != null;
+  }
+  if (profile.dashboardScope === 'regional') {
+    return plan.regionalId != null && snapshot.latestRegional != null;
+  }
+  if (profile.dashboardScope === 'holding') {
+    return holdingDerived != null && snapshot.latestNetwork != null;
+  }
+  if (profile.dashboardScope === 'controladoria') {
+    return snapshot.latestNetwork != null;
+  }
+  return false;
+}
 
 function buildFranchiseKpis(snapshot: DashboardSnapshot): ExecutiveKpiItem[] {
-  if (!snapshot.latestFranchise) {
+  const { current, previous } = pickOfficialFranchiseRowsForExecutiveKpis(snapshot.franchiseRows);
+
+  if (!current) {
     return [];
   }
 
-  const current = snapshot.latestFranchise;
-  const previous = snapshot.previousFranchise;
+  const fid = current.franchise_id;
 
   return [
     {
@@ -66,6 +126,12 @@ function buildFranchiseKpis(snapshot: DashboardSnapshot): ExecutiveKpiItem[] {
       trendUp: isPositiveDelta(calculateDelta(current.gross_revenue, previous?.gross_revenue ?? null)),
       variant: 'gold',
       icon: DollarSign,
+      sparklinePlan: {
+        metric: 'gross_revenue',
+        valueFormat: 'currency',
+        franchiseId: fid,
+        regionalId: null,
+      },
     },
     {
       label: 'Margem de contribuição 1',
@@ -75,6 +141,12 @@ function buildFranchiseKpis(snapshot: DashboardSnapshot): ExecutiveKpiItem[] {
       trendUp: isPositiveDelta(calculateDelta(current.mc1, previous?.mc1 ?? null)),
       variant: 'default',
       icon: BarChart3,
+      sparklinePlan: {
+        metric: 'mc1',
+        valueFormat: 'currency',
+        franchiseId: fid,
+        regionalId: null,
+      },
     },
     {
       label: 'Margem de contribuição 2',
@@ -84,6 +156,12 @@ function buildFranchiseKpis(snapshot: DashboardSnapshot): ExecutiveKpiItem[] {
       trendUp: isPositiveDelta(calculateDelta(current.mc2, previous?.mc2 ?? null)),
       variant: 'default',
       icon: Target,
+      sparklinePlan: {
+        metric: 'mc2',
+        valueFormat: 'currency',
+        franchiseId: fid,
+        regionalId: null,
+      },
     },
     {
       label: 'EBITDA 2',
@@ -93,6 +171,12 @@ function buildFranchiseKpis(snapshot: DashboardSnapshot): ExecutiveKpiItem[] {
       trendUp: isPositiveDelta(calculateDelta(current.ebitda_2, previous?.ebitda_2 ?? null)),
       variant: 'success',
       icon: TrendingUp,
+      sparklinePlan: {
+        metric: 'ebitda_2',
+        valueFormat: 'currency',
+        franchiseId: fid,
+        regionalId: null,
+      },
     },
   ];
 }
@@ -104,6 +188,7 @@ function buildRegionalKpis(snapshot: DashboardSnapshot): ExecutiveKpiItem[] {
 
   const current = snapshot.latestRegional;
   const previous = snapshot.previousRegional;
+  const rid = current.regional_id;
 
   return [
     {
@@ -118,6 +203,12 @@ function buildRegionalKpis(snapshot: DashboardSnapshot): ExecutiveKpiItem[] {
       ),
       variant: 'gold',
       icon: DollarSign,
+      sparklinePlan: {
+        metric: 'gross_revenue',
+        valueFormat: 'currency',
+        franchiseId: null,
+        regionalId: rid,
+      },
     },
     {
       label: 'EBITDA 2 da regional',
@@ -131,6 +222,12 @@ function buildRegionalKpis(snapshot: DashboardSnapshot): ExecutiveKpiItem[] {
       ),
       variant: 'success',
       icon: TrendingUp,
+      sparklinePlan: {
+        metric: 'ebitda_2',
+        valueFormat: 'currency',
+        franchiseId: null,
+        regionalId: rid,
+      },
     },
     {
       label: 'DREs aprovadas',
@@ -140,6 +237,12 @@ function buildRegionalKpis(snapshot: DashboardSnapshot): ExecutiveKpiItem[] {
       trendUp: isPositiveDelta(calculateDelta(current.approved_count, previous?.approved_count ?? null)),
       variant: 'default',
       icon: CheckCircle2,
+      sparklinePlan: {
+        metric: 'approved_submission_count',
+        valueFormat: 'integer',
+        franchiseId: null,
+        regionalId: rid,
+      },
     },
     {
       label: 'Em ajuste',
@@ -149,13 +252,32 @@ function buildRegionalKpis(snapshot: DashboardSnapshot): ExecutiveKpiItem[] {
       trendUp: !isPositiveDelta(calculateDelta(current.pending_count, previous?.pending_count ?? null)),
       variant: 'warning',
       icon: AlertTriangle,
+      sparklinePlan: {
+        metric: 'adjustment_pipeline_count',
+        valueFormat: 'integer',
+        franchiseId: null,
+        regionalId: rid,
+      },
     },
   ];
+}
+
+function holdingKpiSparkScope(
+  derived: DerivedHoldingView,
+): Pick<ExecutiveKpiSparklinePlan, 'franchiseId' | 'regionalId'> {
+  if (derived.effectiveFranchiseId !== 'all') {
+    return { franchiseId: derived.effectiveFranchiseId, regionalId: null };
+  }
+  if (derived.effectiveRegionalId !== 'all') {
+    return { franchiseId: null, regionalId: derived.effectiveRegionalId };
+  }
+  return { franchiseId: null, regionalId: null };
 }
 
 function buildHoldingFilteredKpis(
   currentRows: FranchiseDashboardRow[],
   previousRows: FranchiseDashboardRow[],
+  sparkScope: Pick<ExecutiveKpiSparklinePlan, 'franchiseId' | 'regionalId'>,
 ): ExecutiveKpiItem[] {
   const current = buildHoldingTotals(currentRows);
   const previous = buildHoldingTotals(previousRows);
@@ -169,6 +291,12 @@ function buildHoldingFilteredKpis(
       trendUp: isPositiveDelta(calculateDelta(current.totalGrossRevenue, previous.totalGrossRevenue)),
       variant: 'gold',
       icon: DollarSign,
+      sparklinePlan: {
+        metric: 'gross_revenue',
+        valueFormat: 'currency',
+        franchiseId: sparkScope.franchiseId,
+        regionalId: sparkScope.regionalId,
+      },
     },
     {
       label: 'EBITDA 2 do recorte',
@@ -178,6 +306,12 @@ function buildHoldingFilteredKpis(
       trendUp: isPositiveDelta(calculateDelta(current.totalEbitda2, previous.totalEbitda2)),
       variant: 'success',
       icon: TrendingUp,
+      sparklinePlan: {
+        metric: 'ebitda_2',
+        valueFormat: 'currency',
+        franchiseId: sparkScope.franchiseId,
+        regionalId: sparkScope.regionalId,
+      },
     },
     {
       label: 'DREs aprovadas',
@@ -187,6 +321,12 @@ function buildHoldingFilteredKpis(
       trendUp: isPositiveDelta(calculateDelta(current.approvedCount, previous.approvedCount)),
       variant: 'default',
       icon: ShieldCheck,
+      sparklinePlan: {
+        metric: 'approved_submission_count',
+        valueFormat: 'integer',
+        franchiseId: sparkScope.franchiseId,
+        regionalId: sparkScope.regionalId,
+      },
     },
     {
       label: 'Em ajuste / fila',
@@ -196,6 +336,12 @@ function buildHoldingFilteredKpis(
       trendUp: !isPositiveDelta(calculateDelta(current.pendingCount, previous.pendingCount)),
       variant: 'warning',
       icon: ClipboardList,
+      sparklinePlan: {
+        metric: 'adjustment_pipeline_count',
+        valueFormat: 'integer',
+        franchiseId: sparkScope.franchiseId,
+        regionalId: sparkScope.regionalId,
+      },
     },
   ];
 }
@@ -221,6 +367,12 @@ function buildNetworkKpis(snapshot: DashboardSnapshot): ExecutiveKpiItem[] {
       ),
       variant: 'gold',
       icon: DollarSign,
+      sparklinePlan: {
+        metric: 'gross_revenue',
+        valueFormat: 'currency',
+        franchiseId: null,
+        regionalId: null,
+      },
     },
     {
       label: 'EBITDA 2 da rede',
@@ -234,6 +386,12 @@ function buildNetworkKpis(snapshot: DashboardSnapshot): ExecutiveKpiItem[] {
       ),
       variant: 'success',
       icon: TrendingUp,
+      sparklinePlan: {
+        metric: 'ebitda_2',
+        valueFormat: 'currency',
+        franchiseId: null,
+        regionalId: null,
+      },
     },
     {
       label: 'DREs aprovadas',
@@ -243,6 +401,12 @@ function buildNetworkKpis(snapshot: DashboardSnapshot): ExecutiveKpiItem[] {
       trendUp: isPositiveDelta(calculateDelta(current.approved_count, previous?.approved_count ?? null)),
       variant: 'default',
       icon: ShieldCheck,
+      sparklinePlan: {
+        metric: 'approved_submission_count',
+        valueFormat: 'integer',
+        franchiseId: null,
+        regionalId: null,
+      },
     },
     {
       label: 'Aguardando ação',
@@ -252,6 +416,12 @@ function buildNetworkKpis(snapshot: DashboardSnapshot): ExecutiveKpiItem[] {
       trendUp: !isPositiveDelta(calculateDelta(current.pending_count, previous?.pending_count ?? null)),
       variant: 'warning',
       icon: ClipboardList,
+      sparklinePlan: {
+        metric: 'adjustment_pipeline_count',
+        valueFormat: 'integer',
+        franchiseId: null,
+        regionalId: null,
+      },
     },
   ];
 }
@@ -353,7 +523,7 @@ function DashboardHero({
 
   return (
     <div className="page-stack">
-      <section className="dashboard-hero card card--gold">
+      <Card as="section" variant="hero" className="dashboard-hero card--gold">
         <div className="dashboard-hero__copy">
           <span
             className="badge badge--gold dashboard-hero__scope-badge"
@@ -418,7 +588,7 @@ function DashboardHero({
             </div>
           )}
         </div>
-      </section>
+      </Card>
     </div>
   );
 }
@@ -426,7 +596,7 @@ function DashboardHero({
 function RecentSubmissionsCard({ rows }: { rows: CurrentSubmissionRow[] }) {
   if (!rows.length) {
     return (
-      <div className="card">
+      <div className="card card--v-kpi">
         <div className="card__header">
           <h3 className="card__title">Últimas DREs do período</h3>
         </div>
@@ -443,7 +613,7 @@ function RecentSubmissionsCard({ rows }: { rows: CurrentSubmissionRow[] }) {
   }
 
   return (
-    <div className="card">
+    <div className="card card--v-kpi">
       <div className="card__header">
         <h3 className="card__title">Últimas DREs do período</h3>
       </div>
@@ -473,7 +643,7 @@ function RecentSubmissionsCard({ rows }: { rows: CurrentSubmissionRow[] }) {
 
 function PendingReviewsCard({ rows }: { rows: PendingReviewRow[] }) {
   return (
-    <div className="card">
+    <div className="card card--v-inline">
       <div className="card__header">
         <h3 className="card__title">Fila de aprovações</h3>
         <span className="badge badge--warning">{formatInteger(rows.length)}</span>
@@ -503,9 +673,9 @@ function PendingReviewsCard({ rows }: { rows: PendingReviewRow[] }) {
                       <div className="list-row__meta">{row.regional_name}</div>
                     </td>
                     <td>{formatPeriodLabel(row.period_label)}</td>
-                    <td className="align-right font-mono">{formatCurrency(row.gross_revenue)}</td>
-                    <td className="align-right font-mono">{formatCurrency(row.ebitda_2)}</td>
-                    <td className="align-right">{formatInteger(row.open_issues_count)}</td>
+                    <td className="align-right num-tabular">{formatCurrency(row.gross_revenue)}</td>
+                    <td className="align-right num-tabular">{formatCurrency(row.ebitda_2)}</td>
+                    <td className="align-right num-tabular">{formatInteger(row.open_issues_count)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -517,8 +687,20 @@ function PendingReviewsCard({ rows }: { rows: PendingReviewRow[] }) {
   );
 }
 
-function FranchiseDashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
-  const current = snapshot.latestFranchise;
+function FranchiseDashboardView({
+  snapshot,
+  dreLines,
+  franchiseRow: franchiseRowProp,
+  submissionsRows,
+}: {
+  snapshot: DashboardSnapshot;
+  dreLines?: DreStatementRow[];
+  franchiseRow?: FranchiseDashboardRow | null;
+  submissionsRows?: CurrentSubmissionRow[];
+}) {
+  const current = franchiseRowProp ?? snapshot.latestFranchise;
+  const dre = dreLines ?? snapshot.currentDre;
+  const submissions = submissionsRows ?? snapshot.currentSubmissions;
 
   if (!current) {
     return (
@@ -556,7 +738,7 @@ function FranchiseDashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {snapshot.currentDre.map((row) => (
+                  {dre.map((row) => (
                     <tr
                       key={`${row.section_code}-${row.line_code}`}
                       className={row.line_type !== 'input' ? 'dre-row--bold' : ''}
@@ -574,8 +756,8 @@ function FranchiseDashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
                       >
                         {row.line_name}
                       </td>
-                      <td className="align-right font-mono">{formatCurrency(row.value_currency)}</td>
-                      <td className="align-right font-mono text-secondary">
+                      <td className="align-right num-tabular">{formatCurrency(row.value_currency)}</td>
+                      <td className="align-right num-tabular text-secondary">
                         {formatPercent(row.percent_of_gross_revenue)}
                       </td>
                     </tr>
@@ -587,7 +769,7 @@ function FranchiseDashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
         </div>
 
         <div className="dashboard__side">
-          <div className="card">
+          <Card variant="kpi">
             <div className="card__header">
               <h3 className="card__title">Status do período</h3>
             </div>
@@ -595,7 +777,9 @@ function FranchiseDashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
               <div className="detail-list">
                 <div className="detail-list__item">
                   <span className="detail-list__label">Competência</span>
-                  <span className="detail-list__value">{formatPeriodLabel(current.period_label)}</span>
+                  <span className="detail-list__value competence-etiquette">
+                    {formatPeriodLabel(current.period_label)}
+                  </span>
                 </div>
                 <div className="detail-list__item">
                   <span className="detail-list__label">Status</span>
@@ -607,7 +791,14 @@ function FranchiseDashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
                 <div className="detail-list__item">
                   <span className="detail-list__label">Versão</span>
                   <span className="detail-list__value">
-                    {snapshot.currentSubmissions[0]?.version_number ?? '—'}
+                    {(
+                      submissions.find(
+                        (s) =>
+                          s.franchise_id === current.franchise_id &&
+                          s.period_year === current.period_year &&
+                          s.period_month === current.period_month,
+                      ) ?? submissions[0]
+                    )?.version_number ?? '—'}
                   </span>
                 </div>
                 <div className="detail-list__item">
@@ -617,12 +808,21 @@ function FranchiseDashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
                 <div className="detail-list__item">
                   <span className="detail-list__label">Enviado em</span>
                   <span className="detail-list__value">
-                    {formatDateTime(snapshot.currentSubmissions[0]?.submitted_at ?? null)}
+                    {formatDateTime(
+                      (
+                        submissions.find(
+                          (s) =>
+                            s.franchise_id === current.franchise_id &&
+                            s.period_year === current.period_year &&
+                            s.period_month === current.period_month,
+                        ) ?? submissions[0]
+                      )?.submitted_at ?? null,
+                    )}
                   </span>
                 </div>
               </div>
             </div>
-          </div>
+          </Card>
 
           <RecentSubmissionsCard rows={snapshot.currentSubmissions} />
         </div>
@@ -655,7 +855,7 @@ function RegionalDashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
   return (
     <div className="dashboard__content">
       <div className="content-grid content-grid--sidebar">
-        <div className="card card--accent">
+        <Card variant="hero" className="card--accent">
           <div className="card__header">
             <div>
               <h3 className="card__title">Comparativo entre franquias</h3>
@@ -682,9 +882,9 @@ function RegionalDashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
                         <div className="list-row__title">{row.franchise_name}</div>
                         <div className="list-row__meta">{row.franchise_code}</div>
                       </td>
-                      <td className="align-right font-mono">{formatCurrency(row.gross_revenue)}</td>
-                      <td className="align-right font-mono">{formatCurrency(row.ebitda_2)}</td>
-                      <td className="align-right font-mono">{formatPercent(row.ebitda2_pct)}</td>
+                      <td className="align-right num-tabular">{formatCurrency(row.gross_revenue)}</td>
+                      <td className="align-right num-tabular">{formatCurrency(row.ebitda_2)}</td>
+                      <td className="align-right num-tabular">{formatPercent(row.ebitda2_pct)}</td>
                       <td>
                         <span className={`status-badge status-badge--${getStatusVariant(row.submission_status)}`}>
                           <span className="status-badge__dot" />
@@ -697,10 +897,10 @@ function RegionalDashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
               </table>
             </div>
           </div>
-        </div>
+        </Card>
 
         <div className="dashboard__side">
-          <div className="card">
+          <Card variant="default">
             <div className="card__header">
               <h3 className="card__title">Resumo regional</h3>
             </div>
@@ -708,29 +908,29 @@ function RegionalDashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
               <div className="detail-list">
                 <div className="detail-list__item">
                   <span className="detail-list__label">Franquias na carteira</span>
-                  <span className="detail-list__value">{formatInteger(current.total_franchises)}</span>
+                  <span className="detail-list__value num-tabular">{formatInteger(current.total_franchises)}</span>
                 </div>
                 <div className="detail-list__item">
                   <span className="detail-list__label">Aprovadas</span>
-                  <span className="detail-list__value">{formatInteger(current.approved_count)}</span>
+                  <span className="detail-list__value num-tabular">{formatInteger(current.approved_count)}</span>
                 </div>
                 <div className="detail-list__item">
                   <span className="detail-list__label">Pendentes</span>
-                  <span className="detail-list__value">{formatInteger(current.pending_count)}</span>
+                  <span className="detail-list__value num-tabular">{formatInteger(current.pending_count)}</span>
                 </div>
                 <div className="detail-list__item">
                   <span className="detail-list__label">MC1 média</span>
-                  <span className="detail-list__value">{formatPercent(current.avg_mc1_pct)}</span>
+                  <span className="detail-list__value num-tabular">{formatPercent(current.avg_mc1_pct)}</span>
                 </div>
                 <div className="detail-list__item">
                   <span className="detail-list__label">Marketing médio</span>
-                  <span className="detail-list__value">{formatPercent(current.avg_marketing_pct)}</span>
+                  <span className="detail-list__value num-tabular">{formatPercent(current.avg_marketing_pct)}</span>
                 </div>
               </div>
             </div>
-          </div>
+          </Card>
 
-          <div className="card">
+          <Card variant="default">
             <div className="card__header">
               <h3 className="card__title">Top 5 unidades por margem</h3>
             </div>
@@ -740,30 +940,38 @@ function RegionalDashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
                   <div key={row.submission_id} className="list-row">
                     <div>
                       <div className="list-row__title">{row.franchise_name}</div>
-                      <div className="list-row__meta">{formatPercent(row.ebitda2_pct)} de margem</div>
+                      <div className="list-row__meta num-tabular">{formatPercent(row.ebitda2_pct)} de margem</div>
                     </div>
-                    <div className="list-row__value font-mono">{formatCurrency(row.ebitda_2)}</div>
+                    <div className="list-row__value num-tabular">{formatCurrency(row.ebitda_2)}</div>
                   </div>
                 ))}
               </div>
             </div>
-          </div>
+          </Card>
         </div>
       </div>
     </div>
   );
 }
 
-function ControladoriaDashboardView({ snapshot }: { snapshot: DashboardSnapshot }) {
-  const current = snapshot.latestNetwork;
-  const currentRows = getCurrentPeriodFranchiseRows(snapshot);
+function ControladoriaDashboardView({
+  snapshot,
+  networkRow: networkRowProp,
+  franchiseRowsForCritical,
+}: {
+  snapshot: DashboardSnapshot;
+  networkRow?: NetworkDashboardRow | null;
+  franchiseRowsForCritical?: FranchiseDashboardRow[];
+}) {
+  const current = networkRowProp ?? snapshot.latestNetwork;
+  const currentRows = franchiseRowsForCritical ?? getCurrentPeriodFranchiseRows(snapshot);
 
   return (
     <div className="dashboard__content page-stack">
       <PendingReviewsCard rows={snapshot.pendingReviews} />
 
       <div className="page-grid page-grid--wide">
-        <div className="card">
+        <Card variant="default">
           <div className="card__header">
             <div>
               <h3 className="card__title">Unidades com menor margem (EBITDA 2)</h3>
@@ -783,17 +991,17 @@ function ControladoriaDashboardView({ snapshot }: { snapshot: DashboardSnapshot 
                     </div>
                   </div>
                   <div className="list-row__value">
-                    <div className="font-mono">{formatPercent(row.ebitda2_pct)}</div>
-                    <div className="list-row__meta">{formatCurrency(row.ebitda_2)}</div>
+                    <div className="num-tabular">{formatPercent(row.ebitda2_pct)}</div>
+                    <div className="list-row__meta num-tabular">{formatCurrency(row.ebitda_2)}</div>
                   </div>
                 </div>
               ))}
             </div>
           </div>
-        </div>
+        </Card>
 
         <div className="dashboard__side">
-          <div className="card">
+          <Card variant="kpi">
             <div className="card__header">
               <h3 className="card__title">Resumo da fila de aprovações</h3>
             </div>
@@ -826,7 +1034,7 @@ function ControladoriaDashboardView({ snapshot }: { snapshot: DashboardSnapshot 
                 </div>
               </div>
             </div>
-          </div>
+          </Card>
 
           <RecentSubmissionsCard rows={snapshot.currentSubmissions} />
         </div>
@@ -835,13 +1043,204 @@ function ControladoriaDashboardView({ snapshot }: { snapshot: DashboardSnapshot 
   );
 }
 
+function DashboardScopeBodySkeleton() {
+  return (
+    <div className="dashboard__content dashboard-page-skeleton__body" aria-hidden="true">
+      <div className="content-grid content-grid--sidebar">
+        <Card variant="hero" className="card--accent">
+          <div className="card__header">
+            <Skeleton style={{ width: '44%', maxWidth: 280, height: '1rem' }} />
+          </div>
+          <div className="card__body card__body--compact">
+            <div className="table-shell">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Col 1</th>
+                    <th>Col 2</th>
+                    <th className="align-right">Valor A</th>
+                    <th className="align-right">Valor B</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <TableRowSkeleton columns={5} lineCount={5} />
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </Card>
+        <div className="dashboard__side">
+          <Card variant="kpi">
+            <div className="card__header">
+              <Skeleton style={{ width: '55%', height: '1rem' }} />
+            </div>
+            <div className="card__body">
+              <div className="detail-list">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <div key={index} className="detail-list__item">
+                    <Skeleton style={{ width: '42%', height: '0.75rem' }} />
+                    <Skeleton style={{ width: '28%', height: '0.75rem' }} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function DashboardPage() {
   const accessProfileQuery = useAccessProfile();
+  const { session } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [holdingFilters, setHoldingFilters] = useState<HoldingFilterState>(() => ({
     selectedPeriodLabel: '',
     selectedRegionalId: 'all',
     selectedFranchiseId: 'all',
   }));
+  const uid = session?.user?.id;
+  const savedViewsList = useSavedViewsList(uid, 'dashboard');
+  const savedViewsMut = useSavedViewsMutations(uid);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const viewIdParam = searchParams.get('view');
+
+  const dashboardBreadcrumbSegments = useMemo(() => {
+    const profile = accessProfileQuery.data;
+    if (!profile) {
+      return [];
+    }
+    return [
+      { label: 'Portal', href: '/app/dashboard' },
+      { label: 'Painel', href: '/app/dashboard' },
+      { label: abbreviateBreadcrumbLabel(getActiveScopeHeadline(profile)) },
+    ];
+  }, [accessProfileQuery.data]);
+
+  useBreadcrumb(dashboardBreadcrumbSegments);
+
+  const patchHoldingFilters = useCallback((patch: Partial<HoldingFilterState>) => {
+    setHoldingFilters((prev) => ({ ...prev, ...patch }));
+  }, []);
+
+  const dashboardFiltersTyped = useMemo((): SavedViewFiltersV1 => {
+    const hasHoldingFilters =
+      Boolean(holdingFilters.selectedPeriodLabel.trim()) ||
+      holdingFilters.selectedRegionalId !== 'all' ||
+      holdingFilters.selectedFranchiseId !== 'all';
+    if (!hasHoldingFilters) {
+      return emptyFiltersForPage('dashboard');
+    }
+    return {
+      page: 'dashboard',
+      v: SAVED_FILTERS_VERSION,
+      holding: {
+        selectedPeriodLabel: holdingFilters.selectedPeriodLabel,
+        selectedRegionalId: holdingFilters.selectedRegionalId,
+        selectedFranchiseId: holdingFilters.selectedFranchiseId,
+      },
+    };
+  }, [holdingFilters]);
+
+  const defaultDashboardFiltersFingerprint = useMemo(
+    () => stableFiltersFingerprint(emptyFiltersForPage('dashboard')),
+    [],
+  );
+
+  const dashboardFiltersFingerprint = useMemo(
+    () => stableFiltersFingerprint(dashboardFiltersTyped),
+    [dashboardFiltersTyped],
+  );
+
+  const suggestion = useSaveViewSuggestion('dashboard', dashboardFiltersFingerprint, {
+    disabled: accessProfileQuery.data?.dashboardScope !== 'holding',
+    isDefaultFingerprint: dashboardFiltersFingerprint === defaultDashboardFiltersFingerprint,
+  });
+
+  const handleInsightInvestigate = useCallback(
+    (evidence: Record<string, unknown>) => {
+      const scope = accessProfileQuery.data?.dashboardScope;
+      const period =
+        (typeof evidence.period_label === 'string' && evidence.period_label) ||
+        (typeof evidence.last_period_label === 'string' && evidence.last_period_label) ||
+        null;
+      const regional = typeof evidence.regional_id === 'string' ? evidence.regional_id : null;
+      const franchise = typeof evidence.franchise_id === 'string' ? evidence.franchise_id : null;
+
+      if (scope === 'holding' || scope === 'controladoria') {
+        setHoldingFilters((prev) => ({
+          ...prev,
+          ...(period ? { selectedPeriodLabel: period } : {}),
+          ...(regional
+            ? { selectedRegionalId: regional, selectedFranchiseId: franchise ?? 'all' }
+            : {}),
+          ...(!regional && franchise ? { selectedFranchiseId: franchise } : {}),
+        }));
+        setSearchParams(
+          (prev) => {
+            const next = new URLSearchParams(prev);
+            if (period) next.set('d_period', period);
+            else next.delete('d_period');
+            if (regional) next.set('d_regional', regional);
+            else next.delete('d_regional');
+            if (franchise) next.set('d_franchise', franchise);
+            else next.delete('d_franchise');
+            return next;
+          },
+          { replace: true },
+        );
+        return;
+      }
+
+      document.getElementById('dashboard-custom-panel')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    },
+    [accessProfileQuery.data?.dashboardScope, setSearchParams],
+  );
+
+  const dashboardUrlSyncKey = searchParams.toString();
+
+  useEffect(() => {
+    if (accessProfileQuery.data?.dashboardScope !== 'holding') {
+      return;
+    }
+    const p = searchParams.get('d_period');
+    const r = searchParams.get('d_regional');
+    const f = searchParams.get('d_franchise');
+    if (!p && !r && !f) {
+      return;
+    }
+    setHoldingFilters((prev) => {
+      const next = { ...prev };
+      if (p) next.selectedPeriodLabel = p;
+      if (r) {
+        next.selectedRegionalId = r;
+        next.selectedFranchiseId = f && f.length > 0 ? f : 'all';
+      } else if (f) {
+        next.selectedFranchiseId = f;
+      }
+      return next;
+    });
+  }, [accessProfileQuery.data?.dashboardScope, dashboardUrlSyncKey, searchParams]);
+
+  useEffect(() => {
+    if (accessProfileQuery.data?.dashboardScope !== 'holding') {
+      return;
+    }
+    const onHoldingPeriod = (event: Event) => {
+      const ce = event as CustomEvent<HoldingPeriodDetail>;
+      const label = ce.detail?.periodLabel;
+      if (typeof label === 'string' && label.length > 0) {
+        setHoldingFilters((prev) => ({ ...prev, selectedPeriodLabel: label }));
+      }
+    };
+    window.addEventListener(COMMAND_PALETTE_HOLDING_PERIOD, onHoldingPeriod);
+    return () => window.removeEventListener(COMMAND_PALETTE_HOLDING_PERIOD, onHoldingPeriod);
+  }, [accessProfileQuery.data?.dashboardScope]);
 
   const dashboardQuery = useQuery({
     queryKey: [
@@ -857,27 +1256,21 @@ export function DashboardPage() {
     gcTime: 1000 * 60 * 30,
   });
 
+  const reportingPeriodsQuery = useQuery({
+    queryKey: ['reporting-periods'],
+    queryFn: fetchReportingPeriods,
+    enabled: Boolean(accessProfileQuery.data),
+  });
+
   const snapshot = dashboardQuery.data;
   const profile = accessProfileQuery.data;
-
-  const holdingFiltersWithBrtDefault = useMemo((): HoldingFilterState => {
-    if (!snapshot || profile?.dashboardScope !== 'holding') {
-      return holdingFilters;
-    }
-    if (holdingFilters.selectedPeriodLabel.trim() !== '') {
-      return holdingFilters;
-    }
-    const opts = getHoldingPeriodOptions(snapshot.franchiseRows);
-    const brtLabel = formatBrazilYearMonthLabel();
-    return opts.includes(brtLabel) ? { ...holdingFilters, selectedPeriodLabel: brtLabel } : holdingFilters;
-  }, [holdingFilters, profile?.dashboardScope, snapshot]);
 
   const holdingDerived = useMemo(() => {
     if (!snapshot || profile?.dashboardScope !== 'holding') {
       return null;
     }
-    return deriveHoldingView(snapshot, holdingFiltersWithBrtDefault);
-  }, [snapshot, profile?.dashboardScope, holdingFiltersWithBrtDefault]);
+    return deriveHoldingView(snapshot, holdingFilters, reportingPeriodsQuery.data ?? null);
+  }, [snapshot, profile?.dashboardScope, holdingFilters, reportingPeriodsQuery.data]);
 
   const kpis = useMemo(() => {
     if (!snapshot || !profile) {
@@ -893,26 +1286,244 @@ export function DashboardPage() {
       if (!holdingDerived) {
         return [];
       }
-      return buildHoldingFilteredKpis(holdingDerived.filteredRows, holdingDerived.filteredPreviousRows);
+      return buildHoldingFilteredKpis(
+        holdingDerived.executiveRollupRows,
+        holdingDerived.executiveRollupPreviousRows,
+        holdingKpiSparkScope(holdingDerived),
+      );
     }
     return buildNetworkKpis(snapshot);
   }, [snapshot, profile, holdingDerived]);
 
+  const kpiHistoryQueries = useQueries({
+    queries: kpis.map((item) => {
+      const plan = item.sparklinePlan;
+      const enabled = Boolean(
+        profile && snapshot && plan && isKpiSparklineRpcEnabled(profile, plan, snapshot, holdingDerived),
+      );
+      return {
+        queryKey: [
+          'kpi-history',
+          plan?.metric ?? 'none',
+          plan?.franchiseId ?? 'all-fr',
+          plan?.regionalId ?? 'all-reg',
+          profile?.dashboardScope,
+        ] as const,
+        queryFn: () =>
+          fetchKpiHistory({
+            metric: plan!.metric,
+            franchiseId: plan!.franchiseId,
+            regionalId: plan!.regionalId,
+            periodsCount: 6,
+          }),
+        enabled,
+        staleTime: 1000 * 60 * 5,
+        gcTime: 1000 * 60 * 30,
+      };
+    }),
+  });
+
+  const kpiSparklineStates = useMemo((): DashboardKpiSparklineState[] => {
+    const disabled: DashboardKpiSparklineState = {
+      enabled: false,
+      isLoading: false,
+      isError: false,
+      data: undefined,
+      valueFormat: 'currency',
+    };
+
+    if (!profile || !snapshot) {
+      return kpis.map(() => disabled);
+    }
+
+    return kpis.map((item, index) => {
+      const plan = item.sparklinePlan;
+      const rpcEnabled = Boolean(
+        plan && isKpiSparklineRpcEnabled(profile, plan, snapshot, holdingDerived),
+      );
+      if (!rpcEnabled || !plan) {
+        return disabled;
+      }
+      const q = kpiHistoryQueries[index];
+      return {
+        enabled: true,
+        isLoading: q.isPending || q.isFetching,
+        isError: q.isError,
+        data: q.data,
+        valueFormat: plan.valueFormat,
+      };
+    });
+  }, [holdingDerived, kpiHistoryQueries, kpis, profile, snapshot]);
+
+  const defaultPeriodAKeyForCompare = useMemo(() => {
+    if (!snapshot || !profile) return null;
+    if (profile.dashboardScope === 'holding' && holdingDerived) {
+      const row = snapshot.franchiseRows.find((r) => r.period_label === holdingDerived.activePeriodLabel);
+      if (row) {
+        return `${row.period_year}-${String(row.period_month).padStart(2, '0')}`;
+      }
+    }
+    const lf = snapshot.latestFranchise;
+    if (lf) return `${lf.period_year}-${String(lf.period_month).padStart(2, '0')}`;
+    const lr = snapshot.latestRegional;
+    if (lr) return `${lr.period_year}-${String(lr.period_month).padStart(2, '0')}`;
+    const ln = snapshot.latestNetwork;
+    if (ln) return `${ln.period_year}-${String(ln.period_month).padStart(2, '0')}`;
+    return null;
+  }, [snapshot, profile, holdingDerived]);
+
+  const compareMode = useCompareMode({
+    reportingPeriods: reportingPeriodsQuery.data,
+    defaultPeriodAKey: defaultPeriodAKeyForCompare,
+  });
+
+  const holdingDerivedCompareA = useMemo(() => {
+    if (!snapshot || profile?.dashboardScope !== 'holding' || !compareMode.periodAKey) return null;
+    const p = parseReportingPeriodKey(compareMode.periodAKey);
+    if (!p) return null;
+    return deriveHoldingView(snapshot, holdingFilters, reportingPeriodsQuery.data ?? null, {
+      anchorYear: p.year,
+      anchorMonth: p.month,
+    });
+  }, [snapshot, profile?.dashboardScope, compareMode.periodAKey, holdingFilters, reportingPeriodsQuery.data]);
+
+  const holdingDerivedCompareB = useMemo(() => {
+    if (!snapshot || profile?.dashboardScope !== 'holding' || !compareMode.periodBKey) return null;
+    const p = parseReportingPeriodKey(compareMode.periodBKey);
+    if (!p) return null;
+    return deriveHoldingView(snapshot, holdingFilters, reportingPeriodsQuery.data ?? null, {
+      anchorYear: p.year,
+      anchorMonth: p.month,
+    });
+  }, [snapshot, profile?.dashboardScope, compareMode.periodBKey, holdingFilters, reportingPeriodsQuery.data]);
+
+  const compareKpiItems = useMemo(() => {
+    if (!compareMode.compareEnabled || !snapshot || !profile) return [];
+    const pa = parseReportingPeriodKey(compareMode.periodAKey);
+    const pb = parseReportingPeriodKey(compareMode.periodBKey);
+    if (!pa || !pb) return [];
+    if (profile.dashboardScope === 'franchise') {
+      const fid = profile.franchiseIds[0];
+      if (!fid) return [];
+      return buildFranchiseCompareKpiItems(snapshot, fid, pa.year, pa.month, pb.year, pb.month);
+    }
+    if (profile.dashboardScope === 'regional') {
+      const rid = profile.regionalIds[0] ?? snapshot.latestRegional?.regional_id;
+      if (!rid) return [];
+      return buildRegionalCompareKpiItems(snapshot, rid, pa.year, pa.month, pb.year, pb.month);
+    }
+    if (profile.dashboardScope === 'holding') {
+      if (!holdingDerivedCompareA || !holdingDerivedCompareB) return [];
+      return buildHoldingCompareKpiItems(
+        holdingDerivedCompareA.executiveRollupRows,
+        holdingDerivedCompareB.executiveRollupRows,
+      );
+    }
+    return buildNetworkCompareKpiItems(snapshot, pa.year, pa.month, pb.year, pb.month);
+  }, [
+    compareMode.compareEnabled,
+    compareMode.periodAKey,
+    compareMode.periodBKey,
+    snapshot,
+    profile,
+    holdingDerivedCompareA,
+    holdingDerivedCompareB,
+  ]);
+
+  useEffect(() => {
+    if (!compareMode.compareEnabled || profile?.dashboardScope !== 'holding' || !compareMode.periodAKey) return;
+    const period = reportingPeriodsQuery.data?.find((x) => reportingPeriodKey(x) === compareMode.periodAKey);
+    if (period?.label && period.label !== holdingFilters.selectedPeriodLabel) {
+      setHoldingFilters((prev) => ({ ...prev, selectedPeriodLabel: period.label }));
+    }
+  }, [
+    compareMode.compareEnabled,
+    compareMode.periodAKey,
+    profile?.dashboardScope,
+    reportingPeriodsQuery.data,
+    holdingFilters.selectedPeriodLabel,
+  ]);
+
+  const exportRankingRows = useMemo(() => {
+    if (!snapshot || !profile) return [];
+    return buildDashboardRankingRows(snapshot, profile, holdingDerived);
+  }, [snapshot, profile, holdingDerived]);
+
+  const exportFiltersSnapshot = useMemo(
+    () =>
+      !snapshot || !profile
+        ? ({} as Record<string, unknown>)
+        : buildDashboardFiltersSnapshot(
+            profile,
+            snapshot,
+            holdingDerived,
+            profile.dashboardScope === 'holding' ? holdingFilters : null,
+          ),
+    [snapshot, profile, holdingDerived, holdingFilters],
+  );
+
+  const holdingActivePeriodLabel = holdingDerived?.activePeriodLabel ?? null;
+  const exportPeriodLabelDisplay = useMemo(
+    () => (snapshot ? formatDashboardPeriodDisplay(snapshot, holdingActivePeriodLabel) : ''),
+    [snapshot, holdingActivePeriodLabel],
+  );
+
+  const exportKpis = useMemo(() => {
+    if (!compareMode.compareEnabled || compareKpiItems.length === 0) {
+      return kpis;
+    }
+    return compareKpiItems.map((item) => ({
+      label: item.label,
+      value: item.valueA,
+      percent: item.percentA,
+      trend: '—',
+      trendUp: true,
+      variant: item.variant,
+      icon: item.icon,
+    }));
+  }, [compareMode.compareEnabled, compareKpiItems, kpis]);
+
   if (accessProfileQuery.isLoading || dashboardQuery.isLoading) {
+    const scope = accessProfileQuery.data?.dashboardScope;
+    const showHoldingCockpitSkeleton = scope === 'holding';
+
     return (
-      <div className="page-stack">
-        <div className="page-container__title-bar">
-          <div>
-            <p className="page-container__title page-container__title--loading">Painel executivo</p>
-            <p className="page-container__subtitle">Carregando os números da rede…</p>
+      <div className="dashboard page-stack" data-testid="dashboard-page" aria-busy="true">
+        <div className="page-container__title-bar page-container__title-bar--dashboard">
+          <div className="dashboard-page-skeleton__title">
+            <Skeleton style={{ width: 'min(380px, 88vw)', height: '1.35rem', marginBottom: 'var(--space-2)' }} />
+            <Skeleton style={{ width: 'min(280px, 70vw)', height: '0.85rem' }} />
           </div>
         </div>
-        <div className="kpi-grid">
-          <div className="skeleton skeleton--card" />
-          <div className="skeleton skeleton--card" />
-          <div className="skeleton skeleton--card" />
-          <div className="skeleton skeleton--card" />
-        </div>
+
+        <Card as="section" variant="hero" className="dashboard-hero card--gold dashboard-page-skeleton__hero">
+          <div className="dashboard-hero__copy">
+            <Skeleton style={{ width: 160, height: 26, marginBottom: 'var(--space-4)' }} />
+            <Skeleton style={{ width: 'min(420px, 90vw)', height: 32, marginBottom: 'var(--space-3)' }} />
+            <Skeleton style={{ width: 'min(540px, 94vw)', height: 16 }} />
+          </div>
+          <div className="dashboard-hero__panel glass">
+            <Skeleton style={{ width: '100%', height: 28, marginBottom: 'var(--space-3)' }} />
+            <Skeleton style={{ width: '100%', height: 120, borderRadius: 'var(--radius-lg)' }} />
+            <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap', marginTop: 'var(--space-4)' }}>
+              <Skeleton style={{ width: 200, height: 44, borderRadius: 'var(--radius-md)' }} />
+              <Skeleton style={{ width: 220, height: 44, borderRadius: 'var(--radius-md)' }} />
+            </div>
+          </div>
+        </Card>
+
+        <section className="dashboard__section dashboard__section--kpis" aria-labelledby="dashboard-kpis-heading-skel">
+          <h2 id="dashboard-kpis-heading-skel" className="dashboard__section-heading">
+            Situação na competência (resumo)
+          </h2>
+          <div className="kpi-grid">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <KpiCardSkeleton key={index} />
+            ))}
+          </div>
+        </section>
+
+        {showHoldingCockpitSkeleton ? <CockpitSkeleton /> : <DashboardScopeBodySkeleton />}
       </div>
     );
   }
@@ -933,22 +1544,33 @@ export function DashboardPage() {
     );
   }
 
-  const accessProfile = profile;
   const currentPeriodLabel = formatPeriodLabel(getCurrentPeriodLabel(snapshot));
 
   return (
-    <div className="dashboard page-stack">
+    <div className="dashboard page-stack u-content-reveal" data-testid="dashboard-page">
       <div className="page-container__title-bar page-container__title-bar--dashboard">
         <div>
           <p className="page-container__subtitle page-container__subtitle--dashboard-title">
-            {getActiveScopeHeadline(accessProfile)} · competência {currentPeriodLabel}
+            {getActiveScopeHeadline(profile)} · competência {currentPeriodLabel}
           </p>
         </div>
-        <div className="badge-row">
-          {(accessProfile.dashboardScope === 'franchise' || accessProfile.dashboardScope === 'regional') ? (
-            <span className="badge badge--gold">{getDashboardScopeLabel(accessProfile.dashboardScope)}</span>
-          ) : null}
-          <span className="badge badge--primary">{currentPeriodLabel}</span>
+        <div className="page-container__actions page-container__actions--dashboard-tools">
+          <ExportButton
+            variant="dashboard"
+            kpis={exportKpis}
+            rankingRows={exportRankingRows}
+            filtersSnapshot={exportFiltersSnapshot}
+            periodLabelDisplay={exportPeriodLabelDisplay}
+            snapshot={snapshot}
+            holdingActivePeriodLabel={holdingActivePeriodLabel}
+            accessProfile={profile}
+          />
+          <div className="badge-row">
+            {(profile.dashboardScope === 'franchise' || profile.dashboardScope === 'regional') ? (
+              <span className="badge badge--gold">{getDashboardScopeLabel(profile.dashboardScope)}</span>
+            ) : null}
+            <span className="badge badge--primary">{currentPeriodLabel}</span>
+          </div>
         </div>
       </div>
 
@@ -962,36 +1584,99 @@ export function DashboardPage() {
         </p>
       ) : null}
 
+      {profile.dashboardScope === 'holding' ? (
+        <>
+          <SavedViewsBar
+            page="dashboard"
+            views={savedViewsList.data ?? []}
+            activeViewId={viewIdParam}
+            currentFilters={dashboardFiltersTyped}
+            shareBasePath="/app/dashboard"
+            onApplyView={(row) => {
+              const f = parseSavedFilters('dashboard', row.filters);
+              setSearchParams(
+                (prev) => applyFiltersToSearchParams('dashboard', prev, f, { viewId: row.id }),
+                { replace: true },
+              );
+            }}
+            onClearDefault={() => {
+              setSearchParams((prev) => clearFilterParams('dashboard', prev), { replace: true });
+            }}
+            onOpenSaveDialog={() => setSaveDialogOpen(true)}
+            onRename={(row, newName) => savedViewsMut.updateMutation.mutate({ id: row.id, name: newName })}
+            onTogglePin={(row, pinned) => savedViewsMut.updateMutation.mutate({ id: row.id, is_pinned: pinned })}
+            onDelete={(row) => savedViewsMut.deleteMutation.mutate(row.id)}
+            suggestionBanner={
+              suggestion.showBanner
+                ? {
+                    show: true,
+                    onOpenDialog: () => setSaveDialogOpen(true),
+                    onDismiss: suggestion.dismissBanner,
+                  }
+                : null
+            }
+          />
+          <SaveViewDialog
+            open={saveDialogOpen}
+            onOpenChange={setSaveDialogOpen}
+            page="dashboard"
+            draftFilters={dashboardFiltersTyped}
+            defaultPinned
+            isSaving={savedViewsMut.insertMutation.isPending}
+            onSave={({ name, isPinned }) => {
+              savedViewsMut.insertMutation.mutate(
+                { page: 'dashboard', name, filters: dashboardFiltersTyped, isPinned },
+                {
+                  onSuccess: (row) => {
+                    setSaveDialogOpen(false);
+                    setSearchParams(
+                      (prev) =>
+                        applyFiltersToSearchParams('dashboard', prev, dashboardFiltersTyped, {
+                          viewId: row.id,
+                        }),
+                      { replace: true },
+                    );
+                  },
+                  onError: (e) =>
+                    window.alert(e instanceof Error ? e.message : 'Não foi possível guardar a vista.'),
+                },
+              );
+            }}
+          />
+        </>
+      ) : null}
+
       <DashboardHero
-        accessProfile={accessProfile}
+        accessProfile={profile}
         snapshot={snapshot}
         isDashboardFetching={dashboardQuery.isFetching}
       />
 
-      <section
-        className="dashboard__section dashboard__section--kpis"
-        aria-labelledby="dashboard-kpis-heading"
-      >
-        <h2 id="dashboard-kpis-heading" className="dashboard__section-heading">
-          Situação na competência (resumo)
-        </h2>
-        <ExecutiveKpiGrid
-          items={kpis}
-          ariaLabel="Situação na competência — indicadores resumidos"
+      <div id="dashboard-custom-panel" data-tour-id="dashboard-kpi-section">
+        <CustomizableDashboard
+          dashboardScope={profile.dashboardScope}
+          snapshot={snapshot}
+          accessProfile={profile}
+          holdingDerived={holdingDerived}
+          queries={{ kpis, kpiSparklineStates }}
         />
-      </section>
+      </div>
 
-      {accessProfile.dashboardScope === 'franchise' && <FranchiseDashboardView snapshot={snapshot} />}
-      {accessProfile.dashboardScope === 'regional' && <RegionalDashboardView snapshot={snapshot} />}
-      {accessProfile.dashboardScope === 'holding' && (
-        <HoldingCockpitView
-          derived={holdingDerived}
-          onPatchFilters={(patch) => setHoldingFilters((prev) => ({ ...prev, ...patch }))}
-        />
+      {profile.dashboardScope === 'franchise' && <FranchiseDashboardView snapshot={snapshot} />}
+      {profile.dashboardScope === 'regional' && <RegionalDashboardView snapshot={snapshot} />}
+      {profile.dashboardScope === 'holding' && (
+        <HoldingCockpitView derived={holdingDerived} onPatchFilters={patchHoldingFilters} />
       )}
-      {accessProfile.dashboardScope === 'controladoria' && (
+      {profile.dashboardScope === 'controladoria' && (
         <ControladoriaDashboardView snapshot={snapshot} />
       )}
+
+      <InsightsPanel
+        accessProfile={profile}
+        accessToken={session?.access_token ?? null}
+        holdingDerived={holdingDerived}
+        onInvestigateEvidence={handleInsightInvestigate}
+      />
     </div>
   );
 }

@@ -1,6 +1,11 @@
 import { Fragment } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, BookOpen, CheckCircle2, FolderSync, Send, ShieldCheck, XCircle } from 'lucide-react';
+import { AlertTriangle, BookOpen, CheckCircle2, FolderSync, Lock, Send, ShieldCheck, XCircle } from 'lucide-react';
+import { SubmissionLockTooltip } from '../../../components/ui/tooltip';
+import {
+  SUBMISSION_WORKSPACE_BODY_TRANSITION,
+  SUBMISSION_WORKSPACE_LOCKED_BODY_CLASSES,
+} from '../submissionLockUi';
 import type { UseMutationResult } from '@tanstack/react-query';
 import type { FranchiseListRow, ReportingPeriodRow } from '../../shared/portal.types';
 import type { SubmissionDraftValidation } from '../submissionValidation';
@@ -13,9 +18,12 @@ import {
   getStatusVariant,
   getValidationSeverity,
 } from '../../../utils/formatters';
-import type { DrePreviewValues } from '../drePreview';
+import type { DrePreviewSource, DrePreviewValues } from '../drePreview';
+import { Card } from '../../../components/ui/card';
 
-type MobileTab = 'panel' | 'dre';
+type NarrowWorkbenchTab = 'situation' | 'preview' | 'checks';
+
+type TabletWorkspaceTab = 'panel' | 'dre';
 
 type ValidationResultRow = {
   id: string;
@@ -34,7 +42,9 @@ type SubmissionWorkspaceBody = {
 };
 
 export type SubmissionWorkbenchRailProps = {
-  mobileWorkspaceTab: MobileTab;
+  narrowRadixTabs?: boolean;
+  narrowWorkbenchTab?: NarrowWorkbenchTab;
+  mobileWorkspaceTab: TabletWorkspaceTab;
   selectedFranchise: FranchiseListRow | null;
   selectedPeriod: ReportingPeriodRow | null;
   workspaceBody: SubmissionWorkspaceBody | undefined;
@@ -49,6 +59,8 @@ export type SubmissionWorkbenchRailProps = {
   submitActionLabel: string;
   draftValidation: SubmissionDraftValidation;
   preview: DrePreviewValues;
+  previewSource: DrePreviewSource;
+  previewReconciling: boolean;
   activeSubmissionLocked: boolean;
   submissionLockMessage: string;
   canEdit: boolean;
@@ -128,6 +140,8 @@ function ValidationIcon({ severity }: { severity: 'pass' | 'warn' | 'fail' }) {
  * para que executivos da rede compreendam de relance o que está acontecendo.
  */
 export function SubmissionWorkbenchRail({
+  narrowRadixTabs = false,
+  narrowWorkbenchTab = 'situation',
   mobileWorkspaceTab,
   selectedFranchise,
   selectedPeriod,
@@ -143,6 +157,8 @@ export function SubmissionWorkbenchRail({
   submitActionLabel,
   draftValidation,
   preview,
+  previewSource,
+  previewReconciling,
   activeSubmissionLocked,
   submissionLockMessage,
   canEdit,
@@ -150,26 +166,32 @@ export function SubmissionWorkbenchRail({
   const summaryRows = buildSummaryRows(preview);
 
   const submissionStatus = workspaceBody?.submission?.status ?? null;
-  const previewSourceIsDraft = canEditActiveSubmission;
-  const sourceLabel = previewSourceIsDraft
-    ? 'Prévia local • atualiza enquanto você digita'
-    : workspaceBody?.submission
-      ? 'Versão gravada • valores oficiais do motor'
-      : 'Sem rascunho ativo';
-  const sourceVariant = previewSourceIsDraft ? 'draft' : 'official';
+  const bodyLockClass = activeSubmissionLocked
+    ? SUBMISSION_WORKSPACE_LOCKED_BODY_CLASSES
+    : SUBMISSION_WORKSPACE_BODY_TRANSITION;
+  const sourceLabel =
+    previewSource === 'server_statement'
+      ? 'Motor gravado • alinhado à DRE oficial'
+      : 'Prévia local • atualiza enquanto você digita';
+  const sourceVariant = previewSource === 'server_statement' ? 'official' : 'draft';
+
+  const smPanelVisibility = narrowRadixTabs
+    ? 'submission-workbench__panel--active-sm submission-workbench__rail--radix-mobile'
+    : mobileWorkspaceTab === 'panel'
+      ? 'submission-workbench__panel--active-sm'
+      : 'submission-workbench__panel--hidden-sm';
+
+  const railColHidden = (key: NarrowWorkbenchTab) =>
+    narrowRadixTabs ? (narrowWorkbenchTab !== key ? 'submission-workbench__radix-pane--inactive' : '') : '';
 
   return (
     <aside
-      className={`submission-workbench__rail submission-workbench__rail--grid submission-sidebar submission-workbench__panel ${
-        mobileWorkspaceTab === 'panel'
-          ? 'submission-workbench__panel--active-sm'
-          : 'submission-workbench__panel--hidden-sm'
-      }`}
+      className={`submission-workbench__rail submission-workbench__rail--grid submission-sidebar submission-workbench__panel ${smPanelVisibility}`}
       aria-label="Painel da submissão"
     >
       {/* Coluna 1: Situação + observações + ações */}
-      <div className="submission-workbench__rail-col">
-        <div className="card">
+      <div className={`submission-workbench__rail-col ${railColHidden('situation')}`}>
+        <Card variant="kpi">
           <div className="card__header">
             <div>
               <h3 className="card__title">Situação da DRE</h3>
@@ -178,14 +200,27 @@ export function SubmissionWorkbenchRail({
               </p>
             </div>
             {submissionStatus ? (
-              <span className={`status-badge status-badge--${getStatusVariant(submissionStatus)}`}>
-                <span className="status-badge__dot" />
-                {formatStatusLabel(submissionStatus)}
-              </span>
+              <div className="submission-workbench__status-cluster">
+                <span className={`status-badge status-badge--${getStatusVariant(submissionStatus)}`}>
+                  <span className="status-badge__dot" />
+                  {formatStatusLabel(submissionStatus)}
+                </span>
+                {activeSubmissionLocked ? (
+                  <SubmissionLockTooltip>
+                    <button
+                      type="button"
+                      className="submission-workbench__lock-trigger"
+                      aria-label="Submissão bloqueada — devolução exige ação da controladoria"
+                    >
+                      <Lock size={14} className="text-warning" aria-hidden />
+                    </button>
+                  </SubmissionLockTooltip>
+                ) : null}
+              </div>
             ) : null}
           </div>
 
-          <div className="card__body">
+          <div className={`card__body ${bodyLockClass}`}>
             <div className="detail-list">
               <div className="detail-list__item">
                 <span className="detail-list__label">Franquia</span>
@@ -193,7 +228,9 @@ export function SubmissionWorkbenchRail({
               </div>
               <div className="detail-list__item">
                 <span className="detail-list__label">Competência</span>
-                <span className="detail-list__value">{formatPeriodLabel(selectedPeriod?.label ?? null)}</span>
+                <span className="detail-list__value competence-etiquette">
+                  {formatPeriodLabel(selectedPeriod?.label ?? null)}
+                </span>
               </div>
               <div className="detail-list__item">
                 <span className="detail-list__label">Versão ativa</span>
@@ -223,7 +260,7 @@ export function SubmissionWorkbenchRail({
                   onNotesChange(event.target.value);
                 }}
                 disabled={!canEditActiveSubmission}
-                placeholder="Explique variações, premissas e fatos relevantes do período."
+                placeholder="Adicione observações para a controladoria…"
               />
             </div>
 
@@ -235,13 +272,14 @@ export function SubmissionWorkbenchRail({
                 onClick={() => saveDraftMutation.mutate()}
                 disabled={!canEditActiveSubmission || !activeSubmissionId || saveDraftMutation.isPending}
               >
-                <FolderSync size={18} />
+                <FolderSync size={18} aria-hidden />
                 {saveActionLabel}
               </button>
 
               <button
                 type="button"
                 data-testid="submission-send-review"
+                data-tour-id="submit-review-cta"
                 className="btn btn--gold btn--full"
                 onClick={() => submitMutation.mutate()}
                 disabled={
@@ -253,7 +291,7 @@ export function SubmissionWorkbenchRail({
                     : undefined
                 }
               >
-                <Send size={18} />
+                <Send size={18} aria-hidden />
                 {submitActionLabel}
               </button>
             </div>
@@ -266,12 +304,12 @@ export function SubmissionWorkbenchRail({
               </div>
             ) : null}
           </div>
-        </div>
+        </Card>
       </div>
 
       {/* Coluna 2: Resumo financeiro (preenchimento da grelha está na faixa KPI no topo) */}
-      <div className="submission-workbench__rail-col">
-        <div className="card">
+      <div className={`submission-workbench__rail-col ${railColHidden('preview')}`}>
+        <Card variant="kpi">
           <div className="card__header">
             <div>
               <h3 className="card__title">Resumo da DRE (prévia)</h3>
@@ -288,14 +326,13 @@ export function SubmissionWorkbenchRail({
               <span>Como ler</span>
             </Link>
           </div>
-          <div className="card__body">
-            <div className="dre-summary">
+          <div className={`card__body card__body--flush ${bodyLockClass}`}>
               <span
                 className={`dre-summary__source dre-summary__source--${sourceVariant}`}
                 aria-label={`Fonte dos números: ${sourceLabel}`}
               >
                 <span className="dre-summary__source-dot" aria-hidden />
-                {sourceLabel}
+                {previewReconciling ? 'Sincronizando com o motor...' : sourceLabel}
               </span>
 
               {summaryRows.map((row, index) => (
@@ -311,18 +348,17 @@ export function SubmissionWorkbenchRail({
                       <span className="dre-summary__row-name">{row.name}</span>
                       {row.hint ? <span className="dre-summary__row-hint">{row.hint}</span> : null}
                     </div>
-                    <span className="dre-summary__row-value">{formatCurrency(row.value)}</span>
+                    <span className="dre-summary__row-value num-tabular">{formatCurrency(row.value)}</span>
                   </div>
                 </Fragment>
               ))}
-            </div>
           </div>
-        </div>
+        </Card>
       </div>
 
       {/* Coluna 3: Validações */}
-      <div className="submission-workbench__rail-col">
-        <div className="card">
+      <div className={`submission-workbench__rail-col ${railColHidden('checks')}`}>
+        <Card variant="kpi">
           <div className="card__header">
             <div>
               <h3 className="card__title">Verificações da controladoria</h3>
@@ -334,7 +370,7 @@ export function SubmissionWorkbenchRail({
               <ShieldCheck size={20} />
             </span>
           </div>
-          <div className="card__body">
+          <div className={`card__body ${bodyLockClass}`}>
             {!draftValidation.ok && canEditActiveSubmission ? (
               <div className="inline-message inline-message--warning submission-validation-draft">
                 <strong>Antes de enviar:</strong> faltam {draftValidation.missingRequired.length} linha(s) com valor
@@ -385,7 +421,7 @@ export function SubmissionWorkbenchRail({
               </div>
             )}
           </div>
-        </div>
+        </Card>
       </div>
     </aside>
   );

@@ -1,0 +1,41 @@
+.save-view-dialog__backdrop {
+  z-index: 420;
+}
+
+.save-view-dialog {
+  max-width: 28rem;
+}
+
+.save-view-dialog__body {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.save-view-dialog__preview {
+  padding: 0.75rem;
+  border-radius: var(--radius-md, 8px);
+  background: color-mix(in srgb, var(--surface-elevated, #1a1a1e) 80%, transparent);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+}
+
+.save-view-dialog__bullets {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary, #a1a1aa);
+}
+
+.save-view-dialog__toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.9375rem;
+}
+
+.save-view-dialog__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}

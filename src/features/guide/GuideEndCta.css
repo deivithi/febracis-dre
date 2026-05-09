@@ -1,0 +1,208 @@
+/** G11 — próximos passos no final do Guia */
+
+.guide-end-cta {
+  width: 100%;
+  padding: var(--space-12) var(--space-8);
+  border-radius: var(--radius-xl);
+  border: 1px solid color-mix(in srgb, var(--border-default) 90%, transparent);
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--primary-gold, var(--accent-gold)) 5%, var(--bg-surface)) 0%,
+      var(--bg-surface) 45%,
+      var(--bg-elevated) 100%
+    );
+  box-sizing: border-box;
+}
+
+.guide-end-cta__intro {
+  text-align: center;
+  max-width: 52rem;
+  margin: 0 auto var(--space-10);
+}
+
+.guide-end-cta__eyebrow {
+  display: block;
+  margin-bottom: var(--space-2);
+}
+
+.guide-end-cta__heading {
+  margin: 0 0 var(--space-3);
+}
+
+.guide-end-cta__subtitle {
+  margin: 0;
+}
+
+.guide-end-cta__paths {
+  display: grid;
+  gap: var(--space-6);
+  margin-bottom: var(--space-10);
+}
+
+@media (min-width: 768px) {
+  .guide-end-cta__paths {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.guide-end-cta__path {
+  padding: var(--space-6);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--guide-path-border);
+  background: color-mix(in srgb, var(--bg-surface) 88%, var(--bg-base));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
+  min-height: 100%;
+}
+
+.guide-end-cta__path-icon {
+  width: 48px;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--guide-path-icon-border);
+  background: var(--guide-path-icon-bg);
+  color: var(--guide-path-icon-fg);
+}
+
+.guide-end-cta__path-icon svg {
+  width: 32px;
+  height: 32px;
+}
+
+.guide-end-cta__path--operate {
+  --guide-path-border: color-mix(in srgb, var(--success) 30%, var(--border-default));
+  --guide-path-icon-bg: color-mix(in srgb, var(--success) 10%, transparent);
+  --guide-path-icon-border: color-mix(in srgb, var(--success) 30%, transparent);
+  --guide-path-icon-fg: var(--success);
+}
+
+.guide-end-cta__path--assistant {
+  --guide-path-border: color-mix(in srgb, var(--accent-blue) 30%, var(--border-default));
+  --guide-path-icon-bg: color-mix(in srgb, var(--accent-blue) 10%, transparent);
+  --guide-path-icon-border: color-mix(in srgb, var(--accent-blue) 30%, transparent);
+  --guide-path-icon-fg: var(--accent-blue);
+}
+
+.guide-end-cta__path-title {
+  margin: 0;
+}
+
+.guide-end-cta__path-sub {
+  margin: 0 0 var(--space-2);
+  flex: 1;
+}
+
+.guide-end-cta__path .btn.btn--gold,
+.guide-end-cta__path .guide-end-cta__outline-btn {
+  margin-top: auto;
+  justify-content: center;
+}
+
+.guide-end-cta__outline-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-5);
+  width: 100%;
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  font-weight: var(--weight-semibold);
+  text-decoration: none;
+  cursor: pointer;
+  background: transparent;
+  color: var(--accent-blue);
+  border: 1px solid color-mix(in srgb, var(--accent-blue) 45%, var(--border-default));
+  transition: border-color var(--transition-base), color var(--transition-base), box-shadow var(--transition-base);
+}
+
+.guide-end-cta__outline-btn:hover {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-blue) 22%, transparent);
+}
+
+.guide-end-cta__separator {
+  margin: var(--space-10) 0 var(--space-6);
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    color-mix(in srgb, var(--border-default) 80%, transparent) 20%,
+    color-mix(in srgb, var(--border-default) 80%, transparent) 80%,
+    transparent
+  );
+  border: 0;
+}
+
+.guide-end-cta__links-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-6) var(--space-10);
+}
+
+.guide-end-cta__link-lite {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  font-family: inherit;
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: color var(--transition-base);
+}
+
+.guide-end-cta__link-lite:hover:not(:disabled),
+.guide-end-cta__link-lite:focus-visible:not(:disabled) {
+  color: var(--primary-gold, var(--accent-gold));
+}
+
+.guide-end-cta__link-lite:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.guide-end-cta__link-lite svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.guide-end-cta__foot {
+  margin-top: var(--space-10);
+  text-align: center;
+}
+
+/* Conteúdo do painel lateral de glossário */
+.guide-end-cta-glossary__title {
+  margin: 0 0 var(--space-5);
+}
+
+.guide-end-cta-glossary__intro {
+  margin: 0 0 var(--space-6);
+}
+
+.guide-end-cta-glossary__blocks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.guide-end-cta-glossary__block h4 {
+  margin: 0 0 var(--space-2);
+}
+
+.guide-end-cta-glossary__block p {
+  margin: 0;
+}

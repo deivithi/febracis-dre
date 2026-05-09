@@ -1,6 +1,12 @@
-import { FileSpreadsheet } from 'lucide-react';
+import { FileSpreadsheet, Lock } from 'lucide-react';
+import { Card } from '../../../components/ui/card';
 import { DreAssistantPanel, type DreAssistantPanelProps } from '../DreAssistantPanel';
 import { formatStatusLabel, getStatusVariant } from '../../../utils/formatters';
+import { SubmissionLockTooltip } from '../../../components/ui/tooltip';
+import {
+  SUBMISSION_WORKSPACE_BODY_TRANSITION,
+  SUBMISSION_WORKSPACE_LOCKED_BODY_CLASSES,
+} from '../submissionLockUi';
 
 type MobileWorkspaceTab = 'chat' | 'panel' | 'dre';
 
@@ -37,6 +43,10 @@ export function AssistantDock({
       ? 'submission-workbench__panel--active-sm'
       : 'submission-workbench__panel--hidden-sm';
 
+  const agentCardBodyLockClass = activeSubmissionLocked
+    ? SUBMISSION_WORKSPACE_LOCKED_BODY_CLASSES
+    : SUBMISSION_WORKSPACE_BODY_TRANSITION;
+
   return (
     <div
       className={`submission-workbench__main submission-workbench__panel ${mainColumnClass}`}
@@ -45,7 +55,7 @@ export function AssistantDock({
       <DreAssistantPanel {...panel} />
 
       {!activeSubmissionId ? (
-        <div className="card">
+        <Card variant="default">
           <div className="card__body">
             <div className="empty-state">
               <div className="empty-state__icon">
@@ -59,12 +69,12 @@ export function AssistantDock({
               </p>
             </div>
           </div>
-        </div>
+        </Card>
       ) : workspaceLoading || !hasWorkspaceData ? (
         <div className="skeleton skeleton--card" />
       ) : (
         <>
-          <div className="card submission-agent-only-card">
+          <Card variant="kpi" className="submission-agent-only-card">
             <div className="card__header">
               <div>
                 <h3 className="card__title">Sua DRE neste período</h3>
@@ -73,12 +83,25 @@ export function AssistantDock({
                   rascunho” nas ações quando quiser gravar; a DRE calculada aparece após guardar.
                 </p>
               </div>
-              <span className={`status-badge status-badge--${getStatusVariant(submissionStatus ?? 'draft')}`}>
-                <span className="status-badge__dot" />
-                {formatStatusLabel(submissionStatus)}
-              </span>
+              <div className="submission-workbench__status-cluster">
+                <span className={`status-badge status-badge--${getStatusVariant(submissionStatus ?? 'draft')}`}>
+                  <span className="status-badge__dot" />
+                  {formatStatusLabel(submissionStatus)}
+                </span>
+                {activeSubmissionLocked ? (
+                  <SubmissionLockTooltip>
+                    <button
+                      type="button"
+                      className="submission-workbench__lock-trigger"
+                      aria-label="Submissão bloqueada — devolução exige ação da controladoria"
+                    >
+                      <Lock size={14} className="text-warning" aria-hidden />
+                    </button>
+                  </SubmissionLockTooltip>
+                ) : null}
+              </div>
             </div>
-            <div className="card__body">
+            <div className={`card__body ${agentCardBodyLockClass}`}>
               {activeSubmissionLocked ? (
                 <div className="inline-message">{submissionLockMessage}</div>
               ) : canEditActiveSubmission ? (
@@ -92,7 +115,7 @@ export function AssistantDock({
                 </p>
               )}
             </div>
-          </div>
+          </Card>
         </>
       )}
     </div>

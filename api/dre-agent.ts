@@ -10,6 +10,7 @@ import {
   buildFlowCheckpoint,
   buildOrderedFieldFlowForPrompt,
   buildQuestionForLine,
+  getFieldGuide,
   findNextGuidedLine,
   parseAgentCommand,
   classifyDreUserIntent,
@@ -22,12 +23,32 @@ import {
   shouldUseDeterministicAssistantTurn,
   stripCalculatedMetricClaimsFromAnswer,
   stripInternalLineCodesFromUserText,
-  validateAssistantFieldUpdates,
   type DreAssistantCitation,
   type DreAssistantTurnResult,
   type FlowCheckpoint,
 } from '../src/features/submissions/dreAssistant.js';
+import {
+  catalogLineCodesAssistantMayMutate,
+  sanitizeAssistantFieldUpdatesAgainstCatalog,
+} from '../src/features/submissions/prdAgentBc.js';
+import { parseCurrencyInput } from '../src/features/submissions/currencyInput.js';
 import { parseAgentRateLimitEnv, parseRateLimitRpcResult } from './agentRateLimitConfig.js';
+import {
+  dreAgentBodyParseResultForResponse,
+  parseDreAgentAuthorizationHeader,
+  type DreAgentChatRequestBody,
+  type DreAgentSuggestFieldBody,
+} from './lib/dreAgentSchemas.js';
+import type { ApiLogContext } from './lib/log.js';
+import { logContext, logJson } from './lib/log.js';
+
+/** Re-export para contratos/testes que importam a partir deste módulo. */
+export {
+  AGENT_USER_MESSAGE_MAX_LENGTH,
+  dreAgentRequestBodySchema,
+  parseDreAgentRequestBody,
+  sanitizeAgentUserMessage,
+} from './lib/dreAgentSchemas.js';
 
 const DEFAULT_OPENROUTER_MODEL = 'minimax/minimax-m2.7';
 /** Modelo por defeito quando `OPENAI_API_KEY` está definida (API nativa OpenAI). */
@@ -35,6 +56,8 @@ const DEFAULT_OPENAI_MODEL = 'gpt-5.4-mini';
 
 /** URL canónica para cabeçalhos OpenRouter quando `OPENROUTER_APP_URL` não está definida. */
 const DEFAULT_OPENROUTER_APP_URL = 'https://febracis-dre.vercel.app';
+
+const DRE_AGENT_ROUTE = '/api/dre-agent';
 
 export const USER_MESSAGE_PROMPT_BEGIN = '<<<USER_MESSAGE_BEGIN>>>';
 export const USER_MESSAGE_PROMPT_END = '<<<USER_MESSAGE_END>>>';
@@ -63,9 +86,6 @@ export class AgentOperationalError extends Error {
   }
 }
 
-/** Limite de caracteres por mensagem do utilizador (custo LLM / payload). */
-export const AGENT_USER_MESSAGE_MAX_LENGTH = 12000;
-
 interface AgentApiRequest {
   method?: string;
   headers: Record<string, string | string[] | undefined>;
@@ -78,16 +98,6 @@ interface AgentApiResponse {
     json: (body: unknown) => unknown;
   };
 }
-
-const assistantProductTabSchema = z.enum(['duvidas', 'preencher']).optional();
-
-const requestSchema = z.object({
-  sessionId: z.string().uuid(),
-  submissionId: z.string().uuid(),
-  message: z.string().min(1).max(AGENT_USER_MESSAGE_MAX_LENGTH),
-  /** Hub Assistente: `duvidas` força `explain_only` mesmo para utilizadores que podem editar a submissão. */
-  assistantProductTab: assistantProductTabSchema,
-});
 
 const turnResultSchema = z.object({
   answer: z.string(),
@@ -113,6 +123,7 @@ const TurnState = Annotation.Root({
   explainOnly: Annotation<boolean>(),
   conversationSummary: Annotation<string | null>(),
   result: Annotation<DreAssistantTurnResult>(),
+  apiLogCtx: Annotation<ApiLogContext>(),
 });
 
 function jsonResponse(res: AgentApiResponse, status: number, body: unknown) {
@@ -171,6 +182,12 @@ export function classifyAgentError(error: unknown): SafeError {
   if (lower.includes('nao corresponde a esta submissao') || lower.includes('nao corresponde ao recorte')) {
     return { status: 400, code: 'SUBMISSION_MISMATCH', message: 'Parametros da sessao invalidos.' };
   }
+  if (lower.includes('escopo de franquia inconsistente')) {
+    return { status: 403, code: 'FRANCHISE_SCOPE_MISMATCH', message: 'Escopo de franquia inconsistente com a submissao.' };
+  }
+  if (lower.includes('submissao nao encontrada')) {
+    return { status: 404, code: 'SUBMISSION_NOT_FOUND', message: 'Submissao nao encontrada.' };
+  }
   if (lower.includes('usuario autenticado nao encontrado')) {
     return { status: 401, code: 'UNAUTHENTICATED', message: 'Nao autenticado.' };
   }
@@ -220,6 +237,7 @@ async function loadSessionContext(
   authorization: string,
   sessionId: string,
   submissionId: string,
+  logCtx: ApiLogContext,
 ) {
   const supabase = createSupabaseUserClient(authorization);
 
@@ -238,7 +256,16 @@ async function loadSessionContext(
   }
 
   if (sessionError || !session) {
-    console.error('[dre-agent] session load failed:', sessionError);
+    logJson({
+      ...logCtx,
+      level: 'error',
+      msg: 'session_load_failed',
+      event: 'supabase_error',
+      errorCode: 'SESSION_LOAD',
+      sessionId,
+      submissionId,
+      supabaseMessage: sessionError?.message,
+    });
     throw new AgentOperationalError(404, 'SESSION_NOT_FOUND', 'Sessao do assistente nao encontrada.');
   }
 
@@ -274,7 +301,7 @@ async function loadSessionContext(
       .eq('session_id', sessionId)
       .order('created_at', { ascending: true })
       .limit(AGENT_MESSAGE_HISTORY_LIMIT),
-    supabase.from('submissions').select('status').eq('id', submissionId).maybeSingle(),
+    supabase.from('submissions').select('status, franchise_id').eq('id', submissionId).maybeSingle(),
     supabase.from('user_roles').select('role_id').eq('profile_id', userData.user.id),
   ]);
 
@@ -286,13 +313,20 @@ async function loadSessionContext(
     submissionRow.error ||
     userRoleLinks.error
   ) {
-    console.error('[dre-agent] loadSessionContext aggregated query failure', {
-      sectionRows: sectionRows.error,
-      lineRows: lineRows.error,
-      valueRows: valueRows.error,
-      messageRows: messageRows.error,
-      submissionRow: submissionRow.error,
-      userRoleLinks: userRoleLinks.error,
+    logJson({
+      ...logCtx,
+      level: 'error',
+      msg: 'aggregated_query_failure',
+      event: 'supabase_error',
+      errorCode: 'DATABASE_QUERY',
+      sessionId,
+      submissionId,
+      sectionErr: sectionRows.error?.message,
+      lineErr: lineRows.error?.message,
+      valueErr: valueRows.error?.message,
+      messageErr: messageRows.error?.message,
+      submissionErr: submissionRow.error?.message,
+      userRoleErr: userRoleLinks.error?.message,
     });
     throw new AgentOperationalError(500, 'DATABASE_QUERY', 'Erro ao carregar dados da submissao.');
   }
@@ -304,12 +338,33 @@ async function loadSessionContext(
       : { data: [] as { code: string }[], error: null };
 
   if (rolesLookup.error) {
-    console.error('[dre-agent] roles lookup failed:', rolesLookup.error);
+    logJson({
+      ...logCtx,
+      level: 'error',
+      msg: 'roles_lookup_failed',
+      event: 'supabase_error',
+      errorCode: 'ROLES_LOOKUP_FAILED',
+      sessionId,
+      submissionId,
+      supabaseMessage: rolesLookup.error.message,
+    });
     throw new AgentOperationalError(500, 'ROLES_LOOKUP_FAILED', 'Erro ao verificar permissoes.');
   }
 
   const roleCodes = (rolesLookup.data ?? []).map((row) => row.code);
-  const submissionStatus = submissionRow.data?.status ?? 'draft';
+
+  if (!submissionRow.data) {
+    throw new AgentOperationalError(404, 'SUBMISSION_NOT_FOUND', 'Submissao nao encontrada.');
+  }
+  if (session.franchise_id !== submissionRow.data.franchise_id) {
+    throw new AgentOperationalError(
+      403,
+      'FRANCHISE_SCOPE_MISMATCH',
+      'Escopo de franquia inconsistente com a submissao.',
+    );
+  }
+
+  const submissionStatus = submissionRow.data.status ?? 'draft';
 
   const sectionMap = new Map(
     (sectionRows.data ?? []).map((section) => [section.id, section]),
@@ -374,6 +429,263 @@ async function loadSessionContext(
   };
 }
 
+/** Contexto de submissão para `suggest_field` sem carregar sessão do agente. */
+async function loadSubmissionContextForFieldSuggest(
+  authorization: string,
+  submissionId: string,
+  logCtx: ApiLogContext,
+): Promise<{
+  lines: DreInputCatalogLine[];
+  currentValues: Record<string, string>;
+  submissionStatus: string;
+  roleCodes: string[];
+}> {
+  const supabase = createSupabaseUserClient(authorization);
+
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user) {
+    throw new AgentOperationalError(401, 'UNAUTHENTICATED', 'Nao autenticado.');
+  }
+
+  const userId = userData.user.id;
+
+  const [sectionRows, lineRows, valueRows, submissionRow, userRoleLinks] = await Promise.all([
+    supabase.from('dre_sections').select('id, code, name, display_order').order('display_order', { ascending: true }),
+    supabase
+      .from('dre_lines')
+      .select('id, section_id, code, name, description, display_order, input_mode')
+      .eq('line_type', 'input')
+      .eq('is_active', true)
+      .order('display_order', { ascending: true }),
+    supabase.from('submission_input_values').select('dre_line_id, value_currency, notes').eq('submission_id', submissionId),
+    supabase.from('submissions').select('status, franchise_id').eq('id', submissionId).maybeSingle(),
+    supabase.from('user_roles').select('role_id').eq('profile_id', userId),
+  ]);
+
+  if (
+    sectionRows.error ||
+    lineRows.error ||
+    valueRows.error ||
+    submissionRow.error ||
+    userRoleLinks.error
+  ) {
+    logJson({
+      ...logCtx,
+      level: 'error',
+      msg: 'field_suggest_query_failure',
+      event: 'supabase_error',
+      errorCode: 'DATABASE_QUERY',
+      submissionId,
+      sectionErr: sectionRows.error?.message,
+      lineErr: lineRows.error?.message,
+      valueErr: valueRows.error?.message,
+      submissionErr: submissionRow.error?.message,
+      userRoleErr: userRoleLinks.error?.message,
+    });
+    throw new AgentOperationalError(500, 'DATABASE_QUERY', 'Erro ao carregar dados da submissao.');
+  }
+
+  const roleIdList = [...new Set((userRoleLinks.data ?? []).map((row) => row.role_id))];
+  const rolesLookup =
+    roleIdList.length > 0
+      ? await supabase.from('roles').select('code').in('id', roleIdList)
+      : { data: [] as { code: string }[], error: null };
+
+  if (rolesLookup.error) {
+    logJson({
+      ...logCtx,
+      level: 'error',
+      msg: 'field_suggest_roles_failed',
+      event: 'supabase_error',
+      errorCode: 'ROLES_LOOKUP_FAILED',
+      submissionId,
+      supabaseMessage: rolesLookup.error.message,
+    });
+    throw new AgentOperationalError(500, 'ROLES_LOOKUP_FAILED', 'Erro ao verificar permissoes.');
+  }
+
+  const roleCodes = (rolesLookup.data ?? []).map((row) => row.code);
+
+  if (!submissionRow.data) {
+    throw new AgentOperationalError(404, 'SUBMISSION_NOT_FOUND', 'Submissao nao encontrada.');
+  }
+
+  const submissionStatus = submissionRow.data.status ?? 'draft';
+
+  const sectionMap = new Map((sectionRows.data ?? []).map((section) => [section.id, section]));
+  const valueMap = new Map((valueRows.data ?? []).map((value) => [value.dre_line_id, value]));
+
+  const lines = (lineRows.data ?? [])
+    .map((line) => {
+      const section = sectionMap.get(line.section_id);
+      const value = valueMap.get(line.id);
+
+      return {
+        id: line.id,
+        section_code: section?.code ?? 'section',
+        section_name: section?.name ?? 'Secao',
+        section_order: section?.display_order ?? 999,
+        line_code: line.code,
+        line_name: line.name,
+        description: line.description,
+        line_order: line.display_order,
+        input_mode: line.input_mode,
+        value_currency: value?.value_currency ?? null,
+        notes: value?.notes ?? null,
+      } satisfies DreInputCatalogLine;
+    })
+    .sort((left, right) => {
+      if (left.section_order !== right.section_order) {
+        return left.section_order - right.section_order;
+      }
+      return left.line_order - right.line_order;
+    });
+
+  const currentValues = Object.fromEntries(
+    lines.map((line) => [
+      line.line_code,
+      line.value_currency === null
+        ? ''
+        : line.value_currency.toLocaleString('pt-BR', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          }),
+    ]),
+  );
+
+  return {
+    lines,
+    currentValues,
+    submissionStatus,
+    roleCodes,
+  };
+}
+
+const singleFieldSuggestSchema = z.object({
+  suggestedValue: z.number().finite().nullable(),
+  reasoning: z.string().max(720),
+});
+
+async function computeInlineFieldSuggestion(input: {
+  line: DreInputCatalogLine;
+  lines: DreInputCatalogLine[];
+  currentValues: Record<string, string>;
+  requestCurrent: number | null | undefined;
+  logCtx: ApiLogContext;
+}): Promise<{ suggestedValue: number | null; reasoning: string }> {
+  const guide = getFieldGuide(input.line);
+  const grossParsed = parseCurrencyInput(input.currentValues.gross_revenue ?? '');
+  const neighborHint = Object.entries(input.currentValues)
+    .filter(([code, raw]) => code !== input.line.line_code && raw.trim().length > 0)
+    .slice(0, 6)
+    .map(([code, raw]) => `${code}=${raw}`)
+    .join('; ');
+
+  const explicitOpenAiKey = process.env.OPENAI_API_KEY?.trim();
+  const openAiSdkKey = explicitOpenAiKey && explicitOpenAiKey.length > 0 ? explicitOpenAiKey : undefined;
+  const openrouterKey = getEffectiveOpenRouterKey();
+  const upstreamConfigured = !!(openAiSdkKey || openrouterKey);
+
+  const fallbackCopy = (): { suggestedValue: number | null; reasoning: string } => ({
+    suggestedValue:
+      typeof input.requestCurrent === 'number' && Number.isFinite(input.requestCurrent)
+        ? input.requestCurrent
+        : null,
+    reasoning:
+      `${guide.label}: ${guide.help}. Revise com os seus registos da unidade.` +
+      (grossParsed !== null && grossParsed > 0
+        ? ` RBV declarada no rascunho: ${grossParsed.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.`
+        : ''),
+  });
+
+  if (!upstreamConfigured) {
+    return fallbackCopy();
+  }
+
+  const llmRoute: 'openai' | 'openrouter' = openAiSdkKey ? 'openai' : 'openrouter';
+
+  const baseLlm =
+    llmRoute === 'openai'
+      ? new ChatOpenAI({
+          apiKey: openAiSdkKey!,
+          model: getEnv('OPENAI_MODEL', DEFAULT_OPENAI_MODEL) ?? DEFAULT_OPENAI_MODEL,
+          temperature: 0.1,
+        })
+      : new ChatOpenAI({
+          apiKey: openrouterKey!,
+          model: getEnv('OPENROUTER_MODEL', DEFAULT_OPENROUTER_MODEL) ?? DEFAULT_OPENROUTER_MODEL,
+          temperature: 0.1,
+          configuration: {
+            baseURL: 'https://openrouter.ai/api/v1',
+            defaultHeaders: {
+              'HTTP-Referer':
+                getEnv('OPENROUTER_APP_URL', DEFAULT_OPENROUTER_APP_URL) ?? DEFAULT_OPENROUTER_APP_URL,
+              'X-Title': 'Febracis DRE Assistant — campo inline',
+            },
+          },
+        });
+
+  const structured = baseLlm.withStructuredOutput(singleFieldSuggestSchema);
+
+  const systemPrompt = [
+    'Voce sugere UM valor monetario (BRL) para UMA linha editavel da DRE de franquia.',
+    'Regras:',
+    '- Retorne apenas suggestedValue e reasoning em portugues do Brasil.',
+    '- Nunca invente MC1, MC2, EBITDA 1 nem EBITDA 2; ignore metricas calculadas.',
+    '- Se nao houver base nos dados do utilizador, devolva suggestedValue null e explique o que falta.',
+    `- Linha alvo: ${input.line.line_name} (${input.line.line_code}) · ${input.line.section_name}.`,
+    guide.help ? `- Glossario interno: ${guide.help}` : '',
+    `- Valores ja preenchidos (amostra): ${neighborHint || '(vazio)'}`,
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  try {
+    const out = await structured.invoke([
+      { role: 'system', content: systemPrompt },
+      {
+        role: 'user',
+        content: `Valor atual no campo (referencia): ${input.requestCurrent ?? 'nao informado'}. Sugira um numero ou null.`,
+      },
+    ]);
+
+    if (out.suggestedValue === null || !Number.isFinite(out.suggestedValue)) {
+      return {
+        suggestedValue: null,
+        reasoning: out.reasoning.trim() || fallbackCopy().reasoning,
+      };
+    }
+
+    const sanitized = sanitizeAssistantFieldUpdatesAgainstCatalog(
+      [
+        {
+          lineCode: input.line.line_code,
+          valueCurrency: out.suggestedValue,
+          label: input.line.line_name,
+        },
+      ],
+      input.lines,
+    );
+
+    const picked = sanitized.find((u) => u.lineCode === input.line.line_code) ?? null;
+
+    return {
+      suggestedValue: picked ? picked.valueCurrency : null,
+      reasoning: out.reasoning.trim() || fallbackCopy().reasoning,
+    };
+  } catch (reason) {
+    logJson({
+      ...input.logCtx,
+      level: 'warn',
+      msg: 'field_suggest_llm_fallback',
+      event: 'inline_field_suggest',
+      lineCode: input.line.line_code,
+      detail: reason instanceof Error ? reason.message : String(reason),
+    });
+    return fallbackCopy();
+  }
+}
+
 function sanitizeResult(
   rawResult: DreAssistantTurnResult,
   lines: DreInputCatalogLine[],
@@ -382,8 +694,7 @@ function sanitizeResult(
   skipOpts?: { skippedLineCodes?: Set<string> },
 ) {
   const knownLines = new Map(lines.map((line) => [line.line_code, line]));
-  const knownCodes = new Set(knownLines.keys());
-  let sanitizedUpdates = validateAssistantFieldUpdates(rawResult.fieldUpdates, knownCodes);
+  let sanitizedUpdates = sanitizeAssistantFieldUpdatesAgainstCatalog(rawResult.fieldUpdates, lines);
   if (explainOnly) {
     sanitizedUpdates = [];
   }
@@ -412,6 +723,7 @@ async function runModelTurn(input: {
   citations: DreAssistantCitation[];
   explainOnly: boolean;
   conversationSummary: string | null;
+  logCtx: ApiLogContext;
 }) {
   const explicitOpenAiKey = process.env.OPENAI_API_KEY?.trim();
   const openAiSdkKey =
@@ -563,7 +875,13 @@ async function runModelTurn(input: {
     } satisfies DreAssistantTurnResult;
   } catch (llmError) {
     const reason = llmError instanceof Error ? llmError.message : 'LLM error';
-    console.error('[dre-agent] LLM turn failed, using local guided fallback:', reason);
+    logJson({
+      ...input.logCtx,
+      level: 'warn',
+      msg: 'llm_turn_fallback',
+      event: 'llm_fallback',
+      reason,
+    });
 
     const local = runLocalAssistantTurn({
       message: input.userMessage,
@@ -605,6 +923,7 @@ const workflow = new StateGraph(TurnState)
       citations: state.citations,
       explainOnly: state.explainOnly,
       conversationSummary: state.conversationSummary,
+      logCtx: state.apiLogCtx,
     });
 
     return {
@@ -637,24 +956,54 @@ const workflow = new StateGraph(TurnState)
   .compile();
 
 export default async function handler(req: AgentApiRequest, res: AgentApiResponse) {
+  const ctx = logContext(DRE_AGENT_ROUTE, req.headers);
+
   if (req.method !== 'POST') {
+    logJson({
+      ...ctx,
+      level: 'warn',
+      msg: 'method_not_allowed',
+      event: 'request_rejected',
+      httpStatus: 405,
+    });
     return jsonResponse(res, 405, { error: 'Method not allowed.' });
   }
 
-  const authorizationHeader = req.headers.authorization;
-  const authorization = Array.isArray(authorizationHeader)
-    ? authorizationHeader[0]
-    : authorizationHeader;
+  logJson({
+    ...ctx,
+    level: 'info',
+    msg: 'request_start',
+    event: 'api_request_start',
+  });
 
-  if (!authorization) {
-    return jsonResponse(res, 401, { error: 'Missing authorization header.' });
+  const authGate = parseDreAgentAuthorizationHeader(req.headers.authorization);
+  if (!authGate.ok) {
+    logJson({
+      ...ctx,
+      level: 'warn',
+      msg: 'auth_validation_failed',
+      event: 'validation_failed',
+      httpStatus: authGate.httpStatus,
+      errorCode: authGate.response.code,
+    });
+    return jsonResponse(res, authGate.httpStatus, authGate.response);
   }
+  const authorization = authGate.authorization;
 
-  const parsedBody = requestSchema.safeParse(req.body);
-
-  if (!parsedBody.success) {
-    return jsonResponse(res, 400, { error: 'Invalid request body.' });
+  const bodyGate = dreAgentBodyParseResultForResponse(req.body);
+  if (!bodyGate.ok) {
+    logJson({
+      ...ctx,
+      level: 'warn',
+      msg: 'body_validation_failed',
+      event: 'validation_failed',
+      httpStatus: 400,
+      errorCode: bodyGate.response.code,
+      issueCount: bodyGate.response.issues?.length,
+    });
+    return jsonResponse(res, 400, bodyGate.response);
   }
+  const parsedBody = bodyGate.data;
 
   const rateLimit = parseAgentRateLimitEnv();
   if (rateLimit.enabled) {
@@ -662,6 +1011,14 @@ export default async function handler(req: AgentApiRequest, res: AgentApiRespons
       const supabase = createSupabaseUserClient(authorization);
       const { data: userData, error: userError } = await supabase.auth.getUser();
       if (userError || !userData.user) {
+        logJson({
+          ...ctx,
+          level: 'warn',
+          msg: 'rate_limit_precheck_unauthenticated',
+          event: 'auth_failed',
+          httpStatus: 401,
+          errorCode: 'UNAUTHENTICATED',
+        });
         return jsonResponse(res, 401, { error: 'Usuario autenticado nao encontrado para o assistente.' });
       }
       const { data: rateData, error: rateError } = await supabase.rpc('fn_agent_rate_check', {
@@ -670,11 +1027,27 @@ export default async function handler(req: AgentApiRequest, res: AgentApiRespons
       });
       if (rateError) {
         // Fail-open: evita bloquear o assistente se a RPC ou RLS nao estiverem aplicados no ambiente.
-        console.error('[dre-agent] rate limit check failed (fail-open):', rateError.message);
+        logJson({
+          ...ctx,
+          level: 'error',
+          msg: 'rate_limit_check_failed_fail_open',
+          event: 'rate_limit_degraded',
+          supabaseMessage: rateError.message,
+        });
       } else {
         const { allowed, retryAfterSeconds } = parseRateLimitRpcResult(rateData);
         if (!allowed) {
           res.setHeader?.('Retry-After', String(retryAfterSeconds));
+          logJson({
+            ...ctx,
+            level: 'warn',
+            msg: 'rate_limit_exceeded',
+            event: 'rate_limited',
+            httpStatus: 429,
+            retryAfterSeconds,
+            sessionId: 'sessionId' in parsedBody ? parsedBody.sessionId : null,
+            submissionId: parsedBody.submissionId,
+          });
           return jsonResponse(res, 429, {
             error: 'rate_limit_exceeded',
             retryAfterSeconds,
@@ -682,17 +1055,111 @@ export default async function handler(req: AgentApiRequest, res: AgentApiRespons
         }
       }
     } catch (rateException) {
-      console.error('[dre-agent] rate limit exception (fail-open):', rateException);
+      const detail = rateException instanceof Error ? rateException.message : String(rateException);
+      logJson({
+        ...ctx,
+        level: 'error',
+        msg: 'rate_limit_exception_fail_open',
+        event: 'rate_limit_degraded',
+        detail,
+      });
     }
   }
+
+  if ('mode' in parsedBody && parsedBody.mode === 'suggest_field') {
+    const sfBody = parsedBody as DreAgentSuggestFieldBody;
+    try {
+      const fxCtx = await loadSubmissionContextForFieldSuggest(authorization, sfBody.submissionId, ctx);
+      const line = fxCtx.lines.find((row) => row.line_code === sfBody.lineCode) ?? null;
+      const mutable = catalogLineCodesAssistantMayMutate(fxCtx.lines);
+      const catalogEditable = line !== null && mutable.has(sfBody.lineCode);
+      const writeAllowed = canAssistantMutateSubmission(fxCtx.roleCodes, fxCtx.submissionStatus);
+      const explainOnly = shouldAssistantExplainOnly(writeAllowed, sfBody.assistantProductTab);
+
+      if (!line) {
+        return jsonResponse(res, 200, {
+          ok: true,
+          mode: 'suggest_field',
+          suggestedValue: null,
+          reasoning: 'Linha não encontrada neste catálogo da submissão.',
+          editable: false,
+        });
+      }
+
+      if (!catalogEditable) {
+        return jsonResponse(res, 200, {
+          ok: true,
+          mode: 'suggest_field',
+          suggestedValue: null,
+          reasoning:
+            'Esta linha não aceita entrada monetária direta no catálogo guiado (somente linhas em modo moeda).',
+          editable: false,
+        });
+      }
+
+      if (explainOnly || !writeAllowed) {
+        return jsonResponse(res, 200, {
+          ok: true,
+          mode: 'suggest_field',
+          suggestedValue: null,
+          reasoning:
+            'Sugestões automáticas ficam desativadas no modo orientação, sem permissão de edição ou com submissão fora de estado editável.',
+          editable: false,
+        });
+      }
+
+      const pack = await computeInlineFieldSuggestion({
+        line,
+        lines: fxCtx.lines,
+        currentValues: fxCtx.currentValues,
+        requestCurrent: sfBody.currentValue,
+        logCtx: ctx,
+      });
+
+      logJson({
+        ...ctx,
+        level: 'info',
+        msg: 'field_suggest_ok',
+        event: 'inline_field_suggest',
+        submissionId: sfBody.submissionId,
+        lineCode: sfBody.lineCode,
+      });
+
+      return jsonResponse(res, 200, {
+        ok: true,
+        mode: 'suggest_field',
+        suggestedValue: pack.suggestedValue,
+        reasoning: pack.reasoning,
+        editable: true,
+      });
+    } catch (error) {
+      const safe = classifyAgentError(error);
+      const isOp = error instanceof AgentOperationalError;
+      logJson({
+        ...ctx,
+        level: safe.status >= 500 ? 'error' : 'warn',
+        msg: 'field_suggest_error',
+        event: 'inline_field_suggest_error',
+        httpStatus: safe.status,
+        errorCode: safe.code,
+        clientMessage: safe.message,
+        operational: isOp,
+        ...(isOp || !(error instanceof Error) ? {} : { errorName: error.name }),
+      });
+      return jsonResponse(res, safe.status, { error: safe.message, code: safe.code });
+    }
+  }
+
+  const chatBody = parsedBody as DreAgentChatRequestBody;
 
   try {
     const turnStartedMs = Date.now();
 
     const context = await loadSessionContext(
       authorization,
-      parsedBody.data.sessionId,
-      parsedBody.data.submissionId,
+      chatBody.sessionId,
+      chatBody.submissionId,
+      ctx,
     );
 
     const currentLineCode =
@@ -701,14 +1168,14 @@ export default async function handler(req: AgentApiRequest, res: AgentApiRespons
         : null;
 
     const writeAllowed = canAssistantMutateSubmission(context.roleCodes, context.submissionStatus);
-    const explainOnly = shouldAssistantExplainOnly(writeAllowed, parsedBody.data.assistantProductTab);
+    const explainOnly = shouldAssistantExplainOnly(writeAllowed, chatBody.assistantProductTab);
 
     const skippedSeed = parseSkippedLineCodesFromState(context.session.state_json);
     const skippedOpts = { skippedLineCodes: new Set(skippedSeed) };
     const proposedFromSession = parseProposedAssistantValueFromState(context.session.state_json);
     const drePhaseStored = parseDrePhaseFromState(context.session.state_json);
 
-    const parsedAgent = parseAgentCommand(parsedBody.data.message);
+    const parsedAgent = parseAgentCommand(chatBody.message);
     const sessionStatePatch: Record<string, unknown> = {};
 
     let result: DreAssistantTurnResult;
@@ -734,19 +1201,20 @@ export default async function handler(req: AgentApiRequest, res: AgentApiRespons
 
       result = sanitizeResult(result, context.lines, context.currentValues, explainOnly, skippedOpts);
 
-      console.log(
-        JSON.stringify({
-          event: 'dre_agent_command',
-          command: parsedAgent.name,
-          args: parsedAgent.args,
-          sessionId: parsedBody.data.sessionId,
-          submissionId: parsedBody.data.submissionId,
-          interaction_mode: explainOnly ? 'explain_only' : 'full',
-        }),
-      );
-    } else if (classifyDreUserIntent(parsedBody.data.message) === 'off_topic') {
+      logJson({
+        ...ctx,
+        level: 'info',
+        msg: 'dre_agent_command',
+        event: 'dre_agent_command',
+        command: parsedAgent.name,
+        args: parsedAgent.args,
+        sessionId: chatBody.sessionId,
+        submissionId: chatBody.submissionId,
+        interaction_mode: explainOnly ? 'explain_only' : 'full',
+      });
+    } else if (classifyDreUserIntent(chatBody.message) === 'off_topic') {
       const rawLocal = runLocalAssistantTurn({
-        message: parsedBody.data.message,
+        message: chatBody.message,
         lines: context.lines,
         currentValues: context.currentValues,
         currentLineCode,
@@ -763,27 +1231,29 @@ export default async function handler(req: AgentApiRequest, res: AgentApiRespons
         skippedOpts,
       );
 
-      console.log(
-        JSON.stringify({
-          event: 'dre_agent_turn',
-          sessionId: parsedBody.data.sessionId,
-          submissionId: parsedBody.data.submissionId,
-          ok: true,
-          intent: 'off_topic',
-          bypass: 'langgraph',
-        }),
-      );
+      logJson({
+        ...ctx,
+        level: 'info',
+        msg: 'dre_agent_turn',
+        event: 'dre_agent_turn',
+        sessionId: chatBody.sessionId,
+        submissionId: chatBody.submissionId,
+        ok: true,
+        intent: 'off_topic',
+        bypass: 'langgraph',
+      });
     } else {
       const resultState = await workflow.invoke({
         session: context.session,
         lines: context.lines,
         currentValues: context.currentValues,
         messages: context.messages,
-        userMessage: parsedBody.data.message,
+        userMessage: chatBody.message,
         currentLineCode,
         citations: [],
         explainOnly,
         conversationSummary: context.conversationSummary,
+        apiLogCtx: ctx,
         result: {
           answer: '',
           citations: [],
@@ -815,25 +1285,26 @@ export default async function handler(req: AgentApiRequest, res: AgentApiRespons
       lines: context.lines,
       currentValues: context.currentValues,
       focusLineCode: result.focusLineCode,
-      userMessage: parsedBody.data.message,
+      userMessage: chatBody.message,
       explainOnly,
     });
 
     const latencyMs = Date.now() - turnStartedMs;
 
-    console.log(
-      JSON.stringify({
-        event: 'dre_agent_turn',
-        sessionId: parsedBody.data.sessionId,
-        submissionId: parsedBody.data.submissionId,
-        ok: true,
-        latencyMs,
-        interaction_mode: explainOnly ? 'explain_only' : 'full',
-        mode: result.mode,
-        assistant_provider: result.telemetry?.assistant_provider,
-        model: result.telemetry?.assistant_model,
-      }),
-    );
+    logJson({
+      ...ctx,
+      level: 'info',
+      msg: 'dre_agent_turn_ok',
+      event: 'dre_agent_turn',
+      sessionId: chatBody.sessionId,
+      submissionId: chatBody.submissionId,
+      ok: true,
+      latencyMs,
+      interaction_mode: explainOnly ? 'explain_only' : 'full',
+      mode: result.mode,
+      assistant_provider: result.telemetry?.assistant_provider,
+      model: result.telemetry?.assistant_model,
+    });
 
     return jsonResponse(res, 200, {
       ok: true,
@@ -846,16 +1317,18 @@ export default async function handler(req: AgentApiRequest, res: AgentApiRespons
     });
   } catch (error) {
     const safe = classifyAgentError(error);
-    console.error(
-      JSON.stringify({
-        event: 'dre_agent_turn_error',
-        ok: false,
-        code: safe.code,
-        status: safe.status,
-        message: safe.message,
-      }),
-    );
-    console.error('[dre-agent] internal error:', error);
+    const isOp = error instanceof AgentOperationalError;
+    logJson({
+      ...ctx,
+      level: safe.status >= 500 ? 'error' : 'warn',
+      msg: 'dre_agent_turn_error',
+      event: 'dre_agent_turn_error',
+      httpStatus: safe.status,
+      errorCode: safe.code,
+      clientMessage: safe.message,
+      operational: isOp,
+      ...(isOp || !(error instanceof Error) ? {} : { errorName: error.name }),
+    });
     return jsonResponse(res, safe.status, { error: safe.message, code: safe.code });
   }
 }

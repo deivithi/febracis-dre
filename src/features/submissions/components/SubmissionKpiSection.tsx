@@ -1,6 +1,6 @@
 import { AlertTriangle, CheckCircle2, ClipboardList, FileSpreadsheet, TrendingUp } from 'lucide-react';
 import { formatCurrency, formatInteger } from '../../../utils/formatters';
-import type { DrePreviewValues } from '../drePreview';
+import type { DrePreviewSource, DrePreviewValues } from '../drePreview';
 import type { SubmissionDraftValidation } from '../submissionValidation';
 
 type DraftGridSummary = Pick<SubmissionDraftValidation, 'filledCount' | 'totalInputs'>;
@@ -10,6 +10,8 @@ type SubmissionKpiSectionProps = {
   approvedCount: number;
   pendingCount: number;
   preview: DrePreviewValues;
+  previewSource?: DrePreviewSource;
+  previewReconciling?: boolean;
   draftSummary: DraftGridSummary;
 };
 
@@ -29,6 +31,8 @@ export function SubmissionKpiSection({
   approvedCount,
   pendingCount,
   preview,
+  previewSource,
+  previewReconciling,
   draftSummary,
 }: SubmissionKpiSectionProps) {
   const { filledCount, totalInputs } = draftSummary;
@@ -51,7 +55,7 @@ export function SubmissionKpiSection({
               <FileSpreadsheet />
             </div>
           </div>
-          <div className="kpi-card__value">{formatInteger(totalCount)}</div>
+          <div className="kpi-card__value num-tabular">{formatInteger(totalCount)}</div>
           <div className="kpi-card__footer">
             <span className="kpi-card__percent">Total de DREs correntes da rede no seu acesso</span>
           </div>
@@ -62,7 +66,7 @@ export function SubmissionKpiSection({
             <div className="draft-progress draft-progress--kpi-card" data-testid="draft-progress">
               <div className="draft-progress__head">
                 <span className="draft-progress__title">Preenchimento da grelha</span>
-                <span className="draft-progress__counter">
+                <span className="draft-progress__counter num-tabular">
                   <strong>{formatInteger(cappedFilled)}</strong> de{' '}
                   <strong>{formatInteger(totalInputs)}</strong> linhas obrigatórias
                 </span>
@@ -111,10 +115,14 @@ export function SubmissionKpiSection({
               <TrendingUp />
             </div>
           </div>
-          <div className="kpi-card__value kpi-card__value--gold">{formatCurrency(preview.ebitda2)}</div>
+          <div className="kpi-card__value kpi-card__value--gold num-tabular">{formatCurrency(preview.ebitda2)}</div>
           <div className="kpi-card__footer">
             <span className="kpi-card__percent">
-              MC2 → impostos: resultado final da prévia em edição
+              {previewReconciling
+                ? 'A sincronizar com o motor…'
+                : previewSource === 'server_statement'
+                  ? 'Total alinhado à DRE oficial gravada'
+                  : 'MC2 → impostos: resultado da prévia local em edição'}
             </span>
           </div>
         </div>
@@ -130,7 +138,7 @@ export function SubmissionKpiSection({
                 <CheckCircle2 />
               </div>
             </div>
-            <div className="kpi-card__value kpi-card__value--success">{formatInteger(approvedCount)}</div>
+            <div className="kpi-card__value kpi-card__value--success num-tabular">{formatInteger(approvedCount)}</div>
             <div className="kpi-card__footer">
               <span className="kpi-card__percent">Fechadas pela controladoria</span>
             </div>
@@ -143,7 +151,7 @@ export function SubmissionKpiSection({
                 <AlertTriangle />
               </div>
             </div>
-            <div className="kpi-card__value">{formatInteger(pendingCount)}</div>
+            <div className="kpi-card__value num-tabular">{formatInteger(pendingCount)}</div>
             <div className="kpi-card__footer">
               <span className="kpi-card__percent">Aguardando envio, revisão ou ajuste</span>
             </div>

@@ -1,3 +1,5 @@
+import type { DreStatementRow } from '../shared/portal.types';
+
 export interface DrePreviewValues {
   grossRevenue: number;
   deductionsTotal: number;
@@ -12,6 +14,49 @@ export interface DrePreviewValues {
 }
 
 export type DreInputValueMap = Record<string, number>;
+
+/** Origem da prévia exibida: declarado no workspace para alinhar KPI ao motor após gravar. */
+export type DrePreviewSource = 'local_draft' | 'server_statement';
+
+function readNumericCell(value: DreStatementRow['value_currency']): number {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === 'string' && value.trim().length > 0) {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : 0;
+  }
+  return 0;
+}
+
+/**
+ * Prévia alinhada ao motor: lê subtotais de `vw_submission_dre_statement` / `submission_calculated_values`.
+ */
+export function dreStatementToPreview(rows: DreStatementRow[]): DrePreviewValues | null {
+  if (!rows.length) {
+    return null;
+  }
+
+  const byCode = new Map(rows.map((row) => [row.line_code, row]));
+
+  const read = (code: string) => {
+    const row = byCode.get(code);
+    return row ? readNumericCell(row.value_currency) : 0;
+  };
+
+  return {
+    grossRevenue: read('gross_revenue'),
+    deductionsTotal: read('deductions_total'),
+    mc1: read('mc1'),
+    eventExpensesTotal: read('event_expenses_total'),
+    marketingTotal: read('marketing_total'),
+    defaultNet: read('default_net'),
+    variableExpensesTotal: read('variable_expenses_total'),
+    mc2: read('mc2'),
+    ebitda1: read('ebitda_1'),
+    ebitda2: read('ebitda_2'),
+  };
+}
 
 function readValue(values: DreInputValueMap, key: string) {
   const value = values[key];

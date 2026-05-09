@@ -1,0 +1,297 @@
+/* G08 — Roteiro da demo: timeline horizontal (≥1024px) e vertical (≤1023px). */
+
+.demo-roadmap {
+  scroll-margin-top: 5.5rem;
+}
+
+.demo-roadmap__header {
+  align-items: flex-start;
+}
+
+.demo-roadmap__header-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.demo-roadmap__header-icon {
+  flex-shrink: 0;
+  color: var(--accent-gold);
+}
+
+.demo-roadmap__eyebrow {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.demo-roadmap__title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.demo-roadmap__title {
+  margin: 0;
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+/* Badge discreto ~5 min (efeito “tailwindeano” via tokens) */
+.demo-roadmap__time-badge {
+  flex-shrink: 0;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--bg-elevated) 88%, transparent);
+}
+
+.demo-roadmap__subtitle {
+  margin: 0 0 var(--space-5);
+  max-width: 42rem;
+  color: var(--text-secondary);
+  line-height: 1.65;
+  font-size: var(--text-sm);
+}
+
+.demo-roadmap__primary-cta {
+  margin-top: var(--space-1);
+}
+
+.demo-roadmap__guided-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.demo-roadmap__tooltip-anchor {
+  display: inline-flex;
+}
+
+.demo-roadmap__body {
+  padding-top: var(--space-2);
+}
+
+/* --- Desktop timeline --- */
+
+.demo-roadmap__desktop {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.demo-roadmap__nodes-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  width: 100%;
+  gap: 0;
+}
+
+.demo-roadmap__node-col {
+  flex: 0 0 auto;
+  width: 40px;
+  display: flex;
+  justify-content: center;
+}
+
+.demo-roadmap__circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(
+    to bottom right,
+    color-mix(in srgb, var(--primary-gold, var(--accent-gold)) 20%, transparent),
+    color-mix(in srgb, var(--primary-gold, var(--accent-gold)) 5%, transparent)
+  );
+  border: 1px solid color-mix(in srgb, var(--primary-gold, var(--accent-gold)) 28%, var(--border-subtle));
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--shell-bg-base) 40%, transparent);
+}
+
+.demo-roadmap__circle-num {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+
+.demo-roadmap__connector {
+  position: relative;
+  flex: 1 1 12px;
+  min-width: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.demo-roadmap__connector--horizontal {
+  height: 40px;
+  margin: 0 var(--space-1);
+}
+
+.demo-roadmap__connector-track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  transform: translateY(-50%);
+  border-radius: var(--radius-full);
+  background: var(--border-subtle);
+}
+
+.demo-roadmap__connector-dots {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0 2px;
+  z-index: 1;
+}
+
+.demo-roadmap__connector-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary-gold, var(--accent-gold));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary-gold, var(--accent-gold)) 35%, transparent);
+  flex-shrink: 0;
+}
+
+.demo-roadmap__cards-row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-4);
+  align-items: stretch;
+}
+
+.demo-roadmap__card-cell {
+  min-width: 0;
+}
+
+/* --- Mobile / tablet vertical --- */
+
+.demo-roadmap__mobile {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.demo-roadmap__mobile-item {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+  margin-bottom: var(--space-5);
+}
+
+.demo-roadmap__mobile-item:last-child {
+  margin-bottom: 0;
+}
+
+.demo-roadmap__mobile-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 40px;
+}
+
+.demo-roadmap__connector--vertical {
+  flex: 1 1 auto;
+  width: 40px;
+  min-height: 48px;
+  margin: var(--space-1) 0;
+}
+
+.demo-roadmap__connector--vertical .demo-roadmap__connector-track {
+  left: 50%;
+  right: auto;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  height: auto;
+  transform: translateX(-50%);
+}
+
+.demo-roadmap__connector--vertical .demo-roadmap__connector-dots {
+  flex-direction: column;
+  height: 100%;
+  width: auto;
+  padding: 4px 0;
+  justify-content: space-between;
+}
+
+/* --- Step card --- */
+
+.demo-step {
+  height: 100%;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface, var(--shell-bg-elevated));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.demo-step__eyebrow {
+  margin: 0;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.demo-step__title {
+  margin: 0;
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  line-height: 1.35;
+  font-family: var(--font-heading);
+}
+
+.demo-step__description {
+  margin: 0;
+  flex: 1;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.demo-step__cta {
+  margin-top: var(--space-2);
+  align-self: flex-start;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--accent-gold);
+  text-decoration: none;
+  border-bottom: 1px solid var(--border-gold);
+  padding-bottom: 1px;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.demo-step__cta:hover {
+  color: var(--accent-gold-hover);
+  border-color: color-mix(in srgb, var(--accent-gold) 45%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .demo-step__cta {
+    transition: none;
+  }
+}

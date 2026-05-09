@@ -4,18 +4,42 @@
 
 **Contrato de avaliações do agente / cenários (ENTREGA 2):** [`docs/dre-agent-evals.yaml`](../docs/dre-agent-evals.yaml).
 
-## Validação pré-deploy — 09/05/2026 (BRT)
+## Validação pré-deploy — 10/05/2026 (BRT)
 
 Checklist (auditoria automática neste repositório):
 
 | Passo | Estado |
 |-------|--------|
 | `npm run build` | OK |
-| `npm run lint` | OK (0 erros; avisos `exhaustive-deps` / TanStack apenas) |
+| `npm run lint` | OK (0 erros; avisos `exhaustive-deps` / TanStack / React Compiler conforme lista na rodada 10/05/2026) |
 | `npm test` (Vitest) | OK |
 | `npm run test:e2e` (smoke) | OK (16 passed; 8 skipped — demos/assistente guiado opcionais) |
 
 **Nota:** smoke passou em **build + lint + testes + E2E smoke**; isto **não** garante cada botão ou fluxo manual na UI.
+
+### Mapa de atividades — Guia `/app/guide` (G01–G15)
+
+Leitura **evidence-based** a partir de comentários `Gxx` e ficheiros em `src/features/guide/` (lote UX “excelência Guia”). Ordem abaixo do código em **`GuideBelowFold`** segue **G10** (pilares → matriz → jornadas → roteiro → lógica DRE → CTA). Estilos globais da página: **`GuidePage.css`**. O projeto **não** usa Tailwind na Guia — layout via CSS e tokens (`tokens.css`, `typography.css`).
+
+| ID | Entrega | Âncoras no repositório |
+|----|---------|-------------------------|
+| G01 | Hero do Guia | `GuideHeroSection.tsx`, `GuidePage.css` §G01 |
+| G02 | Fluxo macro end-to-end | `FlowDiagram.tsx`, `FlowDiagram.css`, `print.css` |
+| G03 | TOC, âncoras, progresso de leitura | `guideSections.ts`, `GuideTableOfContents.tsx`, `useActiveSection`, `ReadingProgress` |
+| G04 | Journey track horizontal | `JourneyTrack.tsx`, `JourneyTrack.css` |
+| G05 | RBAC em cartões (matriz de acesso) | `AccessMatrix.tsx`, `RoleCard.tsx`, `guide-data.ts` |
+| G06 | Pilares em grelha | `PlatformPillars.tsx`, `PillarCard.tsx`, `platformPillarsCopy.ts` |
+| G07 | Lógica DRE (abas, impressão glossário) | `DreLogic.tsx`, `GuidePage.css` §G07 |
+| G08 | Roteiro demo (timeline) | `DemoRoadmap.tsx`, `DemoRoadmap.css`, `guide-data.ts` (roteiro) |
+| G09 | Jornadas comparativo (checklists) | `GuideJourneySection.tsx`, `JourneyDetails.tsx`, `JourneyChecklist.tsx`, `guide-data.ts` |
+| G10 | Ordem das secções abaixo da dobra | `GuideBelowFold.tsx` (comentário de ordem) |
+| G11 | CTA final + glossário (painel) | `GuideEndCta.tsx`, `guideGlossaryContent.ts` |
+| G12 | Tipografia / escala legível | `typography.css`, classes `typo-*` em `GuidePage.css` |
+| G13 | Motion (Framer Motion, `prefers-reduced-motion`) | `GuidePage.tsx`, `GuideBelowFold.tsx`, `PillarCard.tsx`, `useScrollReveal.ts` |
+| G14 | TOC + drawer + contraste / layout largo | `GuidePage.css` (comentário G14), `GuideSectionStrip.tsx` |
+| G15 | Fluxo executivo / screenshots pitch | `GuidePage.css` §screenshots, `public/screenshots/guide/`, `scripts/screenshot-guide.mjs`, relatórios Lighthouse em `public/lighthouse-report-guide*.html` |
+
+**Fecho em ciclo (autonomous-agent-loop):** métrica operacional de sessão = **build verde + documentação alinhada ao estado do repo**; ledger = commits; zona imutável = `references/project-context.md` (só actualizar texto, não “editar” URLs de producção sem deploy real); após merge/push, **`npx vercel --prod --yes`** no team `deivithis-projects` e registo do `dpl_*` Ready abaixo.
 
 **Produção (deploy 09/05/2026):** [`https://febracis-oxtuzlynl-deivithis-projects.vercel.app`](https://febracis-oxtuzlynl-deivithis-projects.vercel.app) — `dpl_9piYyYMWE5NnoDycCzKU2tcMzgwe`, inspect [`https://vercel.com/deivithis-projects/febracis-dre/9piYyYMWE5NnoDycCzKU2tcMzgwe`](https://vercel.com/deivithis-projects/febracis-dre/9piYyYMWE5NnoDycCzKU2tcMzgwe), alias [`https://febracis-dre.vercel.app`](https://febracis-dre.vercel.app).
 
@@ -180,6 +204,11 @@ Detalhe e comandos: [`operacoes-pendentes-supabase-vercel-2026-04-27.md`](./oper
 - **Tabela de âmbito** ([`SubmissionsScopeTable.tsx`](../src/features/submissions/components/SubmissionsScopeTable.tsx)): colunas "Competência" / "Enviada em" e cabeçalho "Todas as DREs no seu acesso".
 - **Hub Assistente** (`/app/assistant`): subtítulo executivo ("Os números aqui são os mesmos que aparecem em Submissões…"), strip de contexto "Você está em: {franquia} · competência {período} — modo orientação / preenchimento guiado".
 - **Capturas para demo CEO**: spec opcional [`tests/e2e/demo-screenshots.spec.ts`](../tests/e2e/demo-screenshots.spec.ts) gera snapshots de Painel executivo, Submissões e Hub Assistente quando `E2E_DRE_EMAIL`/`E2E_DRE_PASSWORD` estão definidos. Saída em `tests/e2e/__screenshots__/` (já no `.gitignore`).
+
+##### Screenshots oficiais da Guia
+
+- **Pasta:** [`public/screenshots/guide/`](../public/screenshots/guide/) (índice em [`README.md`](../public/screenshots/guide/README.md)).
+- **Geração:** `npm run screenshot:guide` → [`scripts/screenshot-guide.mjs`](../scripts/screenshot-guide.mjs) (Playwright, viewport 1920×1080, lotes tema escuro e **`-light`**). Requer servidor local (recomenda-se `VITE_APP_MODE=demo`) e as mesmas variáveis `E2E_DRE_EMAIL` / `E2E_DRE_PASSWORD` dos E2E.
 - Painel **Assistente DRE** (só no hub `/app/assistant`): thread com bolhas (paleta Febracis: azul / dourado / âmbar), área de mensagens com fundo “canvas” e **compositor fixo** (dock) com foco visível, autoaltura do texto e **Enter** envia / **Shift+Enter** nova linha.
 - Atalhos tipo **Olá** e chips ghost; `prefers-reduced-motion` desliga animações de entrada, brilho pendente e rotação do ícone de carregamento.
 - Tokens CSS: prefixo `--chat-*` em [`src/styles/tokens.css`](../src/styles/tokens.css); estilos em [`SubmissionsPage.css`](../src/features/submissions/SubmissionsPage.css) (partilhados com o hub).

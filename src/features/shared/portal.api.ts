@@ -15,6 +15,10 @@ import type {
   EventOptionRow,
   FranchiseDashboardRow,
   FranchiseListRow,
+  FranchiseMetricTrendMetric,
+  FranchiseMetricTrendRow,
+  KpiHistoryPoint,
+  KpiSparklineMetric,
   NetworkDashboardRow,
   PendingReviewRow,
   RegionalDashboardRow,
@@ -23,6 +27,7 @@ import type {
   SubmissionHistoryRow,
   SubmissionIssueRow,
   SubmissionKpiRow,
+  SubmissionVersionSummaryRow,
   SubmissionWorkspaceSnapshot,
   UserAccessDirectoryRow,
   ValidationResultRow,
@@ -76,6 +81,21 @@ function getErrorMessage(error: unknown, fallback: string) {
 const DASHBOARD_PAGE_SIZE = 1000;
 const DASHBOARD_FRANCHISE_ROWS_CAP = 50_000;
 const DASHBOARD_REGIONAL_ROWS_CAP = 50_000;
+
+/**
+ * `fetchDashboardSnapshot` e leituras associadas usam sempre o cliente Supabase
+ * da aplicação (anon + JWT do utilizador). Não há service role no browser.
+ *
+ * Escopo explícito: `applyScopedFilters` (franquia > regional > rede). O RLS
+ * das tabelas base e `security_invoker` nas vistas restringem o que o JWT vê.
+ *
+ * Rollups executivos em `vw_regional_dashboard` / `vw_network_dashboard`:
+ * MC1/MC2/EBITDA e receita agregada somente com `submission_status` na allowlist
+ * oficial (`EXECUTIVE_KPI_SUBMISSION_STATUSES` em `dashboardQuery.ts`; migração
+ * `018_executive_kpi_official_statuses_only.sql`). Rascunhos (`draft`) e
+ * `reopened` não entram. O cockpit holding alinha KPIs via
+ * `filterFranchiseRowsForExecutiveRollup`.
+ */
 
 async function readVwFranchiseDashboard(access: AccessProfile): Promise<FranchiseDashboardRow[]> {
   const multiEntityDashboard =
@@ -166,6 +186,49 @@ async function readVwRegionalDashboard(access: AccessProfile): Promise<RegionalD
   return result;
 }
 
+export async function fetchKpiHistory(options: {
+  franchiseId?: string | null;
+  regionalId?: string | null;
+  metric: KpiSparklineMetric;
+  periodsCount?: number;
+}): Promise<KpiHistoryPoint[]> {
+  const { data, error } = await supabase.rpc('get_kpi_history', {
+    p_franchise_id: options.franchiseId ?? null,
+    p_metric: options.metric,
+    p_periods_count: options.periodsCount ?? 6,
+    p_regional_id: options.regionalId ?? null,
+  });
+
+  if (error) {
+    throw new Error(`Não foi possível carregar o histórico do indicador. ${error.message}`);
+  }
+
+  return (data ?? []) as KpiHistoryPoint[];
+}
+
+export async function fetchFranchiseMetricTrend(options: {
+  regionId?: string | null;
+  franchiseIds?: string[] | null;
+  months?: number;
+  metric: FranchiseMetricTrendMetric;
+}): Promise<FranchiseMetricTrendRow[]> {
+  const ids =
+    options.franchiseIds != null && options.franchiseIds.length > 0 ? options.franchiseIds : null;
+
+  const { data, error } = await supabase.rpc('get_franchise_metric_trend', {
+    p_region_id: options.regionId ?? null,
+    p_franchise_ids: ids,
+    p_months: options.months ?? 12,
+    p_metric: options.metric,
+  });
+
+  if (error) {
+    throw new Error(`Não foi possível carregar a tendência do indicador. ${error.message}`);
+  }
+
+  return (data ?? []) as FranchiseMetricTrendRow[];
+}
+
 export async function fetchDashboardSnapshot(access: AccessProfile) {
   const franchiseRowsPromise = readVwFranchiseDashboard(access);
 
@@ -240,6 +303,21 @@ export async function fetchDashboardSnapshot(access: AccessProfile) {
     latestNetwork: networkRows[0] ?? null,
     previousNetwork: networkRows[1] ?? null,
   };
+}
+
+/** DRE oficial por submissão (uso em modo comparativo franquia ou telas que precisam de histórico). */
+export async function fetchDreStatementForSubmission(submissionId: string): Promise<DreStatementRow[]> {
+  return readRows<DreStatementRow>(
+    asQueryResult(
+      supabase
+        .from('vw_submission_dre_statement')
+        .select('*')
+        .eq('submission_id', submissionId)
+        .order('section_order', { ascending: true })
+        .order('line_order', { ascending: true }),
+    ),
+    'a DRE detalhada da submissão',
+  );
 }
 
 export async function fetchCurrentSubmissions(access: AccessProfile) {
@@ -477,6 +555,58 @@ export async function provisionUserAccess(payload: AdminUserProvisionPayload) {
   return result as AdminUserProvisionResult;
 }
 
+export async function fetchSubmissionScopeMeta(submissionId: string) {
+  const { data, error } = await supabase
+    .from('submissions')
+    .select('id, franchise_id, reporting_period_id, version_number')
+    .eq('id', submissionId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Não foi possível localizar a submissão. ${error.message}`);
+  }
+
+  return data as {
+    id: string;
+    franchise_id: string;
+    reporting_period_id: string;
+    version_number: number;
+  } | null;
+}
+
+export async function fetchSubmissionVersionsForPeriod(
+  franchiseId: string,
+  reportingPeriodId: string,
+): Promise<SubmissionVersionSummaryRow[]> {
+  return readRows<SubmissionVersionSummaryRow>(
+    asQueryResult(
+      supabase
+        .from('submissions')
+        .select('id, franchise_id, reporting_period_id, version_number, status, notes, submitted_at, created_at')
+        .eq('franchise_id', franchiseId)
+        .eq('reporting_period_id', reportingPeriodId)
+        .order('version_number', { ascending: false }),
+    ),
+    'o histórico de versões da competência',
+  );
+}
+
+export async function restoreSubmissionInputsFromVersion(
+  targetSubmissionId: string,
+  sourceSubmissionId: string,
+) {
+  const { data, error } = await supabase.rpc('fn_restore_submission_inputs_from_version', {
+    p_target_submission_id: targetSubmissionId,
+    p_source_submission_id: sourceSubmissionId,
+  });
+
+  if (error) {
+    throw new Error(`Não foi possível restaurar a versão. ${error.message}`);
+  }
+
+  return data as { ok: boolean; submission_id: string; message: string };
+}
+
 export async function ensureSubmissionVersion(
   franchiseId: string,
   reportingPeriodId: string,
@@ -636,7 +766,7 @@ export async function fetchSubmissionWorkspace(submissionId: string): Promise<Su
       asQueryResult(
         supabase
           .from('submission_status_history')
-          .select('id, submission_id, from_status, to_status, reason, changed_at')
+          .select('id, submission_id, from_status, to_status, reason, changed_at, changed_by')
           .eq('submission_id', submissionId)
           .order('changed_at', { ascending: false }),
       ),
@@ -717,8 +847,17 @@ export async function saveSubmissionInputs(
   }
 
   return data as {
+    submission_id?: string;
+    status?: string;
     message: string;
     validation_count: number;
+    kpis?: {
+      gross_revenue?: number;
+      mc1?: number;
+      mc2?: number;
+      ebitda_1?: number;
+      ebitda_2?: number;
+    };
   };
 }
 
