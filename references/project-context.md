@@ -4,7 +4,7 @@
 
 **Contrato de avaliações do agente / cenários (ENTREGA 2):** [`docs/dre-agent-evals.yaml`](../docs/dre-agent-evals.yaml).
 
-Última revisão documental: **08/05/2026 BRT** — datas e competências alinhadas ao calendário civil em **America/Sao_Paulo** (`brazilTimezone.ts`, `resolveDefaultReportingPeriod`, `formatDate`/`formatDateTime` em `formatters.ts`); cockpit **Holding** deriva competência `YYYY-MM` do mês BRT quando existe no snapshot. Auditoria lógica anterior: [`references/audit-app-logic-2026-05-08.md`](./audit-app-logic-2026-05-08.md). Dashboard: [`references/dashboard-ux-benchmark.md`](./dashboard-ux-benchmark.md); **Produção READY** — ver linha mais recente em **Raiz e URLs** após deploy.
+Última revisão documental: **09/05/2026 BRT** — Postgres/RLS focal: tabelas **`dre_lines`**, **`submissions`**, **`reporting_periods`**, **`audit_log`** conferidas no remoto **`vwxgrjjwbvdiaqxqbryk`** (`information_schema`, `pg_policies`); `list_migrations` inclui `agent_rate_limits` + `harden_audit_log_insert`; repositório saneado (removido **`015_harden_audit_log_insert.sql`** duplicado). Matriz e índice de migrações: [`references/technical-implementation.md`](./technical-implementation.md). Checkpoint anterior (datas BRT, Holding): `brazilTimezone.ts`, `resolveDefaultReportingPeriod`, `formatDate`/`formatDateTime`. Auditoria lógica SPA: [`references/audit-app-logic-2026-05-08.md`](./audit-app-logic-2026-05-08.md). Dashboard: [`references/dashboard-ux-benchmark.md`](./dashboard-ux-benchmark.md); **Produção READY** — ver linha mais recente em **Raiz e URLs** após deploy.
 
 ## Raiz e URLs
 
@@ -40,7 +40,7 @@
 Detalhe e comandos: [`operacoes-pendentes-supabase-vercel-2026-04-27.md`](./operacoes-pendentes-supabase-vercel-2026-04-27.md).
 
 1. **Vercel Production:** confirmar `VITE_SUPABASE_URL=https://vwxgrjjwbvdiaqxqbryk.supabase.co`, `VITE_SUPABASE_ANON_KEY`, rate limit e `ADMIN_PROVISION_ALLOWED_ORIGINS=https://febracis-dre.vercel.app,http://localhost:5173`; redeploy para embutir `VITE_*` no bundle.
-2. **Supabase:** migrations **015** (`agent_rate_limits`) e **016** (`harden_audit_log_insert`) aplicadas no remoto legado via MCP em 2026-05-07; confirmar em `list_migrations` antes de novo deploy.
+2. **Supabase:** migrations **015** (`agent_rate_limits`) e **016** (`harden_audit_log_insert`) aplicadas no remoto; **09/05/2026 BRT:** `list_migrations` no projeto `vwxgrjjwbvdiaqxqbryk` confirmou `agent_rate_limits` + `harden_audit_log_insert` (timestamp) além de **001–014**; colunas de `dre_lines`, `submissions`, `reporting_periods`, `audit_log` e políticas RLS nessas superfícies conferidas com [`references/technical-implementation.md`](./technical-implementation.md). Em `supabase/migrations/` do repositório há **um único** ficheiro `015_` (**`015_agent_rate_limits.sql`**); o duplicado `015_harden_audit_log_insert.sql` foi removido (conteúdo equivalente apenas em **`016_*`**).
 3. **Smoke:** login no alias, assistente, 429, CORS admin — secção 4 do doc de operações.
 
 #### Histórico de migrações de conta Vercel
@@ -110,7 +110,11 @@ Detalhe e comandos: [`operacoes-pendentes-supabase-vercel-2026-04-27.md`](./oper
 
 ### Hardening de `audit_log` (migration `016`)
 
-- Ficheiro: [`supabase/migrations/016_harden_audit_log_insert.sql`](../supabase/migrations/016_harden_audit_log_insert.sql). Remove a policy permissiva de INSERT em `public.audit_log` e revoga INSERT para `anon`/`authenticated` (mitiga log poisoning — ver comentário no SQL). Os triggers `security definer` da migration **006** continuam a registar eventos. **Nota de numeração:** no repositório remoto `main` (clone antigo) este patch existia como `015_harden_audit_log_insert.sql`; no workspace canónico, **015** está reservada a `015_agent_rate_limits.sql`, pelo que o hardening foi renumerado para **016**.
+- Ficheiro: [`supabase/migrations/016_harden_audit_log_insert.sql`](../supabase/migrations/016_harden_audit_log_insert.sql). Remove a policy permissiva de INSERT em `public.audit_log` e revoga INSERT para `anon`/`authenticated` (mitiga log poisoning — ver comentário no SQL). Os triggers `security definer` da migration **006** continuam a registar eventos. **Numeração no Git:** ~~`015_harden_audit_log_insert.sql`~~ já **não** existe no repo (dois prefixos `015_` causavam ambiguidade); apenas **`015_agent_rate_limits.sql`** + **`016_harden_audit_log_insert.sql`**.
+
+### Referência Postgres / RLS (objetos centrais)
+
+- Matriz de políticas e índice de migrações: [`references/technical-implementation.md`](./technical-implementation.md).
 
 ### Assistente DRE (OpenAI nativa ou OpenRouter)
 
@@ -218,6 +222,7 @@ Rotas públicas: `/`, `/login`.
 | Área | Arquivos principais |
 |------|----------------------|
 | Rotas | [`src/App.tsx`](../src/App.tsx) |
+| Postgres / RLS (contrato arquivo↔dados) | [`references/technical-implementation.md`](./technical-implementation.md) |
 | Guarda de rota | [`src/router/ProtectedRoute.tsx`](../src/router/ProtectedRoute.tsx), [`src/features/auth/access.ts`](../src/features/auth/access.ts) |
 | Shell | [`src/layouts/app/AppLayout.tsx`](../src/layouts/app/AppLayout.tsx), [`navigation.ts`](../src/layouts/app/navigation.ts) |
 | Landing / login | [`src/features/auth/LoginPage.tsx`](../src/features/auth/LoginPage.tsx), [`LoginPage.css`](../src/features/auth/LoginPage.css) |

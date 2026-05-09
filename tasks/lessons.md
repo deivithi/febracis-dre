@@ -78,6 +78,8 @@
 
 **Trigger:** O clone do `main` no GitHub trazia `015_harden_audit_log_insert.sql` enquanto o workspace canónico já tinha `015_agent_rate_limits.sql` (rate limit do assistente).
 **Instinct:** Renumerar o hardening de `audit_log` para **`016_harden_audit_log_insert.sql`**, documentar em `project-context.md` e antecipar reconciliação com o remoto no próximo `push` (o `main` remoto pode ainda ter o ficheiro como 015).
+
+**Rodada 09/05/2026:** o clone canónico já **removeu** `015_harden_audit_log_insert.sql` do tree (um único `015_` → `015_agent_rate_limits.sql`); remoto já tinha `harden_audit_log_insert` sob timestamp — sem reaplicação de DDL necessária.
 **Fonte:** Incorporação `febracis-dre2` → workspace 2026-04-28
 **Data:** 2026-04-28
 

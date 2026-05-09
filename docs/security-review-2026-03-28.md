@@ -52,7 +52,10 @@ O portal segue uma **arquitetura defensível**: autenticação Supabase no clien
 
 ## RLS e dados (Supabase)
 
-- **Migrations:** `002_rls_policies.sql` define `is_admin`, `can_access_franchise`, `can_manage_review` com `security definer` e `search_path` fixo; políticas em `submissions` e `submission_input_values` amarradas a `can_access_franchise(franchise_id)`.
+- **Migrations:** `002_rls_policies.sql` define `is_admin`, `can_access_franchise`, `can_manage_review` com `security definer` e `search_path` fixo; políticas em `submissions` e `submission_input_values` amarradas a `can_access_franchise(franchise_id)`. A migration **010** restringe operações de escrita com `can_operate_submission`; **016** endurece `audit_log` (sem INSERT por `authenticated`).
+
+**Atualização (09/05/2026 BRT):** [`references/technical-implementation.md`](../references/technical-implementation.md) consolida a matriz **RLS** efectiva no remoto (`dre_lines`, `submissions`, `reporting_periods`, `audit_log`) e o índice de ficheiros sob `supabase/migrations/`. O repositório já **não** inclui o duplicado `015_harden_audit_log_insert.sql`.
+
 - **Agentes:** `014_agent_sessions_and_messages.sql` — políticas em `agent_sessions` / `agent_messages` por `profile_id` e funções administrativas; alinhado com `project-context.md`.
 
 **Matriz de papéis (frontend vs. documentação):** O `App.tsx` e `project-context.md` descrevem rotas por papel; a **fonte de verdade** para dados continua sendo RLS + funções SQL — coerência verificável por revisão cruzada em alterações futuras.
