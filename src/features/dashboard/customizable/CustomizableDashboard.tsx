@@ -55,9 +55,9 @@ const ALLOWED_WIDGET_TYPES = new Set<WidgetType>([
  * lazy do lado cliente, sem precisar de migração SQL ou versionamento explícito.
  */
 const MIN_HEIGHT_BY_TYPE: Partial<Record<WidgetType, number>> = {
-  'trend-chart': 6,
-  'audit-feed': 6,
-  'pending-queue': 6,
+  'trend-chart': 9,
+  'audit-feed': 9,
+  'pending-queue': 9,
   ranking: 5,
   kpi: 4,
   sparkline: 3,
@@ -221,19 +221,19 @@ function defaultBlueprint(type: WidgetType): Omit<WidgetConfig, 'id'> {
     case 'trend-chart':
       return {
         type,
-        layout: { x: 0, y: 0, w: 8, h: 8, minW: 6, minH: 6 },
+        layout: { x: 0, y: 0, w: 8, h: 9, minW: 6, minH: 6 },
         props: { metric: 'ebitda_2' },
       };
     case 'pending-queue':
       return {
         type,
-        layout: { x: 0, y: 8, w: 12, h: 8, minW: 6, minH: 6 },
+        layout: { x: 0, y: 9, w: 12, h: 9, minW: 6, minH: 6 },
         props: { limit: 5 },
       };
     case 'audit-feed':
       return {
         type,
-        layout: { x: 8, y: 0, w: 4, h: 8, minW: 3, minH: 6 },
+        layout: { x: 8, y: 0, w: 4, h: 9, minW: 3, minH: 6 },
         props: { limit: 5 },
       };
     default:
