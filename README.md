@@ -9,6 +9,8 @@ Portal gerencial multi-franquias da Febracis para coleta padronizada da **DRE** 
 | [`.agents/skills/febracis-dre/SKILL.md`](../.agents/skills/febracis-dre/SKILL.md) | Skill de agente (roteamento) — ponto de entrada em sessões/cursor; detalhe em `project-context` |
 | [`docs/visao-geral-do-sistema.md`](docs/visao-geral-do-sistema.md) | Visão geral, camadas e fluxo canônico |
 | [`references/project-context.md`](references/project-context.md) | URLs, stack, rotas, deploy e contexto operacional |
+| [`docs/PRD-canonical.md`](docs/PRD-canonical.md) | PRD canónico produto + arquitetura (baseline v2.1; changelog §18) |
+| [`docs/dre-agent-evals.yaml`](docs/dre-agent-evals.yaml) | Contrato de cenários / avaliação comportamental do DRE Agent (ENTREGA 2; ver PRD §9-bis.6) |
 | [`docs/logica-da-dre-e-do-workflow.md`](docs/logica-da-dre-e-do-workflow.md) | Lógica da DRE e estados da submissão |
 | Rota **Guia** no app (`/app/guide`) | Material para apresentação e matriz de perfis |
 
