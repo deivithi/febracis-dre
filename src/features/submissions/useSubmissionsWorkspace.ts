@@ -1,7 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../auth/useAuth';
 import { useAccessProfile } from '../auth/useAccessProfile';
+import {
+  COMMAND_PALETTE_CLEAR_SUBMISSION_FOCUS,
+  COMMAND_PALETTE_WORKSPACE_FILTER,
+  SS_FRANCHISE,
+  SS_PERIOD,
+  type WorkspaceFilterDetail,
+} from '../../lib/commandPaletteBridge';
 import {
   appendAgentMessage,
   ensureSubmissionVersion,
@@ -17,7 +24,7 @@ import {
   submitSubmission,
   updateAgentSessionState,
 } from '../shared/portal.api';
-import { formatCurrencyInput, parseCurrencyInput } from './currencyInput';
+import { sanitizeLegacySyntheticSubmissionNotes } from '../../lib/submissionNotesDisplay';
 import { resolveAssistantInteractionMode, type AssistantProductTab } from './agentPermissions';
 import {
   buildQuestionForLine,
@@ -31,7 +38,11 @@ import {
   type DreAssistantTurnResult,
 } from './dreAssistant';
 import { buildDraftStatementRows, resolveStatementRows } from './dreStatementModel';
-import { calculateDrePreview } from './drePreview';
+import { formatCurrencyInput, parseCurrencyInput } from './currencyInput';
+import { calculateDrePreview, dreStatementToPreview, type DrePreviewSource } from './drePreview';
+import { areDraftInputsInSync } from './submissionDraftSync';
+import type { SubmissionWorkspaceSnapshot } from '../shared/portal.types';
+import { showAppToast } from '../../lib/appToast';
 import { invalidateSubmissionRelatedQueries } from './submissionQuerySync';
 import { isEditableSubmissionStatus, isLockedSubmissionStatus } from './submissionStatus';
 import { validateDraftInputs } from './submissionValidation';
@@ -53,7 +64,7 @@ export interface SubmissionsWorkspaceOptions {
 
 export function useSubmissionsWorkspace(opts?: SubmissionsWorkspaceOptions) {
   const queryClient = useQueryClient();
-  const { session } = useAuth();
+  const { session, user } = useAuth();
   const accessProfileQuery = useAccessProfile();
   const [selectedFranchiseId, setSelectedFranchiseId] = useState('');
   const [selectedPeriodId, setSelectedPeriodId] = useState('');
@@ -64,7 +75,50 @@ export function useSubmissionsWorkspace(opts?: SubmissionsWorkspaceOptions) {
   const [submissionNotes, setSubmissionNotes] = useState('');
   const [assistantDraft, setAssistantDraft] = useState('');
   const [mobileWorkspaceTab, setMobileWorkspaceTab] = useState<'panel' | 'dre'>('panel');
+  /** Abas Situação / Prévia / Verificações (≤767px) — não fecha ao navegar. */
+  const [narrowWorkbenchTab, setNarrowWorkbenchTab] = useState<'situation' | 'preview' | 'checks'>(
+    'situation',
+  );
   const access = accessProfileQuery.data ?? null;
+
+  useEffect(() => {
+    const franchiseStored = sessionStorage.getItem(SS_FRANCHISE);
+    const periodStored = sessionStorage.getItem(SS_PERIOD);
+    if (franchiseStored) {
+      setSelectedFranchiseId(franchiseStored);
+      sessionStorage.removeItem(SS_FRANCHISE);
+    }
+    if (periodStored) {
+      setSelectedPeriodId(periodStored);
+      sessionStorage.removeItem(SS_PERIOD);
+    }
+  }, []);
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const ce = event as CustomEvent<WorkspaceFilterDetail>;
+      const d = ce.detail;
+      if (d.franchiseId !== undefined) {
+        setSelectedFranchiseId(d.franchiseId);
+        sessionStorage.removeItem(SS_FRANCHISE);
+      }
+      if (d.periodId !== undefined) {
+        setSelectedPeriodId(d.periodId);
+        sessionStorage.removeItem(SS_PERIOD);
+      }
+    };
+    window.addEventListener(COMMAND_PALETTE_WORKSPACE_FILTER, handler);
+    return () => window.removeEventListener(COMMAND_PALETTE_WORKSPACE_FILTER, handler);
+  }, []);
+
+  useEffect(() => {
+    const clearFocus = () => {
+      setSubmissionFocusId(null);
+      setEditingSubmissionId(null);
+    };
+    window.addEventListener(COMMAND_PALETTE_CLEAR_SUBMISSION_FOCUS, clearFocus);
+    return () => window.removeEventListener(COMMAND_PALETTE_CLEAR_SUBMISSION_FOCUS, clearFocus);
+  }, []);
 
   const franchisesQuery = useQuery({
     queryKey: ['franchises', access?.franchiseIds.join(',') ?? 'all-franchises', access?.regionalIds.join(',') ?? 'all-regionals'],
@@ -140,6 +194,8 @@ export function useSubmissionsWorkspace(opts?: SubmissionsWorkspaceOptions) {
   }, [resolvedFranchiseId, resolvedPeriodId]);
 
   const canEdit = access?.canOperateSubmission ?? false;
+  const isFinanceController = Boolean(access?.roleCodes.includes('finance_controller'));
+  const currentUserId = user?.id ?? null;
   const selectedFranchise = franchisesQuery.data?.find((franchise) => franchise.id === resolvedFranchiseId) ?? null;
   const selectedPeriod = periodsQuery.data?.find((period) => period.id === resolvedPeriodId) ?? defaultPeriod;
   const defaultEventId = workspaceQuery.data?.submission?.event_id || eventsQuery.data?.[0]?.id || '';
@@ -161,7 +217,7 @@ export function useSubmissionsWorkspace(opts?: SubmissionsWorkspaceOptions) {
   const effectiveNotes =
     editingSubmissionId && editingSubmissionId === workspaceQuery.data?.submission?.id
       ? submissionNotes
-      : workspaceQuery.data?.submission?.notes ?? '';
+      : sanitizeLegacySyntheticSubmissionNotes(workspaceQuery.data?.submission?.notes ?? '');
 
   const previewValueMap = useMemo(
     () =>
@@ -172,7 +228,31 @@ export function useSubmissionsWorkspace(opts?: SubmissionsWorkspaceOptions) {
     [effectiveLineValues],
   );
 
-  const preview = useMemo(() => calculateDrePreview(previewValueMap), [previewValueMap]);
+  const localPreview = useMemo(() => calculateDrePreview(previewValueMap), [previewValueMap]);
+
+  const statementPreview = useMemo(
+    () => dreStatementToPreview(workspaceQuery.data?.dreStatement ?? []),
+    [workspaceQuery.data?.dreStatement],
+  );
+
+  const draftInSyncWithServer = useMemo(() => {
+    if (!workspaceQuery.data?.inputLines.length) {
+      return true;
+    }
+    return areDraftInputsInSync(
+      workspaceQuery.data.inputLines,
+      effectiveLineValues,
+      initialLineValues,
+      parseCurrencyInput,
+    );
+  }, [workspaceQuery.data?.inputLines, effectiveLineValues, initialLineValues]);
+
+  const { preview, previewSource } = useMemo((): { preview: typeof localPreview; previewSource: DrePreviewSource } => {
+    if (draftInSyncWithServer && statementPreview) {
+      return { preview: statementPreview, previewSource: 'server_statement' };
+    }
+    return { preview: localPreview, previewSource: 'local_draft' };
+  }, [draftInSyncWithServer, statementPreview, localPreview]);
 
   const draftStatementRows = useMemo(() => {
     if (!workspaceQuery.data?.inputLines?.length) return [];
@@ -284,8 +364,38 @@ export function useSubmissionsWorkspace(opts?: SubmissionsWorkspaceOptions) {
     if (editingSubmissionId === workspaceQuery.data.submission.id) return;
     setEditingSubmissionId(workspaceQuery.data.submission.id);
     setLineValues(initialLineValues);
-    setSubmissionNotes(workspaceQuery.data.submission.notes ?? '');
+    setSubmissionNotes(sanitizeLegacySyntheticSubmissionNotes(workspaceQuery.data.submission.notes));
   };
+
+  const patchDraftLineValue = useCallback(
+    (lineCode: string, raw: string) => {
+      if (!workspaceQuery.data?.submission || !activeSubmissionId) return;
+      if (!(canEdit && isEditableSubmissionStatus(workspaceQuery.data.submission.status))) return;
+      if (activeSubmissionLocked) return;
+
+      const subId = workspaceQuery.data.submission.id;
+
+      setLineValues((prev) => {
+        const starting =
+          editingSubmissionId === subId && prev && Object.keys(prev).length > 0 ? prev : initialLineValues;
+        return { ...starting, [lineCode]: raw };
+      });
+
+      setEditingSubmissionId(subId);
+
+      if (editingSubmissionId !== subId) {
+        setSubmissionNotes(sanitizeLegacySyntheticSubmissionNotes(workspaceQuery.data.submission.notes));
+      }
+    },
+    [
+      workspaceQuery.data,
+      activeSubmissionId,
+      canEdit,
+      activeSubmissionLocked,
+      editingSubmissionId,
+      initialLineValues,
+    ],
+  );
 
   const buildSubmissionInputPayload = (valueMap: Record<string, string>) => {
     if (!workspaceQuery.data) {
@@ -302,6 +412,9 @@ export function useSubmissionsWorkspace(opts?: SubmissionsWorkspaceOptions) {
   const persistDraftValues = async (valueMap: Record<string, string>, notesText: string) => {
     if (!activeSubmissionId) {
       throw new Error('Nenhuma submissao ativa para salvar.');
+    }
+    if (isLockedSubmissionStatus(workspaceQuery.data?.submission?.status)) {
+      throw new Error('Submissão bloqueada — não é possível gravar alterações neste estado.');
     }
 
     return saveSubmissionInputs(activeSubmissionId, buildSubmissionInputPayload(valueMap), notesText);
@@ -328,7 +441,7 @@ export function useSubmissionsWorkspace(opts?: SubmissionsWorkspaceOptions) {
 
     if (editingSubmissionId !== workspaceQuery.data.submission.id) {
       setEditingSubmissionId(workspaceQuery.data.submission.id);
-      setSubmissionNotes(workspaceQuery.data.submission.notes ?? '');
+      setSubmissionNotes(sanitizeLegacySyntheticSubmissionNotes(workspaceQuery.data.submission.notes));
     }
 
     setLineValues(nextValues);
@@ -342,6 +455,23 @@ export function useSubmissionsWorkspace(opts?: SubmissionsWorkspaceOptions) {
       franchiseId: resolvedFranchiseId,
       periodId: resolvedPeriodId,
     });
+  };
+
+  const reconcileDraftLineStringsAfterPersist = async (
+    submissionId: string,
+    expectedEditingSubmissionId: string | null,
+  ) => {
+    await queryClient.refetchQueries({ queryKey: ['submission-workspace', submissionId] });
+    const data = queryClient.getQueryData<SubmissionWorkspaceSnapshot>(['submission-workspace', submissionId]);
+    if (!data?.submission || expectedEditingSubmissionId !== data.submission.id) {
+      return;
+    }
+    setLineValues(
+      data.inputLines.reduce<Record<string, string>>((acc, line) => {
+        acc[line.line_code] = formatCurrencyInput(line.value_currency);
+        return acc;
+      }, {}),
+    );
   };
 
   const createDraftMutation = useMutation({
@@ -358,14 +488,25 @@ export function useSubmissionsWorkspace(opts?: SubmissionsWorkspaceOptions) {
   const saveDraftMutation = useMutation({
     mutationFn: () => {
       if (!activeSubmissionId || !workspaceQuery.data) throw new Error('Nenhuma submissão ativa para salvar.');
+      if (isLockedSubmissionStatus(workspaceQuery.data.submission?.status)) {
+        throw new Error('Submissão bloqueada — não é possível gravar o rascunho.');
+      }
       return persistDraftValues(effectiveLineValues, effectiveNotes);
     },
-    onSuccess: refreshOperationalData,
+    onSuccess: async () => {
+      await refreshOperationalData();
+      if (activeSubmissionId) {
+        await reconcileDraftLineStringsAfterPersist(activeSubmissionId, editingSubmissionId);
+      }
+    },
   });
 
   const submitMutation = useMutation({
     mutationFn: async () => {
       if (!activeSubmissionId || !workspaceQuery.data) throw new Error('Nenhuma submissão ativa para enviar.');
+      if (isLockedSubmissionStatus(workspaceQuery.data.submission?.status)) {
+        throw new Error('Submissão bloqueada — não é possível enviar para revisão.');
+      }
       const check = validateDraftInputs(
         workspaceQuery.data.inputLines,
         effectiveLineValues,
@@ -379,7 +520,13 @@ export function useSubmissionsWorkspace(opts?: SubmissionsWorkspaceOptions) {
       await persistDraftValues(effectiveLineValues, effectiveNotes);
       return submitSubmission(activeSubmissionId, effectiveNotes);
     },
-    onSuccess: refreshOperationalData,
+    onSuccess: async () => {
+      showAppToast({ title: 'Submissão enviada com sucesso.', variant: 'success' });
+      await refreshOperationalData();
+      if (activeSubmissionId) {
+        await reconcileDraftLineStringsAfterPersist(activeSubmissionId, editingSubmissionId);
+      }
+    },
   });
 
   const assistantMutation = useMutation({
@@ -485,6 +632,10 @@ export function useSubmissionsWorkspace(opts?: SubmissionsWorkspaceOptions) {
       if (shouldPersistAfterAgent) {
         await persistDraftValues(appliedValues, effectiveNotes);
         await refreshOperationalData();
+        await reconcileDraftLineStringsAfterPersist(
+          activeSubmissionId,
+          workspaceQuery.data?.submission?.id ?? null,
+        );
       }
 
       await appendAgentMessage(agentSessionQuery.data.id, 'assistant', answer, {
@@ -530,6 +681,8 @@ export function useSubmissionsWorkspace(opts?: SubmissionsWorkspaceOptions) {
       return result;
     },
   });
+
+  const previewReconciling = saveDraftMutation.isPending || submitMutation.isPending || assistantMutation.isPending;
 
   const draftActionLabel = createDraftMutation.isPending
     ? 'Preparando...'
@@ -613,6 +766,7 @@ export function useSubmissionsWorkspace(opts?: SubmissionsWorkspaceOptions) {
     assistantRealignHint,
     assistantSkippedCodes,
     beginEditing,
+    patchDraftLineValue,
     canEdit,
     canEditActiveSubmission,
     canPrepareDraft,
@@ -621,6 +775,7 @@ export function useSubmissionsWorkspace(opts?: SubmissionsWorkspaceOptions) {
     currentSubmission,
     currentSubmissionLocked,
     currentSubmissionStatus,
+    currentUserId,
     draftActionLabel,
     draftValidation,
     effectiveEventId,
@@ -631,13 +786,18 @@ export function useSubmissionsWorkspace(opts?: SubmissionsWorkspaceOptions) {
     franchisesQuery,
     initialLineValues,
     inputLineCodes,
+    isFinanceController,
     lastAssistantCitations,
     lineValues,
     setLineValues,
     mobileWorkspaceTab,
     setMobileWorkspaceTab,
+    narrowWorkbenchTab,
+    setNarrowWorkbenchTab,
     periodsQuery,
     preview,
+    previewReconciling,
+    previewSource,
     queryClient,
     resolvedFranchiseId,
     resolvedPeriodId,

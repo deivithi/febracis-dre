@@ -10,7 +10,7 @@ Portal gerencial multi-franquias da Febracis para coleta padronizada da **DRE** 
 | [`docs/visao-geral-do-sistema.md`](docs/visao-geral-do-sistema.md) | Visão geral, camadas e fluxo canônico |
 | [`references/project-context.md`](references/project-context.md) | URLs, stack, rotas, deploy e contexto operacional |
 | [`docs/PRD-canonical.md`](docs/PRD-canonical.md) | PRD canónico produto + arquitetura (baseline **v2.2**; changelog §18; §19 Open Questions) |
-| [`docs/dre-agent-evals.yaml`](docs/dre-agent-evals.yaml) | Contrato de cenários / avaliação comportamental do DRE Agent (ENTREGA 2; ver PRD §9-bis.6) |
+| [`tests/evals/insights-ins.yaml`](tests/evals/insights-ins.yaml) | Cenários INS-001…INS-010 (insights dashboard; Vitest `tests/unit/insights-ins-eval.test.ts`) |
 | [`docs/logica-da-dre-e-do-workflow.md`](docs/logica-da-dre-e-do-workflow.md) | Lógica da DRE e estados da submissão |
 | Rota **Guia** no app (`/app/guide`) | Material para apresentação e matriz de perfis |
 
@@ -23,10 +23,13 @@ Portal gerencial multi-franquias da Febracis para coleta padronizada da **DRE** 
 - TanStack Query
 - React Router
 - Assistente DRE: função serverless `api/dre-agent.ts` (OpenRouter quando configurado; modo guiado local sem chave)
+- **Insights do dashboard:** `api/dre-insights.ts` — cartões determinísticos a partir de `get_kpi_history` (somente **approved**), cache Postgres `dre_insight_cache` (TTL 4h na API). **V1 sem LLM** (narrativas por templates; evidência JSON imutável). *Cron diário opcional:* pode apontar para um endpoint tipo `/api/cron/dre-insights` se quiser pré-aquecimento server-side; o painel já obtém insights no mount do dashboard.
 
 ## CI (GitHub Actions)
 
-O workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) executa `lint`, `test` e `build` em cada push e pull request para `main`. O job `audit` (dependências de produção) roda de forma informativa e **não** bloqueia o merge.
+O workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) corre em cada push e pull request para `main`: jobs `migrate pairs`, `lint`, `test`, **`test coverage`** (Vitest + thresholds nos hot paths), **`e2e`** (Playwright, Chromium), `build`. O job `audit` é informativo e **não** bloqueia o merge.
+
+**Local:** cobertura com `npm run test:coverage`; E2E com `npm run test:e2e` (instalar browsers: `npx playwright install`). Para desativar E2E: `E2E=0 npm run test:e2e`.
 
 ## Ambiente local
 
@@ -53,11 +56,27 @@ O workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) executa `lint`
    npm run dev
    ```
 
+## Variáveis e runtime (referência rápida)
+
+- **Bundle / cliente:** `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (obrigatórios para dados e auth no browser). Detalhe e segredos do assistente: [`.env.example`](.env.example) e [`references/project-context.md`](references/project-context.md).
+- **Assistente (Vercel / Node):** `OPENAI_API_KEY` ou `OPENROUTER_API_KEY`, modelos, rate limit `AGENT_RATE_LIMIT_*` — ver `.env.example`.
+- **Tema claro/escuro:** persistido no browser com chave `febracis.theme` (`next-themes` / `src/lib/theme.ts`); não usa prefixo `VITE_`.
+- **Notificações:** sem `VITE_*` dedicado; dependem da tabela `notifications`, RLS e Realtime após migração `020_create_notifications.sql` (matriz de testes: [`docs/notifications-rls-test-matrix.md`](docs/notifications-rls-test-matrix.md)).
+- **`VITE_APP_MODE`:** não referenciado no código fonte deste repo — não documentar como flag activa.
+
+Mapa de entregas rotuladas **U01–U30** e migrações recentes: [`references/project-context.md`](references/project-context.md#mapa-de-atividades-u01u30).
+
 ## Build
+
+**Estado do build (09/05/2026):** `npm run build`, `npm run lint` (sem erros) e `npm test` verificados no repo; smoke Playwright opcional com `npm run test:e2e`.
 
 ```bash
 npm run build
 ```
+
+## Cabeçalhos de segurança (CSP / Vercel)
+
+Após o build, confirme cabeçalhos com `npm run verify:security-headers` (com `npm run preview` noutro terminal ou `VERIFY_SECURITY_HEADERS_URL=https://…`). Checklist e exemplos `curl` / Lighthouse: [`docs/security-headers-acceptance.md`](docs/security-headers-acceptance.md).
 
 ## Favicons (aba do navegador / iOS)
 

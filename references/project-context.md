@@ -4,6 +4,21 @@
 
 **Contrato de avaliações do agente / cenários (ENTREGA 2):** [`docs/dre-agent-evals.yaml`](../docs/dre-agent-evals.yaml).
 
+## Validação pré-deploy — 09/05/2026 (BRT)
+
+Checklist (auditoria automática neste repositório):
+
+| Passo | Estado |
+|-------|--------|
+| `npm run build` | OK |
+| `npm run lint` | OK (0 erros; avisos `exhaustive-deps` / TanStack apenas) |
+| `npm test` (Vitest) | OK |
+| `npm run test:e2e` (smoke) | OK (16 passed; 8 skipped — demos/assistente guiado opcionais) |
+
+**Nota:** smoke passou em **build + lint + testes + E2E smoke**; isto **não** garante cada botão ou fluxo manual na UI.
+
+**Produção (deploy 09/05/2026):** [`https://febracis-oxtuzlynl-deivithis-projects.vercel.app`](https://febracis-oxtuzlynl-deivithis-projects.vercel.app) — `dpl_9piYyYMWE5NnoDycCzKU2tcMzgwe`, inspect [`https://vercel.com/deivithis-projects/febracis-dre/9piYyYMWE5NnoDycCzKU2tcMzgwe`](https://vercel.com/deivithis-projects/febracis-dre/9piYyYMWE5NnoDycCzKU2tcMzgwe), alias [`https://febracis-dre.vercel.app`](https://febracis-dre.vercel.app).
+
 Última revisão documental: **09/05/2026 BRT** — **Postgres / RLS:** tabelas **`dre_lines`**, **`submissions`**, **`reporting_periods`**, **`audit_log`** conferidas no remoto **`vwxgrjjwbvdiaqxqbryk`** (`information_schema`, `pg_policies`); `list_migrations` inclui `agent_rate_limits` + `harden_audit_log_insert`; repositório saneado (removido **`015_harden_audit_log_insert.sql`** duplicado). Matriz: [`references/technical-implementation.md`](./technical-implementation.md). **GitHub `main`:** merge `be083ad` (integração `origin/main` + docs RLS). **Produção READY** `dpl_7G1zCKvFudJrP3z8a6KRpvwEfe2h` (commit `be083ad`). Anterior: `dpl_GvPgLGxM1tRaoy3riAhggAKe6pKc` (`9c4800e`, shell institucional + anti-demo IA). Deploy anterior documentado: `dpl_BVgz9ipYhq6mcH9Nudwoxqmj8trt` (`c3086fc`, ondas UX + harness). **Paridade headline cockpit:** `getActiveScopeHeadline` repete no badge hero, `title` do selo e linha de período no hero (DashboardPage). Datas e competências alinhadas ao calendário civil em **America/Sao_Paulo** (`brazilTimezone.ts`, `resolveDefaultReportingPeriod`, `formatDate`/`formatDateTime` em `formatters.ts`); cockpit **Holding** deriva competência `YYYY-MM` do mês BRT quando existe no snapshot. Auditoria lógica SPA: [`references/audit-app-logic-2026-05-08.md`](./audit-app-logic-2026-05-08.md). Dashboard: [`references/dashboard-ux-benchmark.md`](./dashboard-ux-benchmark.md); **Trilha go-live:** [`references/go-live-trilha-a-checklist.md`](./go-live-trilha-a-checklist.md); **excelência UX / ondas PRD:** [`references/ux-excellence-roadmap.md`](./ux-excellence-roadmap.md); **spec MVP / evals:** pasta [`specs/001-febracis-dre-mvp`](../specs/001-febracis-dre-mvp), [`docs/dre-agent-evals.yaml`](../docs/dre-agent-evals.yaml).
 
 ## Raiz e URLs
@@ -119,6 +134,7 @@ Detalhe e comandos: [`operacoes-pendentes-supabase-vercel-2026-04-27.md`](./oper
 ### Referência Postgres / RLS (objetos centrais)
 
 - Matriz de políticas e índice de migrações: [`references/technical-implementation.md`](./technical-implementation.md).
+- **Pares forward/rollback no repositório:** `npm run validate:migrations` garante `supabase/rollbacks/*.down.sql` para cada `supabase/migrations/*.sql` (CI). Teste opcional de ciclo **down+replay** só em stack local: ver secção **Rollback versionado** em `technical-implementation.md` e [`supabase/rollbacks/README.md`](../supabase/rollbacks/README.md).
 
 ### Assistente DRE (OpenAI nativa ou OpenRouter)
 
@@ -234,6 +250,47 @@ Rotas públicas: `/`, `/login`.
 | Submissões + assistente | [`SubmissionsPage.tsx`](../src/features/submissions/SubmissionsPage.tsx), [`AssistantPage.tsx`](../src/features/submissions/AssistantPage.tsx) (rota `/app/assistant`), [`DreAssistantPanel.tsx`](../src/features/submissions/DreAssistantPanel.tsx), [`useSubmissionsWorkspace.ts`](../src/features/submissions/useSubmissionsWorkspace.ts), [`api/dre-agent.ts`](../api/dre-agent.ts) |
 | API portal | [`src/features/shared/portal.api.ts`](../src/features/shared/portal.api.ts) |
 | Design tokens | [`src/styles/tokens.css`](../src/styles/tokens.css), componentes em [`src/styles/components/`](../src/styles/components/) |
+
+## Mapa de atividades (U01–U30)
+
+Leitura **evidence-based** a partir de comentários e ficheiros no repositório (`grep` `\bU(0[1-9]|1[0-9]|2[0-9]|30)\b`). IDs **sem qualquer âncora** no repositório aparecem como *Não encontrado no repo* (não se presume backlog externo). Funcionalidades úteis **sem etiqueta U** (ex.: `saved_views`, `DataTable`) estão descritas noutras secções / ficheiros, não nesta grelha.
+
+| ID | Nome curto | Status | Caminhos-chave |
+|----|------------|--------|----------------|
+| U01 | Tokens semânticos | Implementado | `src/styles/design-tokens.css`, `src/styles/tokens.css` |
+| U02 | — | Não encontrado no repo | — |
+| U03 | Auditoria (filtros / paleta rota) | Implementado | `src/features/audit/AuditPage.css`, `AuditPage.tsx`, `src/lib/shortcutRegistry.ts` |
+| U04 | Selo + bloqueio submissão (cabeçalho) | Implementado | `src/features/submissions/SubmissionsPage.css` |
+| U05 | — | Não encontrado no repo | — |
+| U06 | — | Não encontrado no repo | — |
+| U07 | Notificações in-app | Implementado | `supabase/migrations/020_create_notifications.sql`, `src/features/notifications/*`, `src/hooks/useNotifications.ts`, `src/components/layout/NotificationsBell.tsx` |
+| U08 | Skeleton de grelha | Implementado | `src/components/ui/TableRowSkeleton.tsx` |
+| U09 | EmptyState | Implementado | `src/components/EmptyState.tsx`, `src/styles/components/layout.css` |
+| U10 | Foco visível (WCAG) | Implementado | `src/styles/globals.css`, `src/styles/components/layout.css` |
+| U11 | Hierarquia de raios (cards) | Implementado | `src/styles/components/card.css`, `src/components/ui/card.tsx` |
+| U12 | — | Não encontrado no repo | — |
+| U13 | Micro-sparkline em KPI | Implementado | `src/components/ui/KpiCard.tsx`, `src/components/ui/Sparkline.tsx` (o skeleton reserva slot; gráfico quando há ≥3 pontos) |
+| U14 | — | Não encontrado no repo | — |
+| U15 | Paleta de comandos global | Implementado | `src/components/GlobalCommandPalette.tsx`, `src/layouts/app/AppLayout.tsx` |
+| U16 | — | Não encontrado no repo | — |
+| U17 | — | Não encontrado no repo | — |
+| U18 | — | Não encontrado no repo | — |
+| U19 | Lockup marca sidebar | Implementado | `src/components/layout/SidebarBrand.tsx`, `src/styles/components/layout.css` |
+| U20 | — | Não encontrado no repo | — |
+| U21 | — | Não encontrado no repo | — |
+| U22 | — | Não encontrado no repo | — |
+| U23 | Tema claro / escuro | Implementado | `src/providers/ThemeProvider.tsx`, `src/lib/theme.ts`, `src/lib/shortcutsSettings.ts`, `src/lib/shortcutRegistry.ts` |
+| U24 | — | Não encontrado no repo | — |
+| U25 | — | Não encontrado no repo | — |
+| U26 | — | Não encontrado no repo | — |
+| U27 | Histórico de versões (submissão) | Implementado | `supabase/migrations/019_submission_versions_index.sql`, `src/features/submissions/VersionHistory.tsx`, `portal.api.ts` |
+| U28 | Comentários inline por linha | Implementado | `supabase/migrations/018_submission_line_comments.sql`, `src/features/submissions/components/EditorRow.tsx`, `LineComments.tsx`, `src/features/workflow/WorkflowOpenLinePointsPanel.tsx` |
+| U29 | — | Não encontrado no repo | — |
+| U30 | Folha de atalhos | Implementado | `src/components/KeyboardShortcutsDialog.tsx`, `src/layouts/app/AppLayout.tsx`; Aprovações também: `src/features/workflow/ApprovalShortcutsDialog.tsx` (categorias locais) |
+
+**Migrações recentes no arquivo (além de 015–016):** `017_log_export_audit.sql`, `018_kpi_history_function.sql`, `018_submission_line_comments.sql`, `019_submission_versions_index.sql`, `020_create_notifications.sql`, `020_dre_insight_cache.sql`, `020_saved_views.sql`, `021_dashboard_layouts.sql`, `021_get_franchise_metric_trend.sql`. Há **prefixo 018, 020 e 021 duplicados** no mesmo nível — a ordem efectiva depende do nome completo do ficheiro no `db push`; validar com `supabase migration list` / `npm run validate:migrations` antes de ambientes novos.
+
+**Verificado ausente no tree (pedidos de doc):** componente `DemoBanner`; `InlineAssistant` como símbolo; `shepherd`; uso de `framer-motion` em `src/`; variável `VITE_APP_MODE`. `cmdk` alimenta a paleta; `DataTable` em `src/components/ui/DataTable.tsx`; vistas gravadas: `supabase/migrations/020_saved_views.sql`, `src/hooks/useSavedViews.ts`, `src/features/saved-views/`.
 
 ## Escopos de dashboard (derivados do papel + escopos)
 
