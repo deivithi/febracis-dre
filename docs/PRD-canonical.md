@@ -1,8 +1,8 @@
 # PRD canónico — Portal gerencial DRE Febracis (`febracis-dre`)
 
 **Documento:** requisitos de produto + arquitetura + contratos comportamentais (fonte sintética do ecossistema de docs internos).  
-**Versão PRD:** 2.1  
-**Última consolidação:** 09/05/2026 BRT (Patch 1 — baseline §0.5 / §12.1 período / Decision log datas / eval catálogo §9-bis / guardrails §15.5).  
+**Versão PRD:** 2.2  
+**Última consolidação:** 09/05/2026 BRT (Patch 2 + Patch 3 — callout §13 reunião zero; §13-bis convenção datas; §9-bis.6 estado repo YAML; slug ASCII §0.5; §19 Open Questions & Hypotheses).  
 **Não substitui:** operação ao vivo — [`references/project-context.md`](../references/project-context.md) continua SSOT deploy/Supabase/Vercel.  
 **Ref. técnica cruzada (rotas/arquivos):** [`references/technical-implementation.md`](../references/technical-implementation.md).  
 **Eval agente YAML:** [`dre-agent-evals.yaml`](./dre-agent-evals.yaml).
@@ -15,7 +15,7 @@
 |---|--------|
 | §-1 | [PR/FAQ cliente-first (Amazon WW)](#-1-prfaq--lançamento-visão-cliente-first) |
 | §0 | [Problema (baseline + custo de não fazer)](#0-problema-baseline-e-custo-de-não-fazer) |
-| §0.5 | [Plano de Coleta de Baseline](#05-plano-de-coleta-de-baseline-obrigatório-antes-de-promessas-externas) |
+| §0.5 | [Plano de Coleta de Baseline](#05-plano-de-coleta-de-baseline) |
 | §1 | [Resumo executivo](#1-resumo-executivo-refinado) |
 | §2 | [North star e tese central](#2-north-star-e-tese-central) |
 | §3 | [Personas + RBAC](#3-personas-profundidade-jobs-to-be-done--rbac-narrativa) |
@@ -35,6 +35,7 @@
 | §15 | [KPIs produto](#15-kpis-de-produto) (incl. [§15.5](#155-guardrails-métricas-anti-gaming)) |
 | §16 | [Riscos](#16-riscos-e-mitigações) |
 | §17 | [Mapa documentos filhos](#17-mapa-de-documentos-filhos--anexo) |
+| §19 | [Open Questions & Hypotheses](#19-open-questions--hypotheses-to-validate) 🆕 |
 | §18 | [Changelog PRD](#18-changelog-do-prd) |
 
 ---
@@ -106,7 +107,9 @@
 
 Substituir quando §0 tiver primeira coleta concluída.
 
-## §0.5 Plano de Coleta de Baseline (obrigatório antes de promessas externas)
+## §0.5 Plano de Coleta de Baseline
+
+> **Obrigatório antes de promessas externas** — qualquer KPI com `[Não verificado]` é bloqueante de comunicação comercial até baseline registado.
 
 > **Guarda institucional:** métricas com `[Não verificado]` neste §0 e §15 **não** sustentam promessa comercial, OKR público nem OK de fase seguinte até baseline medido + registo data e dono aqui ou em relatório appendix assinado PO/CFO onde aplicável.
 
@@ -356,10 +359,11 @@ Review semanal obrigatório após mudanças grandes na API do agente; dupla rubr
 
 ### §9-bis.6 Estado atual do catálogo de evals
 
-Fonte sintética: [`docs/dre-agent-evals.yaml`](./dre-agent-evals.yaml) — **catálogo v1 merged** (`schema_version: 1.0.0`, **50** cenários sintéticos + `ci_config`); **runner Vitest**/harness automatizado CI permanece 🔴 até wiring no repo conforme campo `runner` YAML (vide §14 ítems 11–12).
+O ficheiro [`docs/dre-agent-evals.yaml`](./dre-agent-evals.yaml) está **versionado no repositório** com `schema_version: 1.0.0` e **50** cenários sintéticos (`ci_config` incluído). Isso é distinto de **validação institucional** (amostra real, runner CI PASS em gate de fase, revisão dupla): o merge Patch 1 colocou o **contrato e o catálogo sintético** no Git; o **harness Vitest** automatizado em CI permanece 🔴 até wiring conforme campo `runner` no YAML (§14 ítems 11–12).
 
 | Requisito mínimo (PRD) | Estado alvo Patch 1 | Rastreamento Git |
 |------------------------|---------------------|-------------------|
+| Estado **atual** do arquivo `dre-agent-evals.yaml` no repo | 🟡 Scaffold v0.x merged em **09/05/2026 BRT** (Patch 1) — populagem v1.0 com 50 cenários sintéticos pendente Fase 0 | Commit Git inicial referenciado §18 v2.1 |
 | `meta.thresholds` v1 / v2 + scoring **binário** (sem Likert) | ✅ | YAML `thresholds.v1/v2` + `binary_pass_fail` |
 | BC-01 … BC-07 (“NUNCA”) catalogados como constraints | ✅ | Lista `behavioral_constraints` |
 | Catálogo **50** cenários (10 × 5 failure modes: HLC, OSF, ACO, ICA, SPR) | ✅ YAML v1 ENTREGA 2 | ✅ `schema_version: 1.0.0` + `meta.total_scenarios: 50` |
@@ -446,6 +450,15 @@ Hierarquia de **editabilidade vs competência** (alinhamento workflow §3/`submi
 | **4** | Rolagem operações | **≥80%** unidades onboarding oficial + ticketing ≤ **10**/100 franchises/mês trailing **[definição ticket Não verificado]** | Ops + PO | ~90 dias inferidos |
 | **5** | IA avalançada | Thresholds §9-bis **v2** todas linhas obrig PASS em CI + NPS agente **[Não verificado escala/coorte]** ≥ 8 em power users | PO + gov IA | ~90 dias pós 3–4 |
 
+> 🔁 **Resolução do loop de calibração:** prazos `[Não verificado ~dias]` da Fase 0 são propositadamente abertos — **não** podem ser fechados antes da **reunião zero de calibração** (CFO + PO + Tech Lead + Controllership), que acontece em D+0 da Fase 0.
+>
+> **Esta reunião é bloqueante** para "iniciar oficialmente" Fase 0 e tem três entregáveis obrigatórios:
+> 1. Datas reais (substituem `[Não verificado]` desta tabela §13)
+> 2. Tamanho amostral institucional para regressão MC2/EBITDA (substitui `[Não verificado tamanho amostral]`)
+> 3. Snapshot inicial do §0.5 (status 🔴/🟡 para todas as métricas de baseline)
+>
+> **Output formal:** ata da reunião + entrada em §13-bis Decision Log + atualização §18 Changelog. Sem isso, qualquer comunicação externa de "estamos na Fase 0" é prematura.
+
 ### §13.1 Narrativa complementar por fase (referência docs filhos)
 
 - Fase **0**: gaps estruturais §7 — [`benchmark-internacional...`](./benchmark-internacional-e-plano-de-escala-2026-03-28.md).  
@@ -474,6 +487,8 @@ Hierarquia de **editabilidade vs competência** (alinhamento workflow §3/`submi
 | 12 | Fail-open rate-limit RPC degrade **documentado** vs outages totais | Fail-hard sempre | adoção *[inferência até policy CFO]* resiliente onboarding | Eng + Seg | 08/05/2026 | Sim tunable |
 | 13 | Hub `/app/assistant` página dedicada além só painel embutido em submissões | Só lateral assistente | onboarding coaching onboarding menos ruído workspace cockpit | Produto | 08/05/2026 | Sim UX apenas |
 | 14 | **SPA web responsiva** como experiência mobile; **sem app iOS/Android nativo** até reavaliação pós Telemetry §15 | PWA/App Store paralelo já | Velocity Fase cockpit + foco segurança single deploy Vercel; promessa cliente condicionada baseline | PO + CTO | **09/05/2026** | Sim fase ≥3 |
+
+**Convenção — coluna Data (BRT):** cada data regista **formalização produto/controladoria** da decisão, não necessariamente a primeira conversa técnica. As entradas **#5** (RLS Postgres como barreira decisiva) e **#8** (KPI cockpit só estados oficiais) são decisões **distintas**; **datas diferentes** (ex.: 28/03/2026 vs 18/03/2026) **não** indicam por si duplicidade errada (“datas gémeas”) — antes de alinhar ou corrigir células, exige-se nota causal no §13-bis + linha §18. Manter **FAQ §-1 item 5** lexicalmente coerente com **#14**.
 
 > 📌 **Dica:** registar deltas data vs commit Git quando mover decisões para ticketing formal (Jira/Wiki). FAQ §-1 FAQ-5 ↔ **#14** devem ficar lexicalmente sincronizados em futuras edições §4 PR fora âmbito.
 
@@ -578,14 +593,55 @@ Hierarquia de **editabilidade vs competência** (alinhamento workflow §3/`submi
 
 ---
 
+## §19. Open Questions & Hypotheses to Validate
+
+> Inspirado em padrão Marty Cagan / SVPG: nem tudo num PRD é certeza. Esta seção distingue **o que sabemos** de **o que estamos apostando**, e cria agenda explícita de descoberta. Sem isso, riscos invisíveis viram surpresas em produção.
+
+### §19.1 Tabela canónica de hipóteses
+
+| # | Pergunta aberta | Hipótese atual | Como validaremos | Bloqueante para | Owner | Status |
+|---|-----------------|----------------|------------------|-----------------|-------|--------|
+| Q1 | Franqueados aceitam IA propondo `fieldUpdates` em vez de digitar manualmente? | **Sim**, desde que sempre possam editar/recusar a sugestão antes de salvar | A/B test em 8–10 franquias piloto + entrevistas qualitativas pós-uso | Saída Fase 2 (coleta guiada) | PO + UX | 🔴 Não iniciado |
+| Q2 | SPA web responsiva é suficiente vs app nativo iOS/Android? | **Sim**, tráfego mobile tende a ser secundário ao desktop em uso DRE oficial | Telemetry `% sessions mobile` rolling 90d + survey amostra | Reavaliação decisão #14 §13-bis (pós Fase 4) | PO + Tech Lead | 🔴 Não iniciado |
+| Q3 | Controladoria aceita threshold de **0,5%** Δ planilha × motor como tolerância contábil? | **Sim**, é tolerância gerencial padrão para amostragem | Workshop formal Controladoria + ata assinada + 12 unidades amostradas | Saída Fase 0 (Foundations) | CFO + Controllership | 🔴 Não iniciado |
+| Q4 | Glossário pedagógico atual (`dre-glossario.md`) é compreensível para franqueado leigo em contabilidade? | **Não**, requer curadoria humana sénior antes de uso em treinamentos | Teste de compreensão estruturado com **5 franqueados** representativos da rede | Saída Fase 1 (cockpit + segurança/UX) | PO + Controllership | 🔴 Não iniciado |
+| Q5 | RAG lexical inicial aguenta volume de produção esperado? | **Sim** até ~500 franquias ativas; pgvector torna-se necessário acima disso | Load test sintético + monitoring de latência p95 em produção real | Saída Fase 4 (rolagem operações) | Tech Lead + IA Lead | 🔴 Não iniciado |
+| Q6 | Modelo "duas realidades" (mensal × evento) deve ser **motor parametrizável** ou **templates separados**? | **[Inferência]** templates separados na v1 → motor parametrizável após adoção estabilizada | Análise comparativa com Controladoria + 3 ciclos de evento real medidos | Saída Fase 3 (scorecards/benchmark) | PO + Controllership + Tech Lead | 🔴 Não iniciado |
+| Q7 | Fallback determinístico custo-zero atende quando LLM falha — ou degrada percepção do produto? | **Sim**, atende para Q&A institucional básico; pode degradar para `fieldUpdates` complexos | Eval cenários SPR-* / ICA-* + survey NPS pós-incidente real | Saída Fase 5 (IA avançada — gate v2) | PO + IA Lead | 🔴 Não iniciado |
+
+### §19.2 Convenção de uso
+
+- **Status semáforo:** 🔴 não iniciado · 🟡 em validação · 🟢 validado · ⚫ refutado (com aprendizado registado)
+- **Refutação ≠ falha:** uma hipótese refutada com aprendizado claro vale mais que uma confirmada por viés de confirmação. Registar honestamente.
+- **Ciclo de fechamento:** quando uma Q migra para 🟢 ou ⚫, deve gerar entrada em §13-bis Decision Log e linha em §18 Changelog.
+- **Adição de nova Q:** qualquer engenheiro/PO/controlador pode propor; merge requer aprovação dupla (PO + domínio relevante).
+
+### §19.3 Conexão com Roadmap
+
+Cada hipótese está **explicitamente vinculada** a um critério de saída de fase em §13. Isso fecha o ciclo PRD ↔ Engenharia ↔ Negócio: nenhuma fase é declarada concluída se sua(s) hipótese(s) bloqueante(s) ainda estiver(em) 🔴.
+
+| Fase §13 | Hipóteses bloqueantes |
+|----------|----------------------|
+| Fase 0 — Foundations | Q3 |
+| Fase 1 — Cockpit + Segurança/UX | Q4 |
+| Fase 2 — Coleta guiada | Q1 |
+| Fase 3 — Scorecards benchmarking | Q6 |
+| Fase 4 — Rolagem operações | Q5 |
+| Fase 5 — IA avançada (gate v2) | Q2, Q7 |
+
+> **Política:** salto de fase **sem** resolução das Qs vinculadas exige override formal registado em §13-bis com justificativa controlador/CFO.
+
+---
+
 ## §18. Changelog PRD
 
 | Versão | Data BRT | Origem | Notas majores |
 |--------|----------|--------|----------------|
+| **2.2** | **09/05/2026** | **Patch 2 + Patch 3 (auditoria pós-v2.1)** | §13-bis nota convenção coluna Data (#5 vs #8 decisões distintas; sem “datas gémeas” implícitas) + Dica preservada; §13 callout reunião zero calibração (resolve loop `[Não verificado]`); §9-bis.6 status atual scaffold YAML + intro repo vs institucional; §0.5 slug ASCII universal renderer; **§19 NOVA — Open Questions & Hypotheses** (Q1–Q7) com vínculo explícito a fases §13 (pattern Marty Cagan/SVPG) |
 | **2.1** | **09/05/2026** | **Patch 1 + ENTREGA 2 YAML** | Patch 1: §0.5…§15.5 conforme histórico. ENTREGA 2 (mesma data BRT): [`dre-agent-evals.yaml`](./dre-agent-evals.yaml) `schema_version: 1.0.0`, 50 cenários (HLC/OSF/ACO/ICA/SPR), changelog arquivo 09/05/2026; §9-bis.6 PRD atualizado. |
 | **2.0** | 08/05/2026 | Refactor PROMPT MESTRE canónico | §-1 PR/FAQ cliente-first; §0 baselines **[Não verificado]**; JTBD §3; §6 só alto nível + `technical-implementation.md`; §9-bis contrato YAML `dre-agent-evals`; §13 critérios quantitativos+assinantes §13‑bis Decision Log; §15 KPIs tabeladas; §18 versionamento changelog |
 | **1.x** | ≤08/05/2026 | Consolidação docs filhos primeira onda PRD mono doc | Estado pré Promessa canónica v2 estrutura Amazon eval |
 
 ---
 
-**Fim PRD canónico v2.1** — manter coerência docs filhos; **nunca** silenciar flags `[Não verificado]` sem baseline institucional assinado.
+**Fim PRD canónico v2.2** — manter coerência docs filhos; **nunca** silenciar flags `[Não verificado]` sem baseline institucional assinado.

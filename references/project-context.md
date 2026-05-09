@@ -1,6 +1,6 @@
 # Febracis DRE — contexto do projeto (fonte de verdade operacional)
 
-**PRD canónico (produto + arquitetura consolidados):** [`docs/PRD-canonical.md`](../docs/PRD-canonical.md).
+**PRD canónico (produto + arquitetura consolidados, v2.2):** [`docs/PRD-canonical.md`](../docs/PRD-canonical.md).
 
 **Contrato de avaliações do agente / cenários (ENTREGA 2):** [`docs/dre-agent-evals.yaml`](../docs/dre-agent-evals.yaml).
 
