@@ -119,6 +119,8 @@ export function AssistantPage() {
           hasWorkspaceData={Boolean(w.workspaceQuery.data)}
           panel={{
             enabled: w.assistantEnabled,
+            hubProductTab: productTab,
+            submissionLockDetail: w.submissionLockMessage,
             loading: w.agentSessionQuery.isLoading || w.agentMessagesQuery.isLoading,
             pending: w.assistantMutation.isPending,
             workspaceBootstrapPending: Boolean(

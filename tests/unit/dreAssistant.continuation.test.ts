@@ -136,17 +136,27 @@ describe('runLocalAssistantTurn — continuação em modo full', () => {
     mockLine('other', 'Outra linha'),
   ];
 
-  it('responde com roteiro guiado sem ramo off-topic', () => {
+  it('mensagem combinada “vamos continuar?” + “onde paramos?” prioriza resposta tipo onde_am_i (memória de etapa)', () => {
     const r = runLocalAssistantTurn({
-      message: 'Vamos continuar?',
+      message: 'Vamos continuar? Onde paramos?',
+      lines: catalog,
+      currentValues: {},
+      currentLineCode: 'fee_cards',
+      explainOnly: true,
+    });
+    expect(r.mode).toBe('fallback');
+    expect(r.answer).toMatch(/fase\s+1\b/i);
+    expect(r.answer).toMatch(/Taxa com Cartões/);
+    expect(r.answer.toLowerCase()).toMatch(/campos com valor/);
+
+    const full = runLocalAssistantTurn({
+      message: 'Vamos continuar? Onde paramos?',
       lines: catalog,
       currentValues: {},
       currentLineCode: 'fee_cards',
       explainOnly: false,
     });
-    expect(r.mode).toBe('fallback');
-    expect(r.answer.toLowerCase()).not.toMatch(/fora do escopo/);
-    expect(r.focusLineCode).toBe('fee_cards');
-    expect(r.nextPrompt).toBeTruthy();
+    expect(full.answer).toMatch(/fase\s+1\b/i);
+    expect(full.answer).toMatch(/Taxa com Cartões/);
   });
 });

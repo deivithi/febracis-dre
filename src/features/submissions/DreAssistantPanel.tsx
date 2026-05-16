@@ -13,7 +13,7 @@ import {
   List,
 } from 'lucide-react';
 import type { AgentMessageRow, DreInputCatalogLine } from '../shared/portal.types';
-import type { AssistantInteractionMode } from './agentPermissions';
+import type { AssistantInteractionMode, AssistantProductTab } from './agentPermissions';
 import {
   DRE_PHASE_COUNT,
   getDrePhaseMetas,
@@ -78,6 +78,10 @@ export interface DreAssistantPanelProps {
   workspaceLocked?: boolean;
   /** Hub `/app/assistant`: apenas thread + compositor (sem rail guiado, hero ou extras). */
   minimalHubLayout?: boolean;
+  /** Só no hub: separador ativo (para clarificar quando «Começar a DRE» não implica gravação). */
+  hubProductTab?: AssistantProductTab;
+  /** Texto longo do estado da submissão (ex.: aprovada / em revisão) — faixa minimal. */
+  submissionLockDetail?: string | null;
   /** Submissão referenciada mas snapshot do workspace ainda a carregar (evita cópia enganosa no estado vazio). */
   workspaceBootstrapPending?: boolean;
 }
@@ -124,6 +128,8 @@ export function DreAssistantPanel({
   workspaceLocked = false,
   minimalHubLayout = false,
   workspaceBootstrapPending = false,
+  hubProductTab,
+  submissionLockDetail = null,
 }: DreAssistantPanelProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [keypadOpen, setKeypadOpen] = useState(false);
@@ -341,7 +347,58 @@ export function DreAssistantPanel({
           <div className="dre-assistant__shell">
             {minimalHubLayout && workspaceLocked ? (
               <div className="inline-message dre-assistant__minimal-lock-hint" role="status">
-                Submissão bloqueada para edição — o chat continua disponível para orientação.
+                <strong>Sem gravação nesta versão.</strong> O separador «Começar a DRE» guia o roteiro, mas esta
+                submissão não aceita alterações no workflow atual — o chat segue só para orientação.
+                {submissionLockDetail ? (
+                  <>
+                    {' '}
+                    <span className="dre-assistant__minimal-lock-detail">{submissionLockDetail}</span>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
+            {minimalHubLayout &&
+            enabled &&
+            hubProductTab === 'preencher' &&
+            interactionMode === 'explain_only' &&
+            !workspaceLocked ? (
+              <div className="inline-message inline-message--warning dre-assistant__minimal-lock-hint" role="status">
+                <strong>Modo orientação (sem gravar).</strong> O separador «Começar a DRE» abre o fluxo guiado; com o
+                seu perfil nesta submissão só explicamos campos — quem grava valores é quem tem operação na unidade.
+              </div>
+            ) : null}
+            {minimalHubLayout && enabled && totalSteps > 0 ? (
+              <div className="dre-assistant__minimal-progress" aria-label="Progresso e próximo passo da DRE">
+                <div className="dre-assistant__minimal-progress-head">
+                  <span className="dre-assistant__minimal-progress-phase">Fase {activePhaseId}</span>
+                  <span className="dre-assistant__minimal-progress-count">{progressLabel}</span>
+                  {flowPhaseLabel ? (
+                    <span className="dre-assistant__phase-pill" title="Estado do fluxo na sessão">
+                      {flowPhaseLabel}
+                    </span>
+                  ) : null}
+                  {totalSteps > 0 ? (
+                    <span className="dre-assistant__progress-percent">{progressPercent}%</span>
+                  ) : null}
+                </div>
+                <div
+                  className="dre-assistant__progress-track dre-assistant__minimal-progress-track"
+                  role="progressbar"
+                  aria-label={`Progresso do preenchimento: ${progressPercent} por cento`}
+                  aria-valuenow={progressPercent}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                >
+                  <div
+                    className="dre-assistant__progress-fill"
+                    style={{ width: `${totalSteps > 0 ? progressPercent : 0}%` }}
+                  />
+                </div>
+                {nextFieldSummary && nextFieldSummary !== '—' ? (
+                  <p className="dre-assistant__minimal-next" role="status">
+                    <strong>Próximo no roteiro:</strong> {nextFieldSummary}
+                  </p>
+                ) : null}
               </div>
             ) : null}
             {!minimalHubLayout ? (

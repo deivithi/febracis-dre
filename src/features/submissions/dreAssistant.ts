@@ -2298,6 +2298,17 @@ function runLocalAssistantTurnExplainOnly(input: {
     };
   }
 
+  /** Antes de “vamos continuar”: mensagens que também perguntam etapa/paragem devem usar o bloco completo tipo `where_am_i`. */
+  if (isGuidedFlowStatusQuestionMessage(input.message)) {
+    const { turn } = runGuidedFlowStatusQuestionTurn({
+      lines: input.lines,
+      currentValues: input.currentValues,
+      guidedLineCode: input.currentLineCode ?? null,
+      skippedLineCodes: input.skippedLineCodes,
+    });
+    return turn;
+  }
+
   if (isGuidedFlowContinuationMessage(input.message)) {
     const helpLine = focusLine ?? nextLine;
     const contSeed = buildFallbackCopySeed(input.message, 'explain_continue_guided', helpLine?.line_code ?? null);
@@ -2321,16 +2332,6 @@ function runLocalAssistantTurnExplainOnly(input: {
       requestSubmit: false,
       mode: 'fallback',
     };
-  }
-
-  if (isGuidedFlowStatusQuestionMessage(input.message)) {
-    const { turn } = runGuidedFlowStatusQuestionTurn({
-      lines: input.lines,
-      currentValues: input.currentValues,
-      guidedLineCode: input.currentLineCode ?? null,
-      skippedLineCodes: input.skippedLineCodes,
-    });
-    return turn;
   }
 
   if (normalizedMessage.includes('salvar') || normalizedMessage.includes('enviar')) {
@@ -2520,6 +2521,16 @@ export function runLocalAssistantTurn(input: {
     };
   }
 
+  if (isGuidedFlowStatusQuestionMessage(input.message)) {
+    const { turn } = runGuidedFlowStatusQuestionTurn({
+      lines: input.lines,
+      currentValues: input.currentValues,
+      guidedLineCode: input.currentLineCode ?? null,
+      skippedLineCodes: input.skippedLineCodes,
+    });
+    return turn;
+  }
+
   if (isGuidedFlowContinuationMessage(input.message)) {
     const anchor =
       focusLine ??
@@ -2540,16 +2551,6 @@ export function runLocalAssistantTurn(input: {
       requestSubmit: false,
       mode: 'fallback',
     };
-  }
-
-  if (isGuidedFlowStatusQuestionMessage(input.message)) {
-    const { turn } = runGuidedFlowStatusQuestionTurn({
-      lines: input.lines,
-      currentValues: input.currentValues,
-      guidedLineCode: input.currentLineCode ?? null,
-      skippedLineCodes: input.skippedLineCodes,
-    });
-    return turn;
   }
 
   if (normalizedMessage.includes('salvar')) {
