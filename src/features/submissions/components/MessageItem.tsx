@@ -32,7 +32,7 @@ export function MessageItem({ message, lineCodes, realignBanner }: MessageItemPr
 
   const row = (
     <article
-      className={`dre-assistant-chat__row ${isUser ? 'dre-assistant-chat__row--user' : ''}`}
+      className={`dre-assistant-chat__row ${isUser ? 'dre-assistant-chat__row--user' : 'dre-assistant-chat__row--assistant'}`}
       data-role={message.role}
     >
       <div className="dre-assistant-chat__avatar" aria-hidden>
@@ -46,14 +46,16 @@ export function MessageItem({ message, lineCodes, realignBanner }: MessageItemPr
           />
         )}
       </div>
-      <div className="dre-assistant-chat__column">
+      <div className={`dre-assistant-chat__column ${isUser ? 'dre-assistant-chat__column--user' : ''}`}>
         <div className="dre-assistant-chat__header">
           <span className="dre-assistant-chat__role-label">{isUser ? 'Você' : 'Assistente DRE'}</span>
           <time className="dre-assistant-chat__time" dateTime={message.created_at ?? undefined}>
             {formatBrtClock(message.created_at)}
           </time>
         </div>
-        <div className={`dre-assistant-chat__body ${isUser ? 'dre-assistant-chat__body--user' : ''}`}>
+        <div
+          className={`dre-assistant-chat__bubble ${isUser ? 'dre-assistant-chat__bubble--user' : 'dre-assistant-chat__bubble--assistant'}`}
+        >
           {isUser ? (
             <span className="dre-assistant-chat__user-plain">{displayContent}</span>
           ) : (

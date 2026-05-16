@@ -256,6 +256,14 @@ describe('wrapUserMessageForPrompt', () => {
   });
 });
 
+describe('fallback LLM (utilizador)', () => {
+  it('não concatena aviso técnico de falha do modelo à resposta', () => {
+    const src = readFileSync(join(process.cwd(), 'api', 'dre-agent.ts'), 'utf8');
+    expect(src).not.toContain('chamada ao modelo online falhou');
+    expect(src).not.toContain('Resposta em modo guiado local');
+  });
+});
+
 describe('classifyAgentError + AgentOperationalError', () => {
   it('mapeia AgentOperationalError por código sem depender de substring em PT', () => {
     const err = new AgentOperationalError(404, 'SESSION_NOT_FOUND', 'Sessao do assistente nao encontrada.');

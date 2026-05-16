@@ -121,6 +121,14 @@ export function DreAssistantPanel({
 }: DreAssistantPanelProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [keypadOpen, setKeypadOpen] = useState(false);
+  const [guidedPanelOpen, setGuidedPanelOpen] = useState(interactionMode === 'explain_only');
+  const userTurnCount = useMemo(() => messages.filter((m) => m.role === 'user').length, [messages]);
+
+  useEffect(() => {
+    if (interactionMode === 'full' && userTurnCount >= 1) {
+      setGuidedPanelOpen(false);
+    }
+  }, [interactionMode, userTurnCount]);
 
   const skippedSet = useMemo(() => new Set(skippedLineCodes), [skippedLineCodes]);
 
@@ -194,20 +202,25 @@ export function DreAssistantPanel({
   const toolbarDisabled = loading || pending || !enabled;
   const ctaDisabled = toolbarDisabled || !insertTargetLine;
 
+  const nextFieldSummary = focusGuide?.label ?? focusLabel ?? '—';
+
   return (
     <div className="card card--accent dre-assistant dre-assistant--hero">
-      {agentMode === 'fallback' ? (
-        <div className="inline-message inline-message--warning dre-assistant__mode-banner" role="status">
-          Modo guiado local ativo (sem chamada à API de modelo). As respostas seguem o catálogo e regras determinísticas;
-          quando a API voltar, o painel técnico mostrará «Assistente online».
-        </div>
-      ) : null}
       <div className="dre-assistant__hero-top dre-assistant__hero-top--compact">
         <div className="dre-assistant__hero-title-row">
           <span className="badge badge--gold">Assistente DRE</span>
           {modeLabel ? (
             <details className="dre-assistant__tech-details">
               <summary className="dre-assistant__tech-summary">Detalhes técnicos</summary>
+              {agentMode === 'fallback' ? (
+                <div
+                  className="inline-message inline-message--warning dre-assistant__mode-banner dre-assistant__mode-banner--nested"
+                  role="status"
+                >
+                  Respostas neste momento seguem o roteiro local (catálogo e regras fixas), sem chamada ao modelo
+                  remoto. Quando a ligação ao modelo voltar, verá «Assistente online» neste bloco.
+                </div>
+              ) : null}
               <span className="dre-assistant__mode-pill dre-assistant__mode-pill--inline">{modeLabel}</span>
             </details>
           ) : null}
@@ -223,14 +236,12 @@ export function DreAssistantPanel({
             <p className="dre-assistant__hero-sub">
               {interactionMode === 'explain_only' ? (
                 <>
-                  Modo leitura: exploro fases e campos; valores só com perfil de edição. Botões enviam comandos
-                  determinísticos (sem texto livre obsoleto nos atalhos). <kbd className="dre-assistant__kbd">Enter</kbd>{' '}
-                  envia mensagem própria.
+                  Modo leitura: exploro fases e linhas; quem grava valores é quem tem edição na submissão.{' '}
+                  <kbd className="dre-assistant__kbd">Enter</kbd> envia a sua mensagem.
                 </>
               ) : (
                 <>
-                  Use os botões do cartão do campo ou a barra de ferramentas — cada um envia um comando canónico
-                  estável para o servidor. Mensagem livre continua disponível em baixo quando precisar.
+                  Atalhos do painel enviam comandos estáveis; em baixo, mensagem livre em reais ou pedidos pontuais.
                 </>
               )}
             </p>
@@ -252,14 +263,21 @@ export function DreAssistantPanel({
           </div>
         ) : (
           <div className="dre-assistant__shell">
+            <p className="dre-assistant__panel-summary" role="status">
+              Painel guiado · Fase {activePhaseId} · próximo campo: {nextFieldSummary} · {progressLabel}
+            </p>
             <div className={lockedWorkspaceClass}>
-            {interactionMode === 'explain_only' ? (
-              <div className="inline-message dre-assistant__mode-banner" role="status">
-                <strong>Modo orientação.</strong> Sem aplicar valores na submissão — use o painel para acompanhar os
-                números oficiais.
-              </div>
-            ) : null}
-
+            <details
+              className="dre-assistant__guided-panel"
+              open={guidedPanelOpen}
+              onToggle={(event) => {
+                setGuidedPanelOpen((event.currentTarget as HTMLDetailsElement).open);
+              }}
+            >
+              <summary className="dre-assistant__guided-panel-summary">
+                Fases, progresso e atalhos do campo
+              </summary>
+              <div className="dre-assistant__guided-panel-body">
             <div className="dre-assistant__phase-stepper" data-testid="dre-assistant-stepper" role="navigation" aria-label="Fases da DRE">
               {phaseMetas.map((phase) => {
                 const prog = getPhaseProgress(phase.id, catalogLines, lineValueMap, skippedSet);
@@ -488,6 +506,8 @@ export function DreAssistantPanel({
                 </>
               ) : null}
             </div>
+              </div>
+            </details>
             </div>
 
             <AssistantChat

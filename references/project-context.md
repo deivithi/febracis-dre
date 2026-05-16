@@ -277,7 +277,7 @@ Detalhe e comandos: [`operacoes-pendentes-supabase-vercel-2026-04-27.md`](./oper
 
 - **Bypass LangGraph:** comandos `cmd:*` tratados no início do handler com `runDeterministicCommand` (`api/dre-agent.ts`); telemetria **`dre_agent_command`**.
 - **HITL persistido:** `session_state_patch` devolve `proposed_value`, `acceptance_state`, `dre_phase`, `skipped_line_codes`. O cliente faz merge em `useSubmissionsWorkspace`; **`applyAssistantFieldUpdates` só aplica** `fieldUpdates` quando **`requiresFieldConfirmation` não está ativo** — propostas ficam pendentes até `cmd:confirm_value` (fluxo local ou LLM com confirmação).
-- **UI:** `DreAssistantPanel` — stepper de **10 fases**, CTA por campo (Explicar / Inserir / Pular), toolbar de navegação, teclado **`CurrencyKeypad`** (BRL), mini-card de confirmação.
+- **UI (`DreAssistantPanel`):** sumário **Painel guiado · Fase · próximo campo · progresso**; roteiro (stepper, progresso, CTA, HITL, toolbar) em **`<details>`** — em modo edição (`full`) inicia **fechado** e após a primeira mensagem do utilizador mantém-se recolhido para dar espaço ao chat; em modo orientação (`explain_only`) inicia **aberto**. Aviso de assunto técnico (fallback sem modelo) dentro de **Detalhes técnicos**. Mensagens em **balões** alinhados (utilizador vs assistente). Copy de fallback determinística: `pickFallbackCopy` / `buildFallbackCopySeed` em `dreAssistant.ts`.
 - **Referência didática:** [`docs/dre-glossario.md`](../docs/dre-glossario.md) (revisão controladoria pendente).
 - **Playwright:** [`tests/e2e/assistant-guided.spec.ts`](../tests/e2e/assistant-guided.spec.ts) — navega para `/app/assistant`, fluxo completo só com `E2E_DRE_EMAIL` e `E2E_DRE_PASSWORD` definidos; caso contrário o teste faz **`skip`**.
 

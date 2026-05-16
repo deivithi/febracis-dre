@@ -402,6 +402,103 @@ function emptyPack(
 export const ASSISTANT_REPLY_FORMAT_HINT =
   'Envie só o valor em reais nesta mensagem (ex.: 1.234,56 ou 25000).';
 
+export type DreAssistantFallbackCopyIntent =
+  | 'explain_off_topic'
+  | 'explain_greeting'
+  | 'explain_save_readonly'
+  | 'explain_skip_readonly'
+  | 'explain_currency_readonly'
+  | 'explain_fallback'
+  | 'explain_field_tail'
+  | 'full_off_topic'
+  | 'full_greeting_with_franchise'
+  | 'full_greeting_generic'
+  | 'full_default_guided';
+
+function hashFallbackSeed(s: string): number {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) {
+    h = (Math.imul(h, 33) ^ s.charCodeAt(i)) >>> 0;
+  }
+  return h;
+}
+
+/**
+ * Escolhe uma variante de copy humana de forma determinística (reprodutível em testes).
+ * `seed` típico: `buildFallbackCopySeed(userMessage, intent, currentLineCode)`.
+ * Placeholders: `{{chave}}` substituídos por `vars`.
+ */
+export function pickFallbackCopy(
+  intent: DreAssistantFallbackCopyIntent,
+  seed: string,
+  vars: Record<string, string> = {},
+): string {
+  const VARIANTS: Record<DreAssistantFallbackCopyIntent, readonly string[]> = {
+    explain_off_topic: [
+      'Aqui o foco é só a DRE deste período — campos, ordem e regras Febracis. {{realign}}',
+      'Consigo ajudar melhor quando falamos da planilha: o que preencher, onde, e por quê. {{realign}}',
+      'Vamos manter o assunto na DRE desta competência; é aí que faço diferença. {{realign}}',
+    ],
+    explain_greeting: [
+      'Sou o agente de apoio à DRE da Febracis. Neste modo você só olha: explico campos, fases e regras de envio. Quem digita valores na submissão é quem tem permissão de operação na unidade — daqui não altero números nem salvo rascunho.',
+      'Olá — estou aqui para orientar sobre a DRE (o que cada linha pede e como seguir o fluxo). Visualização e explicações são comigo; os valores na planilha quem informa é o time da unidade com perfil de edição.',
+    ],
+    explain_save_readonly: [
+      'Neste modo leitura eu não disparo gravação nem envio. Quem pode editar usa «Salvar rascunho» e «Enviar para revisão» no painel ao lado.',
+      'Gravar ou enviar só quem está a operar a submissão — por aqui fico na orientação, sem tocar nos botões de gravação.',
+    ],
+    explain_skip_readonly: [
+      'Pular linhas ou mudar o que já foi preenchido na conversa só quem opera a submissão. Eu explico o significado de cada campo se precisar.',
+      'Para avançar ou saltar campos na prática, precisa do perfil que edita a submissão. Posso só contar o que cada linha representa.',
+    ],
+    explain_currency_readonly: [
+      'Entendi o valor em reais, mas neste modo orientação não aplico nada na submissão. Peça a quem edita a unidade para registar o número, ou use «Explicar» se quiser só entender o campo.',
+      'Recebi o número — no modo leitura ele não entra na planilha. Quem tem edição pode colar aqui ou na grelha; se a dúvida for conceitual, posso detalhar a linha.',
+    ],
+    explain_fallback: [
+      'Fico só no universo DRE: campos, fluxo e validações. {{hint}} Não altero dados nem recalculo MC1, MC2 ou EBITDA — isso aparece no painel quando a unidade grava.',
+      'Posso conversar sobre a planilha, o passo a passo e o que cada linha significa. {{hint}} Totais calculados você vê ao lado depois de salvar com quem opera a submissão.',
+    ],
+    explain_field_tail: [
+      'No seu perfil, os valores são preenchidos por quem opera a unidade — o painel ao lado mostra MC1, MC2 e EBITDA recalculados pelo sistema após cada gravação.',
+      'Quando alguém da unidade confirma os números, o painel atualiza MC1, MC2 e EBITDA automaticamente; aqui só alinho o significado das linhas.',
+    ],
+    full_off_topic: [
+      'Voltando à DRE deste período. {{anchor}}',
+      'Seguimos com o preenchimento da planilha. {{anchor}}',
+    ],
+    full_greeting_with_franchise: [
+      '{{identity}}Vamos com calma na DRE{{period}}{{city}} da unidade «{{trade}}». Um campo de cada vez, em reais; MC1, MC2 e EBITDA o sistema recalcula quando você confirma os valores.',
+      '{{identity}}Estou com você na DRE{{period}}{{city}} — «{{trade}}». Peça uma linha de cada vez em reais; os totais grandes vêm do motor oficial depois das confirmações.',
+    ],
+    full_greeting_generic: [
+      '{{identity}}Foco no preenchimento da DRE deste período. Um número de cada vez, sempre em reais; MC1, MC2 e EBITDA o sistema atualiza sozinho quando você confirma. Quando quiser, manda o valor ou pede ajuda num campo específico.',
+      '{{identity}}A ideia é ir campo a campo, em reais, com calma. Os indicadores consolidados aparecem no painel depois das confirmações — pode mandar o próximo valor ou perguntar por uma linha.',
+    ],
+    full_default_guided: [
+      'Seguimos a ordem oficial da planilha. {{hint}} O que você mandar entra nos campos da DRE e o painel ao lado acompanha o resultado.',
+      'Vou te guiando no roteiro canónico da DRE. {{hint}} Use a caixa de mensagem para valores em reais ou peça explicação de campo quando precisar.',
+    ],
+  };
+
+  const list = VARIANTS[intent];
+  const idx = list.length > 0 ? hashFallbackSeed(`${seed}|${intent}`) % list.length : 0;
+  let out = list[idx] ?? '';
+  for (const [key, val] of Object.entries(vars)) {
+    out = out.replaceAll(`{{${key}}}`, val);
+  }
+  return out;
+}
+
+/** Semente estável para variantes de copy (mensagem + intent + linha em foco). */
+export function buildFallbackCopySeed(
+  userMessage: string,
+  intent: string,
+  currentLineCode: string | null | undefined,
+): string {
+  return `${normalizeText(userMessage)}|${intent}|${currentLineCode ?? ''}`;
+}
+
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -1616,6 +1713,9 @@ export function classifyDreUserIntent(rawMessage: string): DreUserIntentCategory
     'margem',
     'cmv',
     'royalt',
+    'representa',
+    'significa',
+    'significado',
   ];
 
   if (dreHints.some((hint) => n.includes(hint))) {
@@ -1860,24 +1960,10 @@ function runLocalAssistantTurnExplainOnly(input: {
     input.lines[0] ??
     null;
 
-  if (classifyDreUserIntent(input.message) === 'off_topic') {
-    const anchor = focusLine ?? nextLine;
-    return {
-      answer: `Posso ajudar só com a DRE deste período: campos, ordem de preenchimento e regras da Febracis. ${anchor ? `Voltando ao contexto: ${anchor.line_name} — posso explicar o que esse campo representa.` : 'Pergunte sobre um campo da DRE ou sobre o fluxo de submissão.'}`,
-      citations: STATIC_KNOWLEDGE.slice(0, 1),
-      fieldUpdates: [],
-      focusLineCode: anchor?.line_code ?? null,
-      nextPrompt: anchor ? `Quer uma explicação sobre “${anchor.line_name}”?` : null,
-      requestSave: false,
-      requestSubmit: false,
-      mode: 'fallback',
-    };
-  }
-
   if (isGreetingOrStartFlow(normalizedMessage)) {
+    const seed = buildFallbackCopySeed(input.message, 'explain_greeting', input.currentLineCode);
     return {
-      answer:
-        'Sou o Agente de Construção de DRE da Febracis. Você está no modo orientação: posso explicar campos da DRE, a ordem da planilha e as regras de envio. Quem digita os valores na submissão é o franqueado (ou administrador da unidade) com permissão de operação — daqui não altero números nem salvo rascunho.',
+      answer: pickFallbackCopy('explain_greeting', seed, {}),
       citations: STATIC_KNOWLEDGE.slice(0, 2),
       fieldUpdates: [],
       focusLineCode: nextLine?.line_code ?? null,
@@ -1891,9 +1977,9 @@ function runLocalAssistantTurnExplainOnly(input: {
   }
 
   if (normalizedMessage.includes('salvar') || normalizedMessage.includes('enviar')) {
+    const seed = buildFallbackCopySeed(input.message, 'explain_save_readonly', input.currentLineCode);
     return {
-      answer:
-        'No modo leitura eu não disparei gravação nem envio. Quem pode editar deve usar os botões “Salvar rascunho” e “Enviar para revisão” no painel lateral.',
+      answer: pickFallbackCopy('explain_save_readonly', seed, {}),
       citations: STATIC_KNOWLEDGE.slice(1, 2),
       fieldUpdates: [],
       focusLineCode: focusLine?.line_code ?? null,
@@ -1905,9 +1991,9 @@ function runLocalAssistantTurnExplainOnly(input: {
   }
 
   if (normalizedMessage.includes('pular') || normalizedMessage.includes('saltar')) {
+    const seed = buildFallbackCopySeed(input.message, 'explain_skip_readonly', input.currentLineCode);
     return {
-      answer:
-        'Pular ou alterar campos na conversa só está disponível para quem opera a submissão. Aqui posso só orientar sobre o que cada linha significa.',
+      answer: pickFallbackCopy('explain_skip_readonly', seed, {}),
       citations: STATIC_KNOWLEDGE.slice(0, 1),
       fieldUpdates: [],
       focusLineCode: focusLine?.line_code ?? null,
@@ -1919,19 +2005,25 @@ function runLocalAssistantTurnExplainOnly(input: {
   }
 
   const mentionedLine = findLineByPrompt(input.lines, input.message);
-  if (
+  const fieldQuestionLike =
     normalizedMessage.includes('serve') ||
     normalizedMessage.includes('o que e') ||
+    normalizedMessage.includes('representa') ||
+    normalizedMessage.includes('significa') ||
+    normalizedMessage.includes('significado') ||
     normalizedMessage.includes('para que') ||
     normalizedMessage.includes('duvida') ||
     normalizedMessage.includes('explicar') ||
-    mentionedLine
-  ) {
+    Boolean(mentionedLine);
+
+  if (fieldQuestionLike) {
     const helpLine = mentionedLine ?? focusLine ?? nextLine;
     if (helpLine) {
       const guide = getFieldGuide(helpLine);
+      const tailSeed = buildFallbackCopySeed(input.message, 'explain_field_tail', helpLine.line_code);
+      const tail = pickFallbackCopy('explain_field_tail', tailSeed, {});
       return {
-        answer: `${guide.help} ${guide.example} No seu perfil, os valores são preenchidos pelo responsável da unidade na mesma tela — o painel ao lado mostra MC1, MC2 e EBITDA recalculados pelo sistema após cada gravação.`,
+        answer: `${guide.help} ${guide.example} ${tail}`,
         citations: [
           {
             title: guide.label,
@@ -1949,10 +2041,28 @@ function runLocalAssistantTurnExplainOnly(input: {
     }
   }
 
-  if (parseAssistantCurrencyReply(input.message) !== null) {
+  if (classifyDreUserIntent(input.message) === 'off_topic') {
+    const anchor = focusLine ?? nextLine;
+    const seed = buildFallbackCopySeed(input.message, 'explain_off_topic', anchor?.line_code ?? null);
+    const realign = anchor
+      ? `Voltemos a «${anchor.line_name}» — posso contar o que essa linha representa.`
+      : 'Pergunte por um campo da DRE ou pelo fluxo de submissão.';
     return {
-      answer:
-        'Recebi um valor em reais, mas no modo orientação eu não aplico números na submissão. Peça ao franqueado (perfil com operação na submissão) para informar esse valor na conversa ou na planilha, ou use “Explicar campo” se quiser só entender a linha.',
+      answer: pickFallbackCopy('explain_off_topic', seed, { realign }),
+      citations: STATIC_KNOWLEDGE.slice(0, 1),
+      fieldUpdates: [],
+      focusLineCode: anchor?.line_code ?? null,
+      nextPrompt: anchor ? `Quer uma explicação sobre “${anchor.line_name}”?` : null,
+      requestSave: false,
+      requestSubmit: false,
+      mode: 'fallback',
+    };
+  }
+
+  if (parseAssistantCurrencyReply(input.message) !== null) {
+    const seed = buildFallbackCopySeed(input.message, 'explain_currency_readonly', input.currentLineCode);
+    return {
+      answer: pickFallbackCopy('explain_currency_readonly', seed, {}),
       citations: STATIC_KNOWLEDGE.slice(0, 1),
       fieldUpdates: [],
       focusLineCode: focusLine?.line_code ?? nextLine?.line_code ?? null,
@@ -1963,8 +2073,9 @@ function runLocalAssistantTurnExplainOnly(input: {
     };
   }
 
+  const fbSeed = buildFallbackCopySeed(input.message, 'explain_fallback', input.currentLineCode);
   return {
-    answer: `Modo orientação: falo só sobre a DRE, campos e fluxo. ${ASSISTANT_REPLY_FORMAT_HINT} Não altero dados nem calculo MC1, MC2 ou EBITDA — isso aparece no painel depois que a unidade salva.`,
+    answer: pickFallbackCopy('explain_fallback', fbSeed, { hint: ASSISTANT_REPLY_FORMAT_HINT }),
     citations: STATIC_KNOWLEDGE.slice(0, 2),
     fieldUpdates: [],
     focusLineCode: nextLine?.line_code ?? null,
@@ -2021,20 +2132,6 @@ export function runLocalAssistantTurn(input: {
     };
   }
 
-  if (classifyDreUserIntent(input.message) === 'off_topic') {
-    const anchor = focusLine ?? findNextGuidedLine(input.lines, input.currentValues, input.currentLineCode ?? undefined);
-    return {
-      answer: `Foco na DRE deste período. ${anchor ? `Seguimos com “${anchor.line_name}”: ${buildQuestionForLine(anchor)}` : 'Envie o próximo valor em reais ou peça “Explicar campo”.'}`,
-      citations: STATIC_KNOWLEDGE.slice(0, 1),
-      fieldUpdates: [],
-      focusLineCode: anchor?.line_code ?? null,
-      nextPrompt: anchor ? buildQuestionForLine(anchor) : null,
-      requestSave: false,
-      requestSubmit: false,
-      mode: 'fallback',
-    };
-  }
-
   if (isGreetingOrStartFlow(normalizedMessage)) {
     const nextLine =
       findNextGuidedLine(input.lines, input.currentValues, input.currentLineCode ?? undefined) ??
@@ -2042,10 +2139,16 @@ export function runLocalAssistantTurn(input: {
       null;
 
     const ctx = input.conversationContext ?? null;
-    const identity = 'Sou o Agente de Construção de DRE da Febracis. ';
+    const identity = 'Sou o agente de apoio à DRE da Febracis. ';
+    const greetSeed = buildFallbackCopySeed(input.message, 'full_greeting', input.currentLineCode);
     const intro = ctx?.franchiseTradeName
-      ? `${identity}Vamos com calma com a DRE${ctx.periodLabelPtBr ? ` de ${ctx.periodLabelPtBr}` : ''}${ctx.city ? ` em ${ctx.city}` : ''} da "${ctx.franchiseTradeName}" — sempre um campo por vez, em reais; MC1, MC2 e EBITDA só aparecem com o motor oficial depois das confirmações. Estado documental (interno): ${submissionStatusLabelPt(ctx?.submissionStatus)}.`
-      : `${identity}Foco no preenchimento da DRE deste período. Vamos com calma: peço um valor de cada vez, sempre em reais, e o sistema recalcula MC1, MC2 e EBITDA sozinho. Quando estiver pronto, responda com o número ou peça ajuda específica de campo.`;
+      ? pickFallbackCopy('full_greeting_with_franchise', greetSeed, {
+          identity,
+          period: ctx.periodLabelPtBr ? ` de ${ctx.periodLabelPtBr}` : '',
+          city: ctx.city ? ` em ${ctx.city}` : '',
+          trade: ctx.franchiseTradeName,
+        })
+      : pickFallbackCopy('full_greeting_generic', greetSeed, { identity });
 
     return {
       answer: intro,
@@ -2122,6 +2225,9 @@ export function runLocalAssistantTurn(input: {
   if (
     normalizedMessage.includes('serve') ||
     normalizedMessage.includes('o que e') ||
+    normalizedMessage.includes('representa') ||
+    normalizedMessage.includes('significa') ||
+    normalizedMessage.includes('significado') ||
     normalizedMessage.includes('para que') ||
     normalizedMessage.includes('duvida') ||
     normalizedMessage.includes('explicar') ||
@@ -2148,6 +2254,24 @@ export function runLocalAssistantTurn(input: {
         mode: 'fallback',
       };
     }
+  }
+
+  if (classifyDreUserIntent(input.message) === 'off_topic') {
+    const anchor = focusLine ?? findNextGuidedLine(input.lines, input.currentValues, input.currentLineCode ?? undefined);
+    const otSeed = buildFallbackCopySeed(input.message, 'full_off_topic', anchor?.line_code ?? null);
+    const anchorText = anchor
+      ? `Seguimos com «${anchor.line_name}»: ${buildQuestionForLine(anchor)}`
+      : 'Envie o próximo valor em reais ou peça «Explicar campo».';
+    return {
+      answer: pickFallbackCopy('full_off_topic', otSeed, { anchor: anchorText }),
+      citations: STATIC_KNOWLEDGE.slice(0, 1),
+      fieldUpdates: [],
+      focusLineCode: anchor?.line_code ?? null,
+      nextPrompt: anchor ? buildQuestionForLine(anchor) : null,
+      requestSave: false,
+      requestSubmit: false,
+      mode: 'fallback',
+    };
   }
 
   const parsedValue = parseAssistantCurrencyReply(input.message);
@@ -2185,9 +2309,10 @@ export function runLocalAssistantTurn(input: {
   }
 
   const nextLine = findNextGuidedLine(input.lines, input.currentValues, focusLine?.line_code);
+  const defSeed = buildFallbackCopySeed(input.message, 'full_default_guided', focusLine?.line_code ?? null);
 
   return {
-    answer: `Estou no modo guiado local: vou seguir a ordem oficial da planilha. ${ASSISTANT_REPLY_FORMAT_HINT} Tudo o que você informar entra nos mesmos campos da DRE e o painel ao lado mostra o resultado.`,
+    answer: pickFallbackCopy('full_default_guided', defSeed, { hint: ASSISTANT_REPLY_FORMAT_HINT }),
     citations: STATIC_KNOWLEDGE.slice(0, 2),
     fieldUpdates: [],
     focusLineCode: nextLine?.line_code ?? null,

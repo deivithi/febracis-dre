@@ -1377,7 +1377,6 @@ async function runModelTurn(input: {
 
     return {
       ...local,
-      answer: `${local.answer}\n\n(Resposta em modo guiado local: a chamada ao modelo online falhou neste instante — pode tentar de novo em seguida.)`,
       mode: 'fallback',
       telemetry: telemetryForRoute(llmRoute, 'llm_fallback'),
     };

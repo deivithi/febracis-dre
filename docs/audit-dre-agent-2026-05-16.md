@@ -25,6 +25,11 @@ Revisão incremental ao plano «Agente DRE — atualização integral»: camada 
 - [`docs/agente-persona-febracis.md`](agente-persona-febracis.md)  
 - [`supabase/migrations/024_agent_security_invoker_and_digest.sql`](../supabase/migrations/024_agent_security_invoker_and_digest.sql)
 
+## Verificações automáticas (UI)
+
+- **RTL / Testing Library:** o repositório **não** inclui `@testing-library/react` em `devDependencies` (Vitest + Playwright cobrem outras camadas). Itens de teste de componente dependentes de RTL permanecem **fora de escopo** até decisão de adicionar a dependência.
+
 ## Deploy produção (registo)
 
 - **16/05/2026 BRT:** GitHub `main` **`67a344f`**; Vercel **`dpl_AmC9b7gV4CexdSTFMp4zgrsbeyfn`** (READY); URL snapshot `https://febracis-9knxypuvo-deivithis-projects.vercel.app`; alias `https://febracis-dre.vercel.app`; inspect `https://vercel.com/deivithis-projects/febracis-dre/AmC9b7gV4CexdSTFMp4zgrsbeyfn`.
+- **Agent3 UX (bolhas + copy):** após merge, atualizar esta secção com novo commit + `dpl_*` (ver comando `npx vercel --prod --yes` e segundo commit de documentação).
