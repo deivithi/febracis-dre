@@ -24,3 +24,7 @@ Revisão incremental ao plano «Agente DRE — atualização integral»: camada 
 - [`docs/PRD-canonical.md`](PRD-canonical.md) §9.5–§9.7  
 - [`docs/agente-persona-febracis.md`](agente-persona-febracis.md)  
 - [`supabase/migrations/024_agent_security_invoker_and_digest.sql`](../supabase/migrations/024_agent_security_invoker_and_digest.sql)
+
+## Deploy produção (registo)
+
+- **16/05/2026 BRT:** GitHub `main` **`67a344f`**; Vercel **`dpl_AmC9b7gV4CexdSTFMp4zgrsbeyfn`** (READY); URL snapshot `https://febracis-9knxypuvo-deivithis-projects.vercel.app`; alias `https://febracis-dre.vercel.app`; inspect `https://vercel.com/deivithis-projects/febracis-dre/AmC9b7gV4CexdSTFMp4zgrsbeyfn`.
