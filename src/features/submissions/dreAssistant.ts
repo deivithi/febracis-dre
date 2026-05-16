@@ -402,22 +402,145 @@ function emptyPack(
 export const ASSISTANT_REPLY_FORMAT_HINT =
   'Envie só o valor em reais nesta mensagem (ex.: 1.234,56 ou 25000).';
 
-export type DreAssistantFallbackCopyIntent =
-  | 'explain_off_topic'
-  | 'explain_continue_guided'
-  | 'explain_greeting'
-  | 'explain_save_readonly'
-  | 'explain_skip_readonly'
-  | 'explain_currency_readonly'
-  | 'explain_fallback'
-  | 'explain_field_tail'
-  | 'full_off_topic'
-  | 'full_continue_guided'
-  | 'full_greeting_with_franchise'
-  | 'full_greeting_generic'
-  | 'full_default_guided'
-  | 'ui_realign_banner'
-  | 'ui_realign_banner_no_step';
+export const ASSISTANT_FALLBACK_COPY_VARIANTS = {
+  explain_continue_anchor_focus: [
+    'Posso detalhar «{{field}}» ou outro campo — é só dizer qual.',
+    'Posso partir de «{{field}}» e depois navegar pelo restante do que faltar.',
+    'Se ajudar, abro primeiro «{{field}}» e você me diz onde aprofundar em seguida.',
+  ],
+  explain_continue_anchor_loose: [
+    'Diga qual linha da DRE quer explorar ou peça o resumo da fase.',
+    'Indique uma linha do catálogo ou pergunte onde estamos no roteiro.',
+    'Pode nomear uma linha específica ou pedir o panorama da fase atual.',
+  ],
+  explain_off_topic_realign_focus: [
+    'Se quiser, focamos em «{{field}}» — explico em linguagem simples.',
+    'Posso também explicar «{{field}}» com calma ou outro campo à sua escolha.',
+    'Prefere que eu mergulhe em «{{field}}» ou já puxamos outra linha do roteiro?',
+  ],
+  explain_off_topic_realign_loose: [
+    'Pergunte por um campo da lista ou pelo fluxo de envio da DRE.',
+    'Indique uma linha do catálogo ou pergunte como seguir até o envio.',
+    'Posso tirar dúvidas de campo específico ou do passo a passo até revisão.',
+  ],
+  explain_need_submission: [
+    'Abra uma submissão neste recorte para eu explicar os campos da DRE e o fluxo. No modo orientação não altero valores.',
+    'Para orientar campo a campo neste período, preciso de uma submissão válida aqui ao lado — no modo leitura não gravo valores.',
+    'Selecione ou crie uma submissão neste período/franquia: a partir daí explico linhas e fases sem tocar nos números.',
+  ],
+  full_need_submission: [
+    'Para eu te guiar campo a campo, preciso de um rascunho de submissão aberto. Use «Criar rascunho» ou «Abrir rascunho» no topo da página e volte aqui — a partir daí eu conduzo toda a conversa.',
+    'Abra um rascunho válido primeiro (botões «Criar rascunho» / «Abrir rascunho» na página): sem ele não consigo posicionar o roteiro no chat.',
+    'Quando uma submissão editável estiver aberta aqui ao lado, retomo o passo a passo com valores e confirmações — até lá fico à espera do rascunho.',
+  ],
+  full_save_panel_hint: [
+    'Perfeito, anotei que você quer salvar o rascunho. No painel à direita, use «Salvar rascunho» para gravar tudo no sistema oficial com a data e a versão corretas.',
+    'Quer gravar — entendido. O passo oficial é «Salvar rascunho» no painel lateral; ali o sistema fecha versão com data.',
+    'Salvo anotado. Confirme com «Salvar rascunho» no painel ao lado para o registo oficial ficar consistente antes de novos valores.',
+  ],
+  full_submit_panel_hint: [
+    'O envio formal para a controladoria continua sendo pelo botão «Enviar para revisão» no painel lateral. Antes disso, posso te ajudar a conferir os valores um a um.',
+    'Envio para revisão sai pelo botão próprio na barra lateral — por aqui só alinho perguntas e valores antes dessa decisão.',
+    'Quando os números estiverem revisados na planilha, use «Enviar para revisão» à direita; posso ajudá-lo a chequear antes disso.',
+  ],
+  full_skip_need_focus: [
+    'Ainda não tenho um campo em foco. Toque em «Olá» para começarmos o roteiro, ou envie diretamente o valor em reais do próximo item que quiser preencher.',
+    'Preciso primeiro de um campo de referência: use «Olá» ou mande já um valor para uma linha e depois tratamos dos saltos.',
+    'Para pular faz sentido após iniciarmos o roteiro — toque «Olá» ou digite o primeiro valor que quer tratar nesta sessão.',
+  ],
+  full_skip_leave_blank: [
+    'Sem problema — deixamos «{{field}}» em branco por enquanto. Quando quiser retomar, é só me dizer.',
+    'Combinado — «{{field}}» pode ficar vazio neste momento; quando quiser voltar à linha, avise aqui mesmo.',
+    'Tranquilo: «{{field}}» espera até você decidir. Retomamos nela quando fizer sentido no roteiro.',
+  ],
+  full_field_answer_suffix: [
+    '{{hint}}',
+    'Para me responder aqui no chat: {{hint}}',
+    'No próximo envio sua: {{hint}}',
+  ],
+  full_numeric_proposal: [
+    'Proposta: {{amount}} em «{{field}}». Confirme no mini-card («Confirmar») ou envie cmd:confirm_value quando estiver de acordo. O sistema recalcula MC1, MC2 e EBITDA após a confirmação.',
+    'Registrei {{amount}} para «{{field}}». Se estiver alinhado, confirme no mini-card rápido ou com cmd:confirm_value — totais MC1, MC2 e EBITDA atualizam depois dessa validação oficial.',
+    'Anotei {{amount}} na linha «{{field}}». Valide pelo cartão («Confirmar») ou cmd:confirm_value para o fluxo oficial; só então os indicadores grandes recalculam no painel.',
+  ],
+  explain_off_topic: [
+    'Por aqui eu acompanho só a DRE deste período — campos, ordem e regras Febracis. {{realign}}',
+    'Para eu ser mais útil, vamos pela planilha: o que preencher, onde e por quê. {{realign}}',
+    'Vamos manter o papo na DRE desta competência — é o meu melhor jeito de ajudar. {{realign}}',
+  ],
+  explain_continue_guided: [
+    'Combinado. {{anchor}}',
+    'Ótimo — seguimos juntos. {{anchor}}',
+    'Perfeito, vamos em frente. {{anchor}}',
+  ],
+  explain_greeting: [
+    'Sou o agente de apoio à DRE da Febracis. Neste modo você só olha: explico campos, fases e regras de envio. Quem digita valores na submissão é quem tem permissão de operação na unidade — daqui não altero números nem salvo rascunho.',
+    'Olá — estou aqui para orientar sobre a DRE (o que cada linha pede e como seguir o fluxo). Visualização e explicações são comigo; os valores na planilha quem informa é o time da unidade com perfil de edição.',
+    'Oi — neste modo eu esclareço o que cada linha da DRE pede e como o fluxo de envio funciona. Quem grava valores na planilha é sempre quem opera com permissão na unidade; não mexo em rascunho daqui.',
+  ],
+  explain_save_readonly: [
+    'Neste modo leitura eu não disparo gravação nem envio. Quem pode editar usa «Salvar rascunho» e «Enviar para revisão» no painel ao lado.',
+    'Gravar ou enviar só quem está a operar a submissão — por aqui fico na orientação, sem tocar nos botões de gravação.',
+    'Salvar ou enviar continua sendo ação manual no painel lateral («Salvar rascunho» / «Enviar para revisão»). Eu não aciono isso pelo chat quando estou apenas a orientar.',
+  ],
+  explain_skip_readonly: [
+    'Pular linhas ou mudar o que já foi preenchido na conversa só quem opera a submissão. Eu explico o significado de cada campo se precisar.',
+    'Para avançar ou saltar campos na prática, precisa do perfil que edita a submissão. Posso só contar o que cada linha representa.',
+    'Avançar, voltar ou pular «de verdade» exige edição na submissão. Enquanto isso posso só explicar o que uma linha representa antes de alguém preencher.',
+  ],
+  explain_currency_readonly: [
+    'Entendi o valor em reais, mas neste modo orientação não aplico nada na submissão. Peça a quem edita a unidade para registar o número, ou use «Explicar» se quiser só entender o campo.',
+    'Recebi o número — no modo leitura ele não entra na planilha. Quem tem edição pode colar aqui ou na grelha; se a dúvida for conceitual, posso detalhar a linha.',
+    'Valor recebido, mas só leitura: não posso gravar na DRE. Repasse ao time com edição ou peça apenas explicação do campo aqui mesmo.',
+  ],
+  explain_fallback: [
+    'Fico só no universo DRE: campos, fluxo e validações. {{hint}} Não altero dados nem recalculo MC1, MC2 ou EBITDA — isso aparece no painel quando a unidade grava.',
+    'Posso conversar sobre a planilha, o passo a passo e o que cada linha significa. {{hint}} Totais calculados você vê ao lado depois de salvar com quem opera a submissão.',
+    'Meu foco são dúvidas sobre campos e o roteiro Febracis. {{hint}} MC1, MC2 e EBITDA vêm sempre do motor oficial após cada gravação no painel.',
+  ],
+  explain_field_tail: [
+    'No seu perfil, os valores são preenchidos por quem opera a unidade — o painel ao lado mostra MC1, MC2 e EBITDA recalculados pelo sistema após cada gravação.',
+    'Quando alguém da unidade confirma os números, o painel atualiza MC1, MC2 e EBITDA automaticamente; aqui só alinho o significado das linhas.',
+    'Sem confirmação com perfil adequado eu não mexo nos números; quando há gravação oficial lá ao lado MC1/MC2/EBITDA atualizam sozinhos.',
+  ],
+  full_off_topic: [
+    'Voltando à DRE deste período. {{anchor}}',
+    'Seguimos com o preenchimento da planilha. {{anchor}}',
+    'Sem problema — retomo o roteiro com você. {{anchor}}',
+  ],
+  full_continue_guided: [
+    'Combinado — seguimos no roteiro. {{anchor}}',
+    'Ótimo, vamos ao próximo passo. {{anchor}}',
+    'Perfeito. {{anchor}}',
+  ],
+  full_greeting_with_franchise: [
+    '{{identity}}Vamos com calma na DRE{{period}}{{city}} da unidade «{{trade}}». Um campo de cada vez, em reais; MC1, MC2 e EBITDA o sistema recalcula quando você confirma os valores.',
+    '{{identity}}Estou com você na DRE{{period}}{{city}} — «{{trade}}». Peça uma linha de cada vez em reais; os totais grandes vêm do motor oficial depois das confirmações.',
+    '{{identity}}DRE{{period}}{{city}} para «{{trade}}», sem pressa: campo a campo em reais — MC1, MC2 e EBITDA o sistema fecha depois das confirmações oficiais no fluxo.',
+  ],
+  full_greeting_generic: [
+    '{{identity}}Foco no preenchimento da DRE deste período. Um número de cada vez, sempre em reais; MC1, MC2 e EBITDA o sistema atualiza sozinho quando você confirma. Quando quiser, manda o valor ou pede ajuda num campo específico.',
+    '{{identity}}A ideia é ir campo a campo, em reais, com calma. Os indicadores consolidados aparecem no painel depois das confirmações — pode mandar o próximo valor ou perguntar por uma linha.',
+    '{{identity}}Vamos pela DRE do período, um campo de cada vez, valores sempre em reais. Totais grandes mostram-se ao lado quando você confirmar pelo fluxo habitual.',
+  ],
+  full_default_guided: [
+    'Seguimos a ordem oficial da planilha. {{hint}} O que você mandar entra nos campos da DRE e o painel ao lado acompanha o resultado.',
+    'Vou te guiando no roteiro canónico da DRE. {{hint}} Use a caixa de mensagem para valores em reais ou peça explicação de campo quando precisar.',
+    'O catálogo Febracis dita o roteiro. {{hint}} Manda valores nesta mensagem ou peça explicação onde travou.',
+  ],
+  ui_realign_banner: [
+    'Sugestão do roteiro: {{step}}',
+    'Podemos seguir por aqui: {{step}}',
+    'Retomo o passo da planilha: {{step}}',
+  ],
+  ui_realign_banner_no_step: [
+    'Quando quiser, seguimos pelo roteiro da DRE no painel ao lado.',
+    'À vontade para retomar o passo a passo da planilha quando fizer sentido.',
+    'O painel marca o próximo campo do roteiro — avise quando quiser sincronizar o chat também.',
+  ],
+} as const;
+
+export type DreAssistantFallbackCopyIntent = keyof typeof ASSISTANT_FALLBACK_COPY_VARIANTS;
 
 function hashFallbackSeed(s: string): number {
   let h = 5381;
@@ -437,75 +560,7 @@ export function pickFallbackCopy(
   seed: string,
   vars: Record<string, string> = {},
 ): string {
-  const VARIANTS: Record<DreAssistantFallbackCopyIntent, readonly string[]> = {
-    explain_off_topic: [
-      'Por aqui eu acompanho só a DRE deste período — campos, ordem e regras Febracis. {{realign}}',
-      'Para eu ser mais útil, vamos pela planilha: o que preencher, onde e por quê. {{realign}}',
-      'Vamos manter o papo na DRE desta competência — é o meu melhor jeito de ajudar. {{realign}}',
-    ],
-    explain_continue_guided: [
-      'Combinado. {{anchor}}',
-      'Ótimo — seguimos juntos. {{anchor}}',
-      'Perfeito, vamos em frente. {{anchor}}',
-    ],
-    explain_greeting: [
-      'Sou o agente de apoio à DRE da Febracis. Neste modo você só olha: explico campos, fases e regras de envio. Quem digita valores na submissão é quem tem permissão de operação na unidade — daqui não altero números nem salvo rascunho.',
-      'Olá — estou aqui para orientar sobre a DRE (o que cada linha pede e como seguir o fluxo). Visualização e explicações são comigo; os valores na planilha quem informa é o time da unidade com perfil de edição.',
-    ],
-    explain_save_readonly: [
-      'Neste modo leitura eu não disparo gravação nem envio. Quem pode editar usa «Salvar rascunho» e «Enviar para revisão» no painel ao lado.',
-      'Gravar ou enviar só quem está a operar a submissão — por aqui fico na orientação, sem tocar nos botões de gravação.',
-    ],
-    explain_skip_readonly: [
-      'Pular linhas ou mudar o que já foi preenchido na conversa só quem opera a submissão. Eu explico o significado de cada campo se precisar.',
-      'Para avançar ou saltar campos na prática, precisa do perfil que edita a submissão. Posso só contar o que cada linha representa.',
-    ],
-    explain_currency_readonly: [
-      'Entendi o valor em reais, mas neste modo orientação não aplico nada na submissão. Peça a quem edita a unidade para registar o número, ou use «Explicar» se quiser só entender o campo.',
-      'Recebi o número — no modo leitura ele não entra na planilha. Quem tem edição pode colar aqui ou na grelha; se a dúvida for conceitual, posso detalhar a linha.',
-    ],
-    explain_fallback: [
-      'Fico só no universo DRE: campos, fluxo e validações. {{hint}} Não altero dados nem recalculo MC1, MC2 ou EBITDA — isso aparece no painel quando a unidade grava.',
-      'Posso conversar sobre a planilha, o passo a passo e o que cada linha significa. {{hint}} Totais calculados você vê ao lado depois de salvar com quem opera a submissão.',
-    ],
-    explain_field_tail: [
-      'No seu perfil, os valores são preenchidos por quem opera a unidade — o painel ao lado mostra MC1, MC2 e EBITDA recalculados pelo sistema após cada gravação.',
-      'Quando alguém da unidade confirma os números, o painel atualiza MC1, MC2 e EBITDA automaticamente; aqui só alinho o significado das linhas.',
-    ],
-    full_off_topic: [
-      'Voltando à DRE deste período. {{anchor}}',
-      'Seguimos com o preenchimento da planilha. {{anchor}}',
-      'Sem problema — retomo o roteiro com você. {{anchor}}',
-    ],
-    full_continue_guided: [
-      'Combinado — seguimos no roteiro. {{anchor}}',
-      'Ótimo, vamos ao próximo passo. {{anchor}}',
-      'Perfeito. {{anchor}}',
-    ],
-    full_greeting_with_franchise: [
-      '{{identity}}Vamos com calma na DRE{{period}}{{city}} da unidade «{{trade}}». Um campo de cada vez, em reais; MC1, MC2 e EBITDA o sistema recalcula quando você confirma os valores.',
-      '{{identity}}Estou com você na DRE{{period}}{{city}} — «{{trade}}». Peça uma linha de cada vez em reais; os totais grandes vêm do motor oficial depois das confirmações.',
-    ],
-    full_greeting_generic: [
-      '{{identity}}Foco no preenchimento da DRE deste período. Um número de cada vez, sempre em reais; MC1, MC2 e EBITDA o sistema atualiza sozinho quando você confirma. Quando quiser, manda o valor ou pede ajuda num campo específico.',
-      '{{identity}}A ideia é ir campo a campo, em reais, com calma. Os indicadores consolidados aparecem no painel depois das confirmações — pode mandar o próximo valor ou perguntar por uma linha.',
-    ],
-    full_default_guided: [
-      'Seguimos a ordem oficial da planilha. {{hint}} O que você mandar entra nos campos da DRE e o painel ao lado acompanha o resultado.',
-      'Vou te guiando no roteiro canónico da DRE. {{hint}} Use a caixa de mensagem para valores em reais ou peça explicação de campo quando precisar.',
-    ],
-    ui_realign_banner: [
-      'Sugestão do roteiro: {{step}}',
-      'Podemos seguir por aqui: {{step}}',
-      'Retomo o passo da planilha: {{step}}',
-    ],
-    ui_realign_banner_no_step: [
-      'Quando quiser, seguimos pelo roteiro da DRE no painel ao lado.',
-      'À vontade para retomar o passo a passo da planilha quando fizer sentido.',
-    ],
-  };
-
-  const list = VARIANTS[intent];
+  const list = ASSISTANT_FALLBACK_COPY_VARIANTS[intent] as readonly string[];
   const idx = list.length > 0 ? hashFallbackSeed(`${seed}|${intent}`) % list.length : 0;
   let out = list[idx] ?? '';
   for (const [key, val] of Object.entries(vars)) {
@@ -573,6 +628,28 @@ export function bubbleCoversAssistantStepHint(bubbleContent: string, stepText: s
     return false;
   }
   return tokens.every((word) => bubble.includes(word));
+}
+
+/**
+ * Indica quando a última bolha já é uma resposta «onde estamos» / cmd:where_am_i (determinística).
+ * Usado pela faixa amarela de realinhamento: checkpoint `off_topic` obsoleto não deve empurrar o próximo campo.
+ */
+export function bubbleLooksLikeGuidedWhereAmIAnswer(bubbleContent: string): boolean {
+  const b = normalizeHintComparableText(bubbleContent);
+  if (b.length < 50) {
+    return false;
+  }
+  const hasRoadmapEvidence = /\bem evidencia\b/.test(b) && /\broteiro\b/.test(b);
+  if (hasRoadmapEvidence && /\bestamos na fase \d+ de \d+/.test(b)) {
+    return true;
+  }
+  if (hasRoadmapEvidence && /\bcampos com valor\b/.test(b)) {
+    return true;
+  }
+  if (/\bsem catalogo de linhas suficiente\b/.test(b) && /\bmedir etapa\b/.test(b)) {
+    return true;
+  }
+  return false;
 }
 
 /** Copy curta para faixa de realinhamento na UI (tom acolhedor, sem repetir a bolha). */
@@ -956,6 +1033,75 @@ export function buildQuestionForLine(line: DreInputCatalogLine) {
   return `${guide.question} ${guide.example} ${ASSISTANT_REPLY_FORMAT_HINT}`;
 }
 
+/**
+ * Resposta determinística tipo `cmd:where_am_i`: fase atual (1–10), campo em evidência no roteiro
+ * e progresso global — usada quando o utilizador pede etapa/passagem em linguagem natural.
+ */
+export function composeGuidedWhereAmIAnswer(input: {
+  lines: DreInputCatalogLine[];
+  currentValues: Record<string, string>;
+  guidedLineCode: string | null;
+  skippedLineCodes?: Set<string> | Iterable<string> | readonly string[];
+}): {
+  answer: string;
+  focusLineCode: string | null;
+  nextPrompt: string | null;
+  drePhase: number | null;
+} {
+  const iterable = input.skippedLineCodes ?? [];
+  const skipped =
+    iterable instanceof Set ? iterable : new Set(Array.from(iterable as Iterable<string>));
+  const skipOpts = { skippedLineCodes: skipped };
+  const { lines, currentValues } = input;
+  const guidedLineCode = input.guidedLineCode;
+  const explicit =
+    guidedLineCode !== null && guidedLineCode.length > 0
+      ? (lines.find((line) => line.line_code === guidedLineCode) ?? null)
+      : null;
+  const focus =
+    explicit ?? findNextGuidedLine(lines, currentValues, null, skipOpts) ?? lines[0] ?? null;
+  const total = Math.max(lines.length, 1);
+  const filled = countFilledInputs(lines, currentValues);
+  const pct = Math.round((filled / total) * 100);
+  const phase = focus ? mapLineToPhase(focus) : null;
+  const phaseLabel = phase !== null ? phaseTitle(phase) : '';
+  const answer = focus
+    ? phase !== null
+      ? `Estamos na fase ${phase} de ${DRE_PHASE_COUNT} (${phaseLabel}). O roteiro está com «${focus.line_name}» em evidência neste período. No conjunto da DRE já temos ${filled} de ${total} campos com valor informado (~${pct}%).`
+      : `O roteiro está com «${focus.line_name}» em evidência. No conjunto da DRE temos ${filled} de ${total} campos com valor (~${pct}%).`
+    : `Sem catálogo de linhas suficiente para medir etapa aqui (${filled}/${total} valores). Abra uma submissão válida ou use “Olá” no painel guiado quando estiver disponível.`;
+  const nextPrompt = focus ? buildQuestionForLine(focus) : null;
+  return {
+    answer,
+    focusLineCode: focus?.line_code ?? null,
+    nextPrompt,
+    drePhase: phase,
+  };
+}
+
+/** Pergunta «onde estamos» / «qual etapa» — mesma carga útil que `cmd:where_am_i`, para chat em linguagem natural. */
+export function runGuidedFlowStatusQuestionTurn(input: {
+  lines: DreInputCatalogLine[];
+  currentValues: Record<string, string>;
+  guidedLineCode: string | null;
+  skippedLineCodes?: Set<string> | readonly string[];
+}): { turn: DreAssistantTurnResult; drePhase: number | null } {
+  const w = composeGuidedWhereAmIAnswer(input);
+  return {
+    turn: {
+      answer: w.answer,
+      citations: FALLBACK_KNOWLEDGE_SNIPPET,
+      fieldUpdates: [],
+      focusLineCode: w.focusLineCode,
+      nextPrompt: w.nextPrompt,
+      requestSave: false,
+      requestSubmit: false,
+      mode: 'fallback',
+    },
+    drePhase: w.drePhase,
+  };
+}
+
 export interface DeterministicCommandInput {
   cmd: ParsedAgentMessage & { kind: 'cmd' };
   lines: DreInputCatalogLine[];
@@ -1226,26 +1372,24 @@ export function runDeterministicCommand(input: DeterministicCommandInput): RunDe
     }
 
     case 'where_am_i': {
-      const focus =
-        focusFromSession ?? findNextGuidedLine(lines, currentValues, null, skipOpts) ?? lines[0] ?? null;
-      const total = Math.max(lines.length, 1);
-      const filled = countFilledInputs(lines, currentValues);
-      const pct = Math.round((filled / total) * 100);
-      const phase = focus ? mapLineToPhase(focus) : null;
+      const w = composeGuidedWhereAmIAnswer({
+        lines,
+        currentValues,
+        guidedLineCode: input.currentLineCode ?? null,
+        skippedLineCodes: skipped,
+      });
       return {
         result: {
-          answer: focus
-            ? `Fase ${phase}: ${phaseTitle(phase ?? 1)} · Campo em foco “${focus.line_name}” · Globo: ${filled}/${total} preenchidos (~${pct}%).`
-            : `Sem campo em foco · ${filled}/${total} preenchidos (~${pct}%).`,
+          answer: w.answer,
           citations: FALLBACK_KNOWLEDGE_SNIPPET,
           fieldUpdates: [],
-          focusLineCode: focus?.line_code ?? null,
-          nextPrompt: focus ? buildQuestionForLine(focus) : null,
+          focusLineCode: w.focusLineCode,
+          nextPrompt: w.nextPrompt,
           requestSave: false,
           requestSubmit: false,
           mode: 'fallback',
         },
-        sessionPatch: { dre_phase: phase },
+        sessionPatch: { dre_phase: w.drePhase },
       };
     }
 
@@ -1762,6 +1906,47 @@ export function isGuidedFlowContinuationMessage(rawMessage: string): boolean {
   return false;
 }
 
+/**
+ * Perguntas explícitas pelo contexto do roteiro (equivale a `cmd:where_am_i` em linguagem natural).
+ * Atualizar com cuidado para não colidir com perguntas sobre "fase" macroeconómica/outros domínios.
+ */
+export function isGuidedFlowStatusQuestionMessage(rawMessage: string): boolean {
+  const n = normalizeText(rawMessage);
+  if (n.length > 220) {
+    return false;
+  }
+
+  if (/\bem\s+qual\s+etapa\b/.test(n)) {
+    return true;
+  }
+  if (/\bqual\s+etapa\b/u.test(n) && /\bestamos\b/u.test(n)) {
+    return true;
+  }
+  if (/\bqual\s+fase\b/u.test(n) && /\bestamos\b/u.test(n)) {
+    return true;
+  }
+  if (/\bem\s+que\s+(etapa|fase|parte|ponto)\b/u.test(n)) {
+    return true;
+  }
+  if (/\bonde\s+(estamos|paramos)\b/u.test(n)) {
+    return true;
+  }
+  if (/\bqual\s+e\s+(o\s+)?passo\b/u.test(n) || /\bqual\s+passo\b/u.test(n)) {
+    return true;
+  }
+  if (/\bpasso\s+atual\b/u.test(n)) {
+    return true;
+  }
+  if (/\bo\s+que\s+falta\b/u.test(n)) {
+    return true;
+  }
+  if (/\b(andamento|progresso)\b/u.test(n) && /\b(dre|submis|planilha|preenchi)\b/u.test(n)) {
+    return true;
+  }
+
+  return false;
+}
+
 export type DreUserIntentCategory = 'dre_on_topic' | 'off_topic';
 
 export type FlowCheckpointUserIntent = 'greeting' | 'numeric_value' | 'dre_question' | 'off_topic' | 'other';
@@ -1782,6 +1967,10 @@ export function classifyDreUserIntent(rawMessage: string): DreUserIntentCategory
   }
 
   if (isGuidedFlowContinuationMessage(rawMessage)) {
+    return 'dre_on_topic';
+  }
+
+  if (isGuidedFlowStatusQuestionMessage(rawMessage)) {
     return 'dre_on_topic';
   }
 
@@ -1878,6 +2067,8 @@ export function buildFlowCheckpoint(input: {
     lastUserIntent = 'greeting';
   } else if (isGuidedFlowContinuationMessage(input.userMessage)) {
     lastUserIntent = 'other';
+  } else if (isGuidedFlowStatusQuestionMessage(input.userMessage)) {
+    lastUserIntent = 'dre_question';
   } else if (classifyDreUserIntent(input.userMessage) === 'off_topic') {
     lastUserIntent = 'off_topic';
   } else if (parseAssistantCurrencyReply(input.userMessage) !== null) {
@@ -2066,6 +2257,9 @@ export function shouldUseDeterministicAssistantTurn(message: string): boolean {
   if (isGuidedFlowContinuationMessage(trimmed)) {
     return true;
   }
+  if (isGuidedFlowStatusQuestionMessage(trimmed)) {
+    return true;
+  }
   if (classifyDreUserIntent(trimmed) === 'off_topic') {
     return true;
   }
@@ -2077,6 +2271,7 @@ function runLocalAssistantTurnExplainOnly(input: {
   lines: DreInputCatalogLine[];
   currentValues: Record<string, string>;
   currentLineCode?: string | null;
+  skippedLineCodes?: Set<string> | readonly string[];
 }): DreAssistantTurnResult {
   const normalizedMessage = normalizeText(input.message);
   const focusLine = input.currentLineCode
@@ -2106,11 +2301,18 @@ function runLocalAssistantTurnExplainOnly(input: {
   if (isGuidedFlowContinuationMessage(input.message)) {
     const helpLine = focusLine ?? nextLine;
     const contSeed = buildFallbackCopySeed(input.message, 'explain_continue_guided', helpLine?.line_code ?? null);
-    const anchorText = helpLine
-      ? `Posso detalhar «${helpLine.line_name}» ou outro campo — é só dizer qual.`
-      : 'Diga qual linha da DRE quer explorar ou peça o resumo da fase.';
+    const anchorKey: DreAssistantFallbackCopyIntent = helpLine
+      ? 'explain_continue_anchor_focus'
+      : 'explain_continue_anchor_loose';
+    const anchorText = pickFallbackCopy(
+      anchorKey,
+      `${contSeed}|explain_continue_anchor`,
+      helpLine ? { field: helpLine.line_name } : {},
+    );
     return {
-      answer: pickFallbackCopy('explain_continue_guided', contSeed, { anchor: anchorText }),
+      answer: pickFallbackCopy('explain_continue_guided', `${contSeed}|explain_continue_guided_wrap`, {
+        anchor: anchorText,
+      }),
       citations: STATIC_KNOWLEDGE.slice(0, 1),
       fieldUpdates: [],
       focusLineCode: helpLine?.line_code ?? null,
@@ -2119,6 +2321,16 @@ function runLocalAssistantTurnExplainOnly(input: {
       requestSubmit: false,
       mode: 'fallback',
     };
+  }
+
+  if (isGuidedFlowStatusQuestionMessage(input.message)) {
+    const { turn } = runGuidedFlowStatusQuestionTurn({
+      lines: input.lines,
+      currentValues: input.currentValues,
+      guidedLineCode: input.currentLineCode ?? null,
+      skippedLineCodes: input.skippedLineCodes,
+    });
+    return turn;
   }
 
   if (normalizedMessage.includes('salvar') || normalizedMessage.includes('enviar')) {
@@ -2189,11 +2401,10 @@ function runLocalAssistantTurnExplainOnly(input: {
   if (classifyDreUserIntent(input.message) === 'off_topic') {
     const anchor = focusLine ?? nextLine;
     const seed = buildFallbackCopySeed(input.message, 'explain_off_topic', anchor?.line_code ?? null);
-    const realign = anchor
-      ? `Se quiser, focamos em «${anchor.line_name}» — explico em linguagem simples.`
-      : 'Pergunte por um campo da lista ou pelo fluxo de envio da DRE.';
+    const realignKey: DreAssistantFallbackCopyIntent = anchor ? 'explain_off_topic_realign_focus' : 'explain_off_topic_realign_loose';
+    const realign = pickFallbackCopy(realignKey, `${seed}|explain_off_topic_realign`, anchor ? { field: anchor.line_name } : {});
     return {
-      answer: pickFallbackCopy('explain_off_topic', seed, { realign }),
+      answer: pickFallbackCopy('explain_off_topic', `${seed}|explain_off_topic_body`, { realign }),
       citations: STATIC_KNOWLEDGE.slice(0, 1),
       fieldUpdates: [],
       focusLineCode: anchor?.line_code ?? null,
@@ -2236,6 +2447,8 @@ export function runLocalAssistantTurn(input: {
   lines: DreInputCatalogLine[];
   currentValues: Record<string, string>;
   currentLineCode?: string | null;
+  /** Linhas saltadas pelo roteiro (paridade com comando `skip_field` persistido na sessão). */
+  skippedLineCodes?: Set<string> | readonly string[];
   /** Só explicação: sem fieldUpdates nem pedidos de gravação. */
   explainOnly?: boolean;
   /** Contexto humano/temporal (Feature flag servidor). */
@@ -2243,9 +2456,9 @@ export function runLocalAssistantTurn(input: {
 }): DreAssistantTurnResult {
   if (input.explainOnly) {
     if (!input.lines.length) {
+      const needSeed = buildFallbackCopySeed(normalizeText(input.message), 'explain_need_submission', '');
       return {
-        answer:
-          'Abra uma submissão neste recorte para eu explicar os campos da DRE e o fluxo. No modo orientação não altero valores.',
+        answer: pickFallbackCopy('explain_need_submission', needSeed, {}),
         citations: STATIC_KNOWLEDGE.slice(0, 1),
         fieldUpdates: [],
         focusLineCode: null,
@@ -2264,9 +2477,9 @@ export function runLocalAssistantTurn(input: {
     : null;
 
   if (!input.lines.length) {
+    const needSeed = buildFallbackCopySeed(normalizeText(input.message), 'full_need_submission', '');
     return {
-      answer:
-        'Para eu te guiar campo a campo, preciso de um rascunho de submissão aberto. Use “Criar rascunho” ou “Abrir rascunho” no topo da página e volte aqui — a partir daí eu conduzo toda a conversa.',
+      answer: pickFallbackCopy('full_need_submission', needSeed, {}),
       citations: STATIC_KNOWLEDGE.slice(0, 1),
       fieldUpdates: [],
       focusLineCode: null,
@@ -2329,10 +2542,20 @@ export function runLocalAssistantTurn(input: {
     };
   }
 
+  if (isGuidedFlowStatusQuestionMessage(input.message)) {
+    const { turn } = runGuidedFlowStatusQuestionTurn({
+      lines: input.lines,
+      currentValues: input.currentValues,
+      guidedLineCode: input.currentLineCode ?? null,
+      skippedLineCodes: input.skippedLineCodes,
+    });
+    return turn;
+  }
+
   if (normalizedMessage.includes('salvar')) {
+    const saveSeed = buildFallbackCopySeed(normalizedMessage, 'full_save_panel', focusLine?.line_code ?? null);
     return {
-      answer:
-        'Perfeito, anotei que você quer salvar o rascunho. No painel à direita, use “Salvar rascunho” para gravar tudo no sistema oficial com a data e a versão corretas.',
+      answer: pickFallbackCopy('full_save_panel_hint', saveSeed, {}),
       citations: STATIC_KNOWLEDGE.slice(0, 1),
       fieldUpdates: [],
       focusLineCode: focusLine?.line_code ?? null,
@@ -2344,9 +2567,9 @@ export function runLocalAssistantTurn(input: {
   }
 
   if (normalizedMessage.includes('enviar')) {
+    const submitSeed = buildFallbackCopySeed(normalizedMessage, 'full_submit_panel', focusLine?.line_code ?? null);
     return {
-      answer:
-        'O envio formal para a controladoria continua sendo pelo botão “Enviar para revisão” no painel lateral. Antes disso, posso te ajudar a conferir os valores um a um.',
+      answer: pickFallbackCopy('full_submit_panel_hint', submitSeed, {}),
       citations: STATIC_KNOWLEDGE.slice(1, 2),
       fieldUpdates: [],
       focusLineCode: focusLine?.line_code ?? null,
@@ -2360,9 +2583,9 @@ export function runLocalAssistantTurn(input: {
   if (normalizedMessage.includes('pular') || normalizedMessage.includes('saltar')) {
     const anchor = focusLine ?? findNextGuidedLine(input.lines, input.currentValues);
     if (!anchor) {
+      const skipNeedSeed = buildFallbackCopySeed(normalizedMessage, 'full_skip_need_focus', null);
       return {
-        answer:
-          'Ainda não tenho um campo em foco. Toque em “Olá” para começarmos o roteiro, ou envie diretamente o valor em reais do próximo item que quiser preencher.',
+        answer: pickFallbackCopy('full_skip_need_focus', skipNeedSeed, {}),
         citations: STATIC_KNOWLEDGE.slice(0, 1),
         fieldUpdates: [],
         focusLineCode: null,
@@ -2374,9 +2597,10 @@ export function runLocalAssistantTurn(input: {
     }
 
     const nextLine = findNextGuidedLine(input.lines, input.currentValues, anchor.line_code);
+    const skipBlankSeed = buildFallbackCopySeed(normalizedMessage, 'full_skip_leave_blank', anchor.line_code);
 
     return {
-      answer: `Sem problema — deixamos "${anchor.line_name}" em branco por enquanto. Quando quiser retomar, é só me dizer.`,
+      answer: pickFallbackCopy('full_skip_leave_blank', skipBlankSeed, { field: anchor.line_name }),
       citations: STATIC_KNOWLEDGE.slice(0, 1),
       fieldUpdates: [],
       focusLineCode: nextLine?.line_code ?? null,
@@ -2404,8 +2628,12 @@ export function runLocalAssistantTurn(input: {
 
     if (helpLine) {
       const guide = getFieldGuide(helpLine);
+      const suffixSeed = buildFallbackCopySeed(input.message, 'full_field_answer_suffix', helpLine.line_code);
+      const suffix = pickFallbackCopy('full_field_answer_suffix', suffixSeed, {
+        hint: ASSISTANT_REPLY_FORMAT_HINT,
+      });
       return {
-        answer: `${guide.help} ${guide.example} Para me responder, envie só o valor em reais nesta caixa (por exemplo 15000 ou 1.234,56).`,
+        answer: `${guide.help} ${guide.example} ${suffix}`,
         citations: [
           {
             title: guide.label,
@@ -2450,8 +2678,13 @@ export function runLocalAssistantTurn(input: {
       [valueTargetLine.line_code]: String(parsedValue),
     }, valueTargetLine.line_code);
 
+    const proposalSeed = buildFallbackCopySeed(input.message, 'full_numeric_proposal', valueTargetLine.line_code);
+
     return {
-      answer: `Proposta: ${formatMoneyBr(parsedValue)} em “${valueTargetLine.line_name}”. Confirme no mini-card (“Confirmar”) ou envie cmd:confirm_value quando estiver de acordo. O sistema recalcula MC1, MC2 e EBITDA após a confirmação.`,
+      answer: pickFallbackCopy('full_numeric_proposal', proposalSeed, {
+        amount: formatMoneyBr(parsedValue),
+        field: valueTargetLine.line_name,
+      }),
       citations: [
         {
           title: valueTargetLine.line_name,

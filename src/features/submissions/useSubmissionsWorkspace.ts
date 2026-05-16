@@ -30,7 +30,9 @@ import { resolveAssistantInteractionMode, type AssistantProductTab } from './age
 import {
   buildQuestionForLine,
   bubbleCoversAssistantStepHint,
+  bubbleLooksLikeGuidedWhereAmIAnswer,
   findNextGuidedLine,
+  isGuidedFlowStatusQuestionMessage,
   getFieldGuide,
   parseFlowCheckpointFromState,
   parseDrePhaseFromState,
@@ -370,14 +372,23 @@ export function useSubmissionsWorkspace(opts?: SubmissionsWorkspaceOptions) {
     if (!storedFlowCheckpoint || storedFlowCheckpoint.last_user_intent !== 'off_topic') {
       return null;
     }
-    const stepText = assistantNextPrompt ?? assistantFocusLabel;
     const bubble = lastAssistantMessage?.content ?? '';
+    const lastUserChronological = [...assistantMessages].reverse().find((row) => row.role === 'user');
+    const lastUserTextRaw = typeof lastUserChronological?.content === 'string' ? lastUserChronological.content : '';
+    if (lastUserTextRaw && isGuidedFlowStatusQuestionMessage(lastUserTextRaw)) {
+      return null;
+    }
+    if (bubbleLooksLikeGuidedWhereAmIAnswer(bubble)) {
+      return null;
+    }
+    const stepText = assistantNextPrompt ?? assistantFocusLabel;
     if (bubbleCoversAssistantStepHint(bubble, stepText)) {
       return null;
     }
     const seed = `${assistantFocusLine?.line_code ?? 'none'}|${stepText ?? ''}`;
     return pickUiRealignBannerHint(stepText, seed);
   }, [
+    assistantMessages,
     storedFlowCheckpoint,
     assistantNextPrompt,
     assistantFocusLabel,

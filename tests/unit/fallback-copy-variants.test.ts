@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { DreInputCatalogLine } from '../../src/features/shared/portal.types';
 import {
+  ASSISTANT_FALLBACK_COPY_VARIANTS,
   buildFallbackCopySeed,
   pickFallbackCopy,
   runLocalAssistantTurn,
@@ -18,6 +19,29 @@ const line = (over: Partial<DreInputCatalogLine> & Pick<DreInputCatalogLine, 'li
   input_mode: over.input_mode ?? 'currency',
   value_currency: null,
   notes: null,
+});
+
+describe('ASSISTANT_FALLBACK_COPY_VARIANTS', () => {
+  it('cada intent mantém pelo menos 2 variantes (pools 2–3)', () => {
+    for (const [, lines] of Object.entries(ASSISTANT_FALLBACK_COPY_VARIANTS)) {
+      expect(lines.length).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it('ui_realign_banner e explain_continue_anchor_focus variam entre sementes', () => {
+    const setUi = new Set<string>();
+    const setAnchor = new Set<string>();
+    for (let i = 0; i < 30; i++) {
+      setUi.add(
+        pickFallbackCopy('ui_realign_banner', `line|step|${i}`, { step: `Passo ${i}` }),
+      );
+      setAnchor.add(
+        pickFallbackCopy('explain_continue_anchor_focus', `u${i}`, { field: 'Taxa com Cartões' }),
+      );
+    }
+    expect(setUi.size).toBeGreaterThan(1);
+    expect(setAnchor.size).toBeGreaterThan(1);
+  });
 });
 
 describe('pickFallbackCopy', () => {

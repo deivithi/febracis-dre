@@ -21,11 +21,13 @@ import {
   runDeterministicCommand,
   runLocalAssistantTurn,
   isGuidedFlowContinuationMessage,
+  isGuidedFlowStatusQuestionMessage,
   shouldUseDeterministicAssistantTurn,
   stripCalculatedMetricClaimsFromAnswer,
   stripInternalLineCodesFromUserText,
   extractPersonaCandidatesFromTurn,
   mergeCitationsForBitterPrompt,
+  runGuidedFlowStatusQuestionTurn,
   type DreAssistantCitation,
   type DreAssistantTurnResult,
   type FlowCheckpoint,
@@ -1870,6 +1872,7 @@ async function dreAgentHandlerCore(req: AgentApiRequest, res: AgentApiResponse) 
         currentLineCode,
         explainOnly,
         conversationContext: context.agentConversationContext,
+        skippedLineCodes: skippedSeed,
       });
       result = sanitizeResult(
         {
@@ -1893,6 +1896,38 @@ async function dreAgentHandlerCore(req: AgentApiRequest, res: AgentApiResponse) 
         intent: 'continue_guided',
         bypass: 'langgraph',
       });
+    } else if (isGuidedFlowStatusQuestionMessage(chatBody.message)) {
+      const { turn, drePhase } = runGuidedFlowStatusQuestionTurn({
+        lines: context.lines,
+        currentValues: context.currentValues,
+        guidedLineCode: currentLineCode,
+        skippedLineCodes: skippedSeed,
+      });
+      result = sanitizeResult(
+        {
+          ...turn,
+          telemetry: telemetryDeterministic(),
+        },
+        context.lines,
+        context.currentValues,
+        explainOnly,
+        skippedOpts,
+      );
+      if (drePhase != null) {
+        sessionStatePatch.dre_phase = drePhase;
+      }
+
+      logJson({
+        ...ctx,
+        level: 'info',
+        msg: 'dre_agent_turn',
+        event: 'dre_agent_turn',
+        sessionId: chatBody.sessionId,
+        submissionId: chatBody.submissionId,
+        ok: true,
+        intent: 'guided_where_am_i_nl',
+        bypass: 'langgraph',
+      });
     } else if (classifyDreUserIntent(chatBody.message) === 'off_topic') {
       const rawLocal = runLocalAssistantTurn({
         message: chatBody.message,
@@ -1901,6 +1936,7 @@ async function dreAgentHandlerCore(req: AgentApiRequest, res: AgentApiResponse) 
         currentLineCode,
         explainOnly,
         conversationContext: context.agentConversationContext,
+        skippedLineCodes: skippedSeed,
       });
       result = sanitizeResult(
         {
