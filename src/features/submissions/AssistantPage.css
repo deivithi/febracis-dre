@@ -72,3 +72,38 @@
   line-height: 1.45;
   color: var(--text-muted, #64748b);
 }
+
+/* Hub `/app/assistant`: só segmentos + área de chat */
+.assistant-hub-page--minimal {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+}
+
+.assistant-hub-workbench-minimal {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.assistant-hub-workbench-minimal .submission-workbench__main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.assistant-hub-workbench-minimal .dre-assistant__shell {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.assistant-hub-workbench-minimal .dre-assistant__thread-wrap {
+  flex: 1;
+  min-height: 12rem;
+}

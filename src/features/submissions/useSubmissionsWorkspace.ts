@@ -29,12 +29,14 @@ import { sanitizeLegacySyntheticSubmissionNotes } from '../../lib/submissionNote
 import { resolveAssistantInteractionMode, type AssistantProductTab } from './agentPermissions';
 import {
   buildQuestionForLine,
+  bubbleCoversAssistantStepHint,
   findNextGuidedLine,
   getFieldGuide,
   parseFlowCheckpointFromState,
   parseDrePhaseFromState,
   parseProposedAssistantValueFromState,
   parseSkippedLineCodesFromState,
+  pickUiRealignBannerHint,
   stripInternalLineCodesFromUserText,
   type DreAssistantTurnResult,
 } from './dreAssistant';
@@ -347,16 +349,6 @@ export function useSubmissionsWorkspace(opts?: SubmissionsWorkspaceOptions) {
     };
     return labels[storedFlowCheckpoint.phase] ?? null;
   }, [storedFlowCheckpoint]);
-  const assistantRealignHint = useMemo(() => {
-    if (!storedFlowCheckpoint || storedFlowCheckpoint.last_user_intent !== 'off_topic') {
-      return null;
-    }
-    const stepText = assistantNextPrompt ?? assistantFocusLabel;
-    if (!stepText) {
-      return 'Esse tema fica fora do escopo da DRE. Retomo o acompanhamento do formulário.';
-    }
-    return `Esse tema fica fora do escopo da DRE. Próximo passo sugerido: ${stepText}`;
-  }, [storedFlowCheckpoint, assistantNextPrompt, assistantFocusLabel]);
   const filledInputCount = !workspaceQuery.data?.inputLines.length
     ? 0
     : workspaceQuery.data.inputLines.filter((line) => {
@@ -374,6 +366,24 @@ export function useSubmissionsWorkspace(opts?: SubmissionsWorkspaceOptions) {
   const lastAssistantMessage = [...assistantMessages]
     .reverse()
     .find((message) => message.role === 'assistant');
+  const assistantRealignHint = useMemo(() => {
+    if (!storedFlowCheckpoint || storedFlowCheckpoint.last_user_intent !== 'off_topic') {
+      return null;
+    }
+    const stepText = assistantNextPrompt ?? assistantFocusLabel;
+    const bubble = lastAssistantMessage?.content ?? '';
+    if (bubbleCoversAssistantStepHint(bubble, stepText)) {
+      return null;
+    }
+    const seed = `${assistantFocusLine?.line_code ?? 'none'}|${stepText ?? ''}`;
+    return pickUiRealignBannerHint(stepText, seed);
+  }, [
+    storedFlowCheckpoint,
+    assistantNextPrompt,
+    assistantFocusLabel,
+    assistantFocusLine?.line_code,
+    lastAssistantMessage?.content,
+  ]);
   const lastAssistantCitations = (lastAssistantMessage?.citations ?? []).map((citation) => ({
     title: citation.title,
     source: citation.source,

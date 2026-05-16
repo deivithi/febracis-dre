@@ -20,6 +20,7 @@ import {
   retrieveRelevantAssistantKnowledge,
   runDeterministicCommand,
   runLocalAssistantTurn,
+  isGuidedFlowContinuationMessage,
   shouldUseDeterministicAssistantTurn,
   stripCalculatedMetricClaimsFromAnswer,
   stripInternalLineCodesFromUserText,
@@ -1860,6 +1861,37 @@ async function dreAgentHandlerCore(req: AgentApiRequest, res: AgentApiResponse) 
         sessionId: chatBody.sessionId,
         submissionId: chatBody.submissionId,
         interaction_mode: explainOnly ? 'explain_only' : 'full',
+      });
+    } else if (isGuidedFlowContinuationMessage(chatBody.message)) {
+      const rawLocal = runLocalAssistantTurn({
+        message: chatBody.message,
+        lines: context.lines,
+        currentValues: context.currentValues,
+        currentLineCode,
+        explainOnly,
+        conversationContext: context.agentConversationContext,
+      });
+      result = sanitizeResult(
+        {
+          ...rawLocal,
+          telemetry: telemetryDeterministic(),
+        },
+        context.lines,
+        context.currentValues,
+        explainOnly,
+        skippedOpts,
+      );
+
+      logJson({
+        ...ctx,
+        level: 'info',
+        msg: 'dre_agent_turn',
+        event: 'dre_agent_turn',
+        sessionId: chatBody.sessionId,
+        submissionId: chatBody.submissionId,
+        ok: true,
+        intent: 'continue_guided',
+        bypass: 'langgraph',
       });
     } else if (classifyDreUserIntent(chatBody.message) === 'off_topic') {
       const rawLocal = runLocalAssistantTurn({

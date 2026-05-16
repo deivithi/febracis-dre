@@ -1,16 +1,7 @@
-import { Bot } from 'lucide-react';
-import { useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useBreadcrumb } from '../../layouts/app/BreadcrumbContext';
 import { AssistantDock } from './components/AssistantDock';
-import { SubmissionKpiSection } from './components/SubmissionKpiSection';
-import { SubmissionToolbar } from './components/SubmissionToolbar';
-import { SubmissionCatalogInputList } from './components/SubmissionCatalogInputList';
-import { SubmissionsScopeTable } from './components/SubmissionsScopeTable';
 import { useSubmissionsWorkspace } from './useSubmissionsWorkspace';
 import type { AssistantProductTab } from './agentPermissions';
-import { formatPeriodLabel } from '../../utils/formatters';
-import { useAuth } from '../auth/useAuth';
 import './SubmissionsPage.css';
 import './AssistantPage.css';
 
@@ -20,9 +11,6 @@ function parseProductTab(searchParams: URLSearchParams): AssistantProductTab {
 
 export function AssistantPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { session } = useAuth();
-  const inlineAssistantFeatureOn =
-    import.meta.env.VITE_INLINE_ASSISTANT === '1' || import.meta.env.VITE_INLINE_ASSISTANT === 'true';
 
   const submissionFromUrl = searchParams.get('submission');
   const productTab = parseProductTab(searchParams);
@@ -42,56 +30,10 @@ export function AssistantPage() {
     );
   };
 
-  const clearSubmissionParam = () => {
-    setSearchParams(
-      (prev) => {
-        const p = new URLSearchParams(prev);
-        p.delete('submission');
-        return p;
-      },
-      { replace: true },
-    );
-  };
-
-  const setSubmissionParam = (submissionId: string) => {
-    setSearchParams(
-      (prev) => {
-        const p = new URLSearchParams(prev);
-        p.set('submission', submissionId);
-        return p;
-      },
-      { replace: true },
-    );
-  };
-
   const w = useSubmissionsWorkspace({
     routeSubmissionId: submissionFromUrl,
     assistantProductTab: productTab,
   });
-
-  const assistantBreadcrumbSegments = useMemo(() => {
-    if (!w.access || !w.franchisesQuery.data?.length || !w.periodsQuery.data?.length || !w.submissionsQuery.data) {
-      return [];
-    }
-    const franchiseLabel = w.selectedFranchise?.trade_name ?? 'Franquia';
-    const periodLabel = w.selectedPeriod ? formatPeriodLabel(w.selectedPeriod.label) : 'Período';
-    const modeSuffix = productTab === 'duvidas' ? 'Dúvidas' : 'Preencher';
-    return [
-      { label: 'Portal', href: '/app/dashboard' },
-      { label: 'Assistente', href: '/app/assistant' },
-      { label: `${franchiseLabel} · ${periodLabel} (${modeSuffix})` },
-    ];
-  }, [
-    w.access,
-    w.franchisesQuery.data,
-    w.periodsQuery.data,
-    w.submissionsQuery.data,
-    w.selectedFranchise,
-    w.selectedPeriod,
-    productTab,
-  ]);
-
-  useBreadcrumb(assistantBreadcrumbSegments);
 
   if (
     w.accessProfileQuery.isLoading ||
@@ -123,41 +65,19 @@ export function AssistantPage() {
 
   if (w.franchisesQuery.data.length === 0) {
     return (
-      <div className="page-stack submissions-page-root">
-        <div className="page-container__title-bar">
-          <div>
-            <h1 className="page-container__title">Assistente DRE</h1>
-            <p className="page-container__subtitle">Nenhuma franquia disponível no seu escopo.</p>
-          </div>
+      <div className="page-stack submissions-page-root assistant-hub-page assistant-hub-page--minimal">
+        <div className="inline-message" role="status">
+          Nenhuma franquia disponível no seu escopo para o assistente.
         </div>
       </div>
     );
   }
 
-  const currentRows = w.submissionsQuery.data;
-  const approvedCount = currentRows.filter((row) => row.status === 'approved').length;
-  const pendingCount = currentRows.filter((row) =>
-    ['submitted', 'under_review', 'pending_adjustment'].includes(row.status),
-  ).length;
-
-  const franchiseLabel = w.selectedFranchise?.trade_name ?? 'Franquia';
-  const periodLabel = w.selectedPeriod ? formatPeriodLabel(w.selectedPeriod.label) : 'Período';
-
   return (
-    <div className="page-stack submissions-page-root assistant-hub-page" data-testid="assistant-page">
-      <div className="page-container__title-bar">
-        <div>
-          <h1 className="page-container__title">
-            <Bot className="assistant-hub-page__title-icon" size={28} aria-hidden />
-            Assistente DRE
-          </h1>
-          <p className="page-container__subtitle">
-            Converse com o assistente para entender cada linha da DRE ou preencher passo a passo. Os números aqui
-            são os mesmos que aparecem em <strong>Submissões</strong> — escolha onde é mais confortável trabalhar.
-          </p>
-        </div>
-      </div>
-
+    <div
+      className="page-stack submissions-page-root assistant-hub-page assistant-hub-page--minimal"
+      data-testid="assistant-page"
+    >
       <div className="assistant-hub-segment" role="group" aria-label="Modo do assistente">
         <button
           type="button"
@@ -177,60 +97,17 @@ export function AssistantPage() {
         </button>
       </div>
 
-      <p className="assistant-hub-context" role="status">
-        <strong>Você está em:</strong> {franchiseLabel} · competência {periodLabel}
-        {productTab === 'duvidas'
-          ? ' — modo orientação. O assistente explica cada linha da DRE; nada é gravado por aqui.'
-          : ' — modo preenchimento guiado. O assistente sugere valores; você confirma e grava o rascunho como na grelha de Submissões.'}
-      </p>
-
-      <SubmissionToolbar
-        resolvedFranchiseId={w.resolvedFranchiseId}
-        resolvedPeriodId={w.resolvedPeriodId}
-        effectiveEventId={w.effectiveEventId}
-        franchiseRows={w.franchisesQuery.data}
-        periodRows={w.periodsQuery.data}
-        eventRows={w.eventsQuery.data}
-        currentSubmissionLocked={w.currentSubmissionLocked}
-        canPrepareDraft={w.canPrepareDraft}
-        draftActionLabel={w.draftActionLabel}
-        onFranchiseChange={(id) => {
-          w.setSelectedFranchiseId(id);
-          w.setSubmissionFocusId(null);
-          w.setEditingSubmissionId(null);
-          w.setSelectedEventId('');
-          clearSubmissionParam();
-        }}
-        onPeriodChange={(id) => {
-          w.setSelectedPeriodId(id);
-          w.setSubmissionFocusId(null);
-          w.setEditingSubmissionId(null);
-          w.setSelectedEventId('');
-          clearSubmissionParam();
-        }}
-        onEventChange={w.setSelectedEventId}
-        onCreateDraft={() => w.createDraftMutation.mutate()}
-        isCreatingDraft={w.createDraftMutation.isPending}
-      />
-
       {w.currentErrorMessage ? (
         <div className="inline-message inline-message--danger">{w.currentErrorMessage}</div>
       ) : null}
-
-      <SubmissionKpiSection
-        totalCount={currentRows.length}
-        approvedCount={approvedCount}
-        pendingCount={pendingCount}
-        preview={w.preview}
-        draftSummary={w.draftValidation}
-      />
 
       {w.assistantErrorMessage ? (
         <div className="inline-message inline-message--danger">{w.assistantErrorMessage}</div>
       ) : null}
 
-      <div className="submission-workbench" data-testid="assistant-hub-workbench">
+      <div className="assistant-hub-workbench-minimal" data-testid="assistant-hub-workbench">
         <AssistantDock
+          hubMinimalLayout
           mobileWorkspaceTab="chat"
           activeSubmissionId={w.activeSubmissionId}
           canEdit={w.canEdit}
@@ -244,6 +121,9 @@ export function AssistantPage() {
             enabled: w.assistantEnabled,
             loading: w.agentSessionQuery.isLoading || w.agentMessagesQuery.isLoading,
             pending: w.assistantMutation.isPending,
+            workspaceBootstrapPending: Boolean(
+              w.activeSubmissionId && w.workspaceQuery.isLoading && !w.workspaceQuery.data,
+            ),
             focusLabel: w.assistantFocusLabel,
             focusLine: w.assistantFocusLine,
             catalogLines: w.workspaceQuery.data?.inputLines ?? [],
@@ -274,45 +154,6 @@ export function AssistantPage() {
           }}
         />
       </div>
-
-      <SubmissionCatalogInputList
-        submissionId={w.activeSubmissionId}
-        lines={w.workspaceQuery.data?.inputLines ?? []}
-        lineValueMap={w.effectiveLineValues}
-        isFinanceController={w.isFinanceController}
-        currentUserId={w.currentUserId}
-        workspaceLoading={w.workspaceQuery.isLoading}
-        canEditActiveSubmission={w.canEditActiveSubmission}
-        inlineAssistantEnabled={inlineAssistantFeatureOn && w.assistantEnabled && productTab === 'preencher'}
-        accessToken={session?.access_token ?? null}
-        onPatchLineValue={w.patchDraftLineValue}
-      />
-
-      <SubmissionsScopeTable
-        rows={currentRows}
-        activeSubmissionId={w.activeSubmissionId}
-        getAssistantHref={(row) => {
-          const p = new URLSearchParams();
-          p.set('submission', row.submission_id);
-          if (productTab === 'duvidas') {
-            p.set('tab', 'duvidas');
-          }
-          return `/app/assistant?${p.toString()}`;
-        }}
-        onSelectRow={(row) => {
-          w.setSelectedFranchiseId(row.franchise_id);
-          w.setSelectedPeriodId(row.reporting_period_id);
-          w.setSubmissionFocusId(row.submission_id);
-          w.setEditingSubmissionId(null);
-          w.setSelectedEventId('');
-          setSubmissionParam(row.submission_id);
-        }}
-      />
-
-      <p className="assistant-hub-footer-hint">
-        Os valores e o rascunho desta submissão são os mesmos em <strong>Submissões</strong> (grelha) e aqui —
-        uma única fonte na API; o chat guiado ficou neste hub.
-      </p>
     </div>
   );
 }

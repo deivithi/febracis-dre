@@ -76,6 +76,10 @@ export interface DreAssistantPanelProps {
   submitPending: boolean;
   /** Submissão em estado de workflow bloqueado (ex.: em revisão) — esmaece o bloco de workspace guiado sem bloquear o chat. */
   workspaceLocked?: boolean;
+  /** Hub `/app/assistant`: apenas thread + compositor (sem rail guiado, hero ou extras). */
+  minimalHubLayout?: boolean;
+  /** Submissão referenciada mas snapshot do workspace ainda a carregar (evita cópia enganosa no estado vazio). */
+  workspaceBootstrapPending?: boolean;
 }
 
 /** Altura máxima do textarea (~8 linhas) em px, alinhada ao line-height do composer. */
@@ -118,6 +122,8 @@ export function DreAssistantPanel({
   savePending,
   submitPending,
   workspaceLocked = false,
+  minimalHubLayout = false,
+  workspaceBootstrapPending = false,
 }: DreAssistantPanelProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [keypadOpen, setKeypadOpen] = useState(false);
@@ -204,8 +210,71 @@ export function DreAssistantPanel({
 
   const nextFieldSummary = focusGuide?.label ?? focusLabel ?? '—';
 
+  const hitlConfirmCard =
+    proposedValue && interactionMode === 'full' ? (
+      <div className="dre-assistant__hitl-card" role="region" aria-label="Confirmação de valor proposto">
+        <p className="dre-assistant__hitl-text">
+          <strong>Proposta pendente:</strong> {formatBrl(proposedValue.amount)}
+          {proposedLine ? ` → ${proposedLine.line_name}` : ` → ${proposedValue.line_code}`}
+        </p>
+        <div className="dre-assistant__hitl-actions">
+          <button
+            type="button"
+            className="btn btn--gold"
+            data-testid="dre-assistant-hitl-confirm"
+            disabled={!canEditActiveSubmission || toolbarDisabled}
+            onClick={() => onCommand('cmd:confirm_value')}
+          >
+            Confirmar
+          </button>
+          <button
+            type="button"
+            className="btn btn--ghost"
+            disabled={toolbarDisabled}
+            onClick={() => onCommand('cmd:reject_value')}
+          >
+            Editar / cancelar
+          </button>
+        </div>
+      </div>
+    ) : null;
+
+  const slimPersistToolbar =
+    minimalHubLayout && interactionMode === 'full' && enabled ? (
+      <div className="dre-assistant__minimal-persist" role="toolbar" aria-label="Gravar submissão">
+        <button
+          type="button"
+          className="btn btn--compact"
+          disabled={!canEditActiveSubmission || savePending || toolbarDisabled}
+          onClick={() => onSaveDraft()}
+        >
+          {savePending ? 'A gravar…' : 'Salvar rascunho'}
+        </button>
+        <button
+          type="button"
+          className="btn btn--gold btn--compact"
+          disabled={!canEditActiveSubmission || submitPending || toolbarDisabled}
+          onClick={() => onSubmitReview()}
+        >
+          {submitPending ? 'A enviar…' : 'Submeter revisão'}
+        </button>
+      </div>
+    ) : null;
+
   return (
-    <div className="card card--accent dre-assistant dre-assistant--hero">
+    <div
+      className={`card card--accent dre-assistant dre-assistant--hero${minimalHubLayout ? ' dre-assistant--minimal-hub' : ''}`}
+    >
+      {minimalHubLayout ? (
+        agentMode === 'fallback' ? (
+          <div
+            className="inline-message inline-message--warning dre-assistant__mode-banner dre-assistant__mode-banner--hub"
+            role="status"
+          >
+            Respostas neste momento seguem o roteiro local (catálogo e regras fixas), sem chamada ao modelo remoto.
+          </div>
+        ) : null
+      ) : (
       <div className="dre-assistant__hero-top dre-assistant__hero-top--compact">
         <div className="dre-assistant__hero-title-row">
           <span className="badge badge--gold">Assistente DRE</span>
@@ -248,24 +317,38 @@ export function DreAssistantPanel({
           </div>
         </div>
       </div>
+      )}
 
       <div className="card__body dre-assistant__body dre-assistant__body--chat">
         {!enabled ? (
-          <div className="dre-assistant__empty">
-            <div className="dre-assistant__empty-icon">
-              <ScrollText aria-hidden />
+          workspaceBootstrapPending ? (
+            <div className="dre-assistant__thread-placeholder">
+              <div className="inline-message">A carregar a submissão…</div>
             </div>
-            <h4>Abra um rascunho para usar o painel de orientação</h4>
-            <p>
-              Com uma submissão ativa, indico o próximo campo, o formato esperado e mantenho o histórico desta
-              submissão — em linha com o catálogo e as validações oficiais.
-            </p>
-          </div>
+          ) : (
+            <div className="dre-assistant__empty">
+              <div className="dre-assistant__empty-icon">
+                <ScrollText aria-hidden />
+              </div>
+              <h4>Abra um rascunho para usar o painel de orientação</h4>
+              <p>
+                Com uma submissão ativa, indico o próximo campo, o formato esperado e mantenho o histórico desta
+                submissão — em linha com o catálogo e as validações oficiais.
+              </p>
+            </div>
+          )
         ) : (
           <div className="dre-assistant__shell">
-            <p className="dre-assistant__panel-summary" role="status">
-              Painel guiado · Fase {activePhaseId} · próximo campo: {nextFieldSummary} · {progressLabel}
-            </p>
+            {minimalHubLayout && workspaceLocked ? (
+              <div className="inline-message dre-assistant__minimal-lock-hint" role="status">
+                Submissão bloqueada para edição — o chat continua disponível para orientação.
+              </div>
+            ) : null}
+            {!minimalHubLayout ? (
+              <>
+                <p className="dre-assistant__panel-summary" role="status">
+                  Painel guiado · Fase {activePhaseId} · próximo campo: {nextFieldSummary} · {progressLabel}
+                </p>
             <div className={lockedWorkspaceClass}>
             <details
               className="dre-assistant__guided-panel"
@@ -406,33 +489,7 @@ export function DreAssistantPanel({
               ) : null}
             </section>
 
-            {proposedValue && interactionMode === 'full' ? (
-              <div className="dre-assistant__hitl-card" role="region" aria-label="Confirmação de valor proposto">
-                <p className="dre-assistant__hitl-text">
-                  <strong>Proposta pendente:</strong> {formatBrl(proposedValue.amount)}
-                  {proposedLine ? ` → ${proposedLine.line_name}` : ` → ${proposedValue.line_code}`}
-                </p>
-                <div className="dre-assistant__hitl-actions">
-                  <button
-                    type="button"
-                    className="btn btn--gold"
-                    data-testid="dre-assistant-hitl-confirm"
-                    disabled={!canEditActiveSubmission || toolbarDisabled}
-                    onClick={() => onCommand('cmd:confirm_value')}
-                  >
-                    Confirmar
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn--ghost"
-                    disabled={toolbarDisabled}
-                    onClick={() => onCommand('cmd:reject_value')}
-                  >
-                    Editar / cancelar
-                  </button>
-                </div>
-              </div>
-            ) : null}
+            {!minimalHubLayout ? hitlConfirmCard : null}
 
             <div className="dre-assistant__toolbar" role="toolbar" aria-label="Navegação guiada da DRE">
               <button
@@ -509,6 +566,10 @@ export function DreAssistantPanel({
               </div>
             </details>
             </div>
+              </>
+            ) : null}
+
+            {minimalHubLayout ? hitlConfirmCard : null}
 
             <AssistantChat
               loading={loading}
@@ -517,38 +578,45 @@ export function DreAssistantPanel({
               pending={pending}
               realignHint={realignHint}
               interactionMode={interactionMode}
+              minimalHubCopy={minimalHubLayout}
               onCommand={onCommand}
             />
 
-            {lastCitations.length > 0 ? (
-              <details className="dre-assistant__citations-details">
-                <summary className="dre-assistant__citations-summary">
-                  <BookOpenText size={15} aria-hidden />
-                  Base de conhecimento usada (última resposta)
-                </summary>
-                <div className="dre-assistant__citation-list">
-                  {lastCitations.map((citation) => (
-                    <div key={`${citation.source}-${citation.title}`} className="dre-assistant__citation">
-                      <strong>{citation.title}</strong>
-                      <span>{citation.source}</span>
+            {slimPersistToolbar}
+
+            {!minimalHubLayout ? (
+              <>
+                {lastCitations.length > 0 ? (
+                  <details className="dre-assistant__citations-details">
+                    <summary className="dre-assistant__citations-summary">
+                      <BookOpenText size={15} aria-hidden />
+                      Base de conhecimento usada (última resposta)
+                    </summary>
+                    <div className="dre-assistant__citation-list">
+                      {lastCitations.map((citation) => (
+                        <div key={`${citation.source}-${citation.title}`} className="dre-assistant__citation">
+                          <strong>{citation.title}</strong>
+                          <span>{citation.source}</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </details>
+                  </details>
+                ) : null}
+                <details className="dre-assistant__citations-details dre-assistant__glossary-details">
+                  <summary className="dre-assistant__citations-summary">
+                    <BookOpenText size={15} aria-hidden />
+                    Glossário DRE (referências)
+                  </summary>
+                  <div className="dre-assistant__glossary-excerpt">
+                    <pre>{GLOSSARY_EXCERPT}</pre>
+                    <p className="dre-assistant__glossary-hint">
+                      Documento completo: <code>docs/dre-glossario.md</code> no repositório — placeholder para revisão
+                      Febracis Controladoria.
+                    </p>
+                  </div>
+                </details>
+              </>
             ) : null}
-            <details className="dre-assistant__citations-details dre-assistant__glossary-details">
-              <summary className="dre-assistant__citations-summary">
-                <BookOpenText size={15} aria-hidden />
-                Glossário DRE (referências)
-              </summary>
-              <div className="dre-assistant__glossary-excerpt">
-                <pre>{GLOSSARY_EXCERPT}</pre>
-                <p className="dre-assistant__glossary-hint">
-                  Documento completo: <code>docs/dre-glossario.md</code> no repositório — placeholder para revisão
-                  Febracis Controladoria.
-                </p>
-              </div>
-            </details>
 
             <div
               className={`dre-assistant__composer-dock ${pending ? 'dre-assistant__composer-dock--pending' : ''}`}

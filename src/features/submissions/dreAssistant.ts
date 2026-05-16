@@ -404,6 +404,7 @@ export const ASSISTANT_REPLY_FORMAT_HINT =
 
 export type DreAssistantFallbackCopyIntent =
   | 'explain_off_topic'
+  | 'explain_continue_guided'
   | 'explain_greeting'
   | 'explain_save_readonly'
   | 'explain_skip_readonly'
@@ -411,9 +412,12 @@ export type DreAssistantFallbackCopyIntent =
   | 'explain_fallback'
   | 'explain_field_tail'
   | 'full_off_topic'
+  | 'full_continue_guided'
   | 'full_greeting_with_franchise'
   | 'full_greeting_generic'
-  | 'full_default_guided';
+  | 'full_default_guided'
+  | 'ui_realign_banner'
+  | 'ui_realign_banner_no_step';
 
 function hashFallbackSeed(s: string): number {
   let h = 5381;
@@ -435,9 +439,14 @@ export function pickFallbackCopy(
 ): string {
   const VARIANTS: Record<DreAssistantFallbackCopyIntent, readonly string[]> = {
     explain_off_topic: [
-      'Aqui o foco é só a DRE deste período — campos, ordem e regras Febracis. {{realign}}',
-      'Consigo ajudar melhor quando falamos da planilha: o que preencher, onde, e por quê. {{realign}}',
-      'Vamos manter o assunto na DRE desta competência; é aí que faço diferença. {{realign}}',
+      'Por aqui eu acompanho só a DRE deste período — campos, ordem e regras Febracis. {{realign}}',
+      'Para eu ser mais útil, vamos pela planilha: o que preencher, onde e por quê. {{realign}}',
+      'Vamos manter o papo na DRE desta competência — é o meu melhor jeito de ajudar. {{realign}}',
+    ],
+    explain_continue_guided: [
+      'Combinado. {{anchor}}',
+      'Ótimo — seguimos juntos. {{anchor}}',
+      'Perfeito, vamos em frente. {{anchor}}',
     ],
     explain_greeting: [
       'Sou o agente de apoio à DRE da Febracis. Neste modo você só olha: explico campos, fases e regras de envio. Quem digita valores na submissão é quem tem permissão de operação na unidade — daqui não altero números nem salvo rascunho.',
@@ -466,6 +475,12 @@ export function pickFallbackCopy(
     full_off_topic: [
       'Voltando à DRE deste período. {{anchor}}',
       'Seguimos com o preenchimento da planilha. {{anchor}}',
+      'Sem problema — retomo o roteiro com você. {{anchor}}',
+    ],
+    full_continue_guided: [
+      'Combinado — seguimos no roteiro. {{anchor}}',
+      'Ótimo, vamos ao próximo passo. {{anchor}}',
+      'Perfeito. {{anchor}}',
     ],
     full_greeting_with_franchise: [
       '{{identity}}Vamos com calma na DRE{{period}}{{city}} da unidade «{{trade}}». Um campo de cada vez, em reais; MC1, MC2 e EBITDA o sistema recalcula quando você confirma os valores.',
@@ -478,6 +493,15 @@ export function pickFallbackCopy(
     full_default_guided: [
       'Seguimos a ordem oficial da planilha. {{hint}} O que você mandar entra nos campos da DRE e o painel ao lado acompanha o resultado.',
       'Vou te guiando no roteiro canónico da DRE. {{hint}} Use a caixa de mensagem para valores em reais ou peça explicação de campo quando precisar.',
+    ],
+    ui_realign_banner: [
+      'Sugestão do roteiro: {{step}}',
+      'Podemos seguir por aqui: {{step}}',
+      'Retomo o passo da planilha: {{step}}',
+    ],
+    ui_realign_banner_no_step: [
+      'Quando quiser, seguimos pelo roteiro da DRE no painel ao lado.',
+      'À vontade para retomar o passo a passo da planilha quando fizer sentido.',
     ],
   };
 
@@ -520,6 +544,44 @@ export function stripInternalLineCodesFromUserText(
   }
   out = out.replace(/\s*\([a-z][a-z0-9_]*(?:_[a-z0-9_]+)+\)/gi, '');
   return out.replace(/\s{2,}/g, ' ').trim();
+}
+
+function normalizeHintComparableText(value: string): string {
+  return normalizeText(value)
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Evita faixa de status redundante quando a última bolha do assistente já traz o mesmo passo sugerido.
+ */
+export function bubbleCoversAssistantStepHint(bubbleContent: string, stepText: string | null | undefined): boolean {
+  if (!stepText || stepText.trim().length < 6) {
+    return false;
+  }
+  const bubble = normalizeHintComparableText(bubbleContent);
+  const step = normalizeHintComparableText(stepText);
+  if (!bubble || !step) {
+    return false;
+  }
+  if (bubble.includes(step)) {
+    return true;
+  }
+  const tokens = step.split(/\s+/).filter((word) => word.length >= 4);
+  if (tokens.length === 0) {
+    return false;
+  }
+  return tokens.every((word) => bubble.includes(word));
+}
+
+/** Copy curta para faixa de realinhamento na UI (tom acolhedor, sem repetir a bolha). */
+export function pickUiRealignBannerHint(stepText: string | null | undefined, seed: string): string {
+  const trimmed = stepText?.trim() ?? '';
+  if (!trimmed) {
+    return pickFallbackCopy('ui_realign_banner_no_step', seed, {});
+  }
+  return pickFallbackCopy('ui_realign_banner', seed, { step: trimmed });
 }
 
 /**
@@ -1644,6 +1706,62 @@ function isGreetingOrStartFlow(normalizedMessage: string) {
 /** Limite de mensagens recentes enviadas ao modelo (histórico no prompt). */
 export const AGENT_MESSAGE_HISTORY_LIMIT = 32;
 
+/**
+ * Mensagens curtas de continuidade no fluxo guiado (evita disparar o guarda de “fora do tema”).
+ */
+export function isGuidedFlowContinuationMessage(rawMessage: string): boolean {
+  const n = normalizeText(rawMessage);
+  if (n.length > 72) {
+    return false;
+  }
+
+  const trimmed = n.replace(/[?!.]+$/u, '').trim();
+
+  if (/^(ok|sim|blz|beleza|bora|dale|vamos|uhum|aham)\s*$/u.test(trimmed)) {
+    return true;
+  }
+  if (/^(ok|sim)\s+(vamos|bora)\s*$/u.test(trimmed)) {
+    return true;
+  }
+
+  const phrases = [
+    'vamos continuar',
+    'vamos seguir',
+    'podemos continuar',
+    'pode continuar',
+    'seguimos',
+    'sigamos',
+    'proximo passo',
+    'próximo passo',
+    'proximos passos',
+    'next step',
+    'lets go',
+    'seguir em frente',
+    'em frente',
+    'avancar',
+    'avançar',
+    'prosseguir',
+    'vamos la',
+    'vamos lá',
+    'manda ver',
+    'pode seguir',
+    'continua ai',
+    'continua aí',
+    'seguimos assim',
+    'seguir assim',
+  ];
+
+  if (phrases.some((phrase) => n.includes(phrase))) {
+    return true;
+  }
+
+  if (/^continuar\s*[?!.]?$/u.test(n) || n === 'continuar') {
+    return true;
+  }
+
+  return false;
+}
+
 export type DreUserIntentCategory = 'dre_on_topic' | 'off_topic';
 
 export type FlowCheckpointUserIntent = 'greeting' | 'numeric_value' | 'dre_question' | 'off_topic' | 'other';
@@ -1660,6 +1778,10 @@ export interface FlowCheckpoint {
 export function classifyDreUserIntent(rawMessage: string): DreUserIntentCategory {
   const n = normalizeText(rawMessage);
   if (n.length > 400) {
+    return 'dre_on_topic';
+  }
+
+  if (isGuidedFlowContinuationMessage(rawMessage)) {
     return 'dre_on_topic';
   }
 
@@ -1754,6 +1876,8 @@ export function buildFlowCheckpoint(input: {
 
   if (isGreetingOrStartFlow(n)) {
     lastUserIntent = 'greeting';
+  } else if (isGuidedFlowContinuationMessage(input.userMessage)) {
+    lastUserIntent = 'other';
   } else if (classifyDreUserIntent(input.userMessage) === 'off_topic') {
     lastUserIntent = 'off_topic';
   } else if (parseAssistantCurrencyReply(input.userMessage) !== null) {
@@ -1939,6 +2063,9 @@ export function shouldUseDeterministicAssistantTurn(message: string): boolean {
   if (isGreetingOrStartFlow(n)) {
     return true;
   }
+  if (isGuidedFlowContinuationMessage(trimmed)) {
+    return true;
+  }
   if (classifyDreUserIntent(trimmed) === 'off_topic') {
     return true;
   }
@@ -1970,6 +2097,24 @@ function runLocalAssistantTurnExplainOnly(input: {
       nextPrompt: nextLine
         ? `Quer que eu explique o campo “${nextLine.line_name}” ou outro da lista?`
         : null,
+      requestSave: false,
+      requestSubmit: false,
+      mode: 'fallback',
+    };
+  }
+
+  if (isGuidedFlowContinuationMessage(input.message)) {
+    const helpLine = focusLine ?? nextLine;
+    const contSeed = buildFallbackCopySeed(input.message, 'explain_continue_guided', helpLine?.line_code ?? null);
+    const anchorText = helpLine
+      ? `Posso detalhar «${helpLine.line_name}» ou outro campo — é só dizer qual.`
+      : 'Diga qual linha da DRE quer explorar ou peça o resumo da fase.';
+    return {
+      answer: pickFallbackCopy('explain_continue_guided', contSeed, { anchor: anchorText }),
+      citations: STATIC_KNOWLEDGE.slice(0, 1),
+      fieldUpdates: [],
+      focusLineCode: helpLine?.line_code ?? null,
+      nextPrompt: helpLine ? `Quer explicação sobre “${helpLine.line_name}”?` : null,
       requestSave: false,
       requestSubmit: false,
       mode: 'fallback',
@@ -2045,8 +2190,8 @@ function runLocalAssistantTurnExplainOnly(input: {
     const anchor = focusLine ?? nextLine;
     const seed = buildFallbackCopySeed(input.message, 'explain_off_topic', anchor?.line_code ?? null);
     const realign = anchor
-      ? `Voltemos a «${anchor.line_name}» — posso contar o que essa linha representa.`
-      : 'Pergunte por um campo da DRE ou pelo fluxo de submissão.';
+      ? `Se quiser, focamos em «${anchor.line_name}» — explico em linguagem simples.`
+      : 'Pergunte por um campo da lista ou pelo fluxo de envio da DRE.';
     return {
       answer: pickFallbackCopy('explain_off_topic', seed, { realign }),
       citations: STATIC_KNOWLEDGE.slice(0, 1),
@@ -2156,6 +2301,28 @@ export function runLocalAssistantTurn(input: {
       fieldUpdates: [],
       focusLineCode: nextLine?.line_code ?? null,
       nextPrompt: nextLine ? buildQuestionForLine(nextLine) : null,
+      requestSave: false,
+      requestSubmit: false,
+      mode: 'fallback',
+    };
+  }
+
+  if (isGuidedFlowContinuationMessage(input.message)) {
+    const anchor =
+      focusLine ??
+      findNextGuidedLine(input.lines, input.currentValues, input.currentLineCode ?? undefined) ??
+      input.lines[0] ??
+      null;
+    const contSeed = buildFallbackCopySeed(input.message, 'full_continue_guided', anchor?.line_code ?? null);
+    const anchorText = anchor
+      ? buildQuestionForLine(anchor)
+      : 'Envie o próximo valor em reais ou diga qual campo quer tratar.';
+    return {
+      answer: pickFallbackCopy('full_continue_guided', contSeed, { anchor: anchorText }),
+      citations: STATIC_KNOWLEDGE.slice(0, 1),
+      fieldUpdates: [],
+      focusLineCode: anchor?.line_code ?? null,
+      nextPrompt: anchor ? buildQuestionForLine(anchor) : null,
       requestSave: false,
       requestSubmit: false,
       mode: 'fallback',

@@ -11,6 +11,8 @@ import {
 type MobileWorkspaceTab = 'chat' | 'panel' | 'dre';
 
 export type AssistantDockProps = {
+  /** Hub `/app/assistant`: só painel de chat + dados essenciais (sem cartões laterais). */
+  hubMinimalLayout?: boolean;
   mobileWorkspaceTab: MobileWorkspaceTab;
   activeSubmissionId: string | null;
   canEdit: boolean;
@@ -27,6 +29,7 @@ export type AssistantDockProps = {
  * Coluna principal do workbench: assistente DRE + cartão de contexto da submissão.
  */
 export function AssistantDock({
+  hubMinimalLayout = false,
   mobileWorkspaceTab,
   activeSubmissionId,
   canEdit,
@@ -52,9 +55,9 @@ export function AssistantDock({
       className={`submission-workbench__main submission-workbench__panel ${mainColumnClass}`}
       data-testid="assistant-dock"
     >
-      <DreAssistantPanel {...panel} />
+      <DreAssistantPanel {...panel} minimalHubLayout={hubMinimalLayout} />
 
-      {!activeSubmissionId ? (
+      {hubMinimalLayout ? null : !activeSubmissionId ? (
         <Card variant="default">
           <div className="card__body">
             <div className="empty-state">

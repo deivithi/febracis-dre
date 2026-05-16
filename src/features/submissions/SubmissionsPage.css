@@ -557,6 +557,36 @@
   border-radius: var(--radius-xl);
 }
 
+.dre-assistant--minimal-hub {
+  border: none;
+  box-shadow: none;
+  background: transparent;
+}
+
+.dre-assistant--minimal-hub::before {
+  display: none;
+}
+
+.dre-assistant--minimal-hub .card__body.dre-assistant__body--chat {
+  padding: var(--space-2) 0;
+}
+
+.dre-assistant__minimal-persist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: flex-end;
+  padding: var(--space-2) 0 var(--space-1);
+}
+
+.dre-assistant__minimal-lock-hint {
+  margin-bottom: var(--space-2);
+}
+
+.dre-assistant__mode-banner--hub {
+  margin: 0 0 var(--space-3);
+}
+
 .dre-assistant__mode-banner {
   margin: var(--space-4) var(--space-6) 0;
   position: relative;

@@ -14,6 +14,8 @@ export interface AssistantChatProps {
   pending: boolean;
   realignHint: string | null;
   interactionMode: AssistantInteractionMode;
+  /** Hub `/app/assistant` minimalista — copy sem referência ao stepper lateral. */
+  minimalHubCopy?: boolean;
   onCommand: (command: string) => void;
 }
 
@@ -24,6 +26,7 @@ export function AssistantChat({
   pending,
   realignHint,
   interactionMode,
+  minimalHubCopy = false,
   onCommand,
 }: AssistantChatProps) {
   const endAnchorRef = useRef<HTMLDivElement>(null);
@@ -60,7 +63,9 @@ export function AssistantChat({
           <div className="dre-assistant__ola-gate">
             <p className="dre-assistant__ola-gate-text">
               {interactionMode === 'explain_only'
-                ? 'Explore as fases no stepper ou peça uma explicação do campo atual.'
+                ? minimalHubCopy
+                  ? 'Faça uma pergunta livre sobre um campo ou o fluxo da DRE.'
+                  : 'Explore as fases no stepper ou peça uma explicação do campo atual.'
                 : 'Siga o roteiro: confirme cada valor proposto antes de avançar. Toque em “Olá” para posicionar o assistente.'}
             </p>
             <button

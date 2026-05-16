@@ -58,6 +58,7 @@ function AppLayoutShell({ accessProfile, sections, userName, userInitials }: App
   const edgeX = useRef<number | null>(null);
 
   const hideHeaderScope = location.pathname.startsWith('/app/guide');
+  const assistantHubMinimalHeader = location.pathname === '/app/assistant';
 
   usePlatformTourCleanup();
 
@@ -164,9 +165,9 @@ function AppLayoutShell({ accessProfile, sections, userName, userInitials }: App
             </button>
           ) : null}
 
-          <Breadcrumb segments={headerBreadcrumbSegments} />
+          {assistantHubMinimalHeader ? null : <Breadcrumb segments={headerBreadcrumbSegments} />}
 
-          {hideHeaderScope ? null : (
+          {hideHeaderScope || assistantHubMinimalHeader ? null : (
             <div
               className="app-header__scope"
               data-tour-id="app-header-scope"
