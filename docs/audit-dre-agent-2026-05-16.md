@@ -31,5 +31,5 @@ Revisão incremental ao plano «Agente DRE — atualização integral»: camada 
 
 ## Deploy produção (registo)
 
+- **16/05/2026 BRT (agent3 UX):** GitHub `main` **`c425afe`**; Vercel **`dpl_7AEFxJnBfQgHZ2aiZeps9oCpLGyo`** (READY); snapshot `https://febracis-lnvs5i9io-deivithis-projects.vercel.app`; alias `https://febracis-dre.vercel.app`; inspect `https://vercel.com/deivithis-projects/febracis-dre/7AEFxJnBfQgHZ2aiZeps9oCpLGyo`. PRD **2.2-agent3** (bolhas, painel guiado recolhível, `pickFallbackCopy`, fallback LLM sem sufixo técnico ao utilizador).
 - **16/05/2026 BRT:** GitHub `main` **`67a344f`**; Vercel **`dpl_AmC9b7gV4CexdSTFMp4zgrsbeyfn`** (READY); URL snapshot `https://febracis-9knxypuvo-deivithis-projects.vercel.app`; alias `https://febracis-dre.vercel.app`; inspect `https://vercel.com/deivithis-projects/febracis-dre/AmC9b7gV4CexdSTFMp4zgrsbeyfn`.
-- **Agent3 UX (bolhas + copy):** após merge, atualizar esta secção com novo commit + `dpl_*` (ver comando `npx vercel --prod --yes` e segundo commit de documentação).
