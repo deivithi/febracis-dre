@@ -1,8 +1,6 @@
-# Glossário DRE — Febracis (rascunho para controladoria)
+# Glossário DRE — Febracis (alinhamento controladoria + portal)
 
-> **Placeholder:** revisão obrigatória pela Controladoria Febracis antes de uso externo ou treinamento de rede.
-
-Este documento alinha linguagem da **abas Submissões / Assistente DRE** com a ordem canónica da demonstração do resultado no Brasil e referências sectoriais para **franquia**.
+Este documento alinha a linguagem das **abas Submissões** e **Assistente DRE** com a ordem típica da demonstração do resultado no Brasil e com referências **sectoriais de franquia**. **Última curadoria humana institucional (Controladoria + Financeiro) é obrigatória** antes de uso externo, treino de rede ou fixação oficial de nomenclatura.
 
 ## 1. Ordem oficial e referências (alto nível)
 
@@ -45,6 +43,13 @@ Este documento alinha linguagem da **abas Submissões / Assistente DRE** com a o
 - **Impostos**: tributos antes do resultado EBITDA 2.
 - **MC2 · EBITDA**: fechamentos finais automatizados; qualquer duvida volta para tributos/pré resultado.
 
+### Assistência técnica (portal / agente)
+
+- Os blocos opcionais injetados no prompt (ex.: `referencia_historica_franquia(...)`, persona compacta) são **filtro servidor + RLS**: só entram valores da **mesma franquia** e com **marcador de texto não confiável**. Mesmo assim, qualquer discrepância com a prévia/UI deve resolver-se contra o **motor DRE oficial** e os valores gravados em `submission_input_values`.
+- **DRE-ISA (estado ideal):** metas declarativas (`marketing_pct_rbv_target`, `ebitda_target_pct_of_gross`) persistidas em `assistant_persona_memory` com kind `dre_ideal_state` quando a funcionalidade está ativa no servidor.
+- **Memória persona:** factos de baixo cardinalidade por `profile_id` + `franchise_id`; TTL opcional via env (`DRE_AGENT_PERSONA_TTL_DAYS`).
+- **Digest semanal:** RPC `fn_agent_weekly_feedback_digest` — agrega humor declarado em mensagens com schema `assistant_feedback_capture` (últimos 7 dias).
+
 ---
 
-**Última curadoria automatizada técnica (IA + agente FE):** ajustes finais e validação devem ficar sempre com Human-in-the-loop (Controladoria + Financeiro).
+**Última curadoria automatizada técnica (IA + agente FE):** ajustes finais de produto ficam sempre com Human-in-the-loop (Controladoria + Financeiro).

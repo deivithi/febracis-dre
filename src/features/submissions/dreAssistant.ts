@@ -1,5 +1,10 @@
 import type { DreInputCatalogLine } from '../shared/portal.types.js';
 
+import {
+  submissionStatusLabelPt,
+  type DreAgentConversationContext,
+  type DreHistoricalDreSnapshot,
+} from './dreAgentContext.js';
 export interface DreAssistantCitation {
   title: string;
   source: string;
@@ -31,6 +36,14 @@ export interface DreAssistantTurnResult {
     assistant_provider: string;
     assistant_model: string;
   };
+  /** Persistência DRE-ISA (opcional — handler grava quando flag habilitado). */
+  isaPayload?: {
+    marketing_pct_rbv_target: number;
+    ebitda_target_pct_of_gross: number;
+    updated_via: string;
+  };
+  /** Curadoria interna quando `cmd:turn_feedback`. */
+  feedbackTelemetry?: { mood: 'positivo' | 'negativo'; reason?: string };
 }
 
 export interface DreAssistantFieldGuide {
@@ -196,12 +209,17 @@ export const KNOWN_AGENT_COMMAND_NAMES = [
   'skip_field',
   'phase_summary',
   'list_phase',
+  'explain_phase',
   'where_am_i',
   'propose_value',
   'confirm_value',
   'reject_value',
   'save_draft',
   'restart',
+  'compare_with_prev_month',
+  'summarize_franchise_history',
+  'set_ideal_state',
+  'turn_feedback',
 ] as const;
 
 export type AgentCommandName = (typeof KNOWN_AGENT_COMMAND_NAMES)[number];
@@ -481,7 +499,161 @@ const STATIC_KNOWLEDGE: DreAssistantCitation[] = [
     excerpt:
       'EBITDA 1 e EBITDA 2 sao sempre derivados da cadeia oficial de calculo e nunca digitados manualmente.',
   },
+  {
+    title: 'Regimes tributários (visão rápida)',
+    source: 'docs/dre-glossario.md',
+    excerpt:
+      'Lucro presumido usa base legal enquadrado; lucro real acompanha contabilidade competitiva completa; Simples nacional tem sublimites por atividade.',
+  },
+  {
+    title: 'Evento cancelado / estorno tardio',
+    source: 'docs/dre-glossario.md',
+    excerpt:
+      'Descontos e devoluções aparecem no mesmo período do fato gerador segundo orientação financeira registrada pela unidade.',
+  },
+  {
+    title: 'Comissões revisadas no mês seguinte',
+    source: 'docs/dre-glossario.md',
+    excerpt:
+      'Ajustes de comissões reconhecidos no período em que ficaram liquidados pela controladoria evitam “varredura MC” no assistente.',
+  },
+  {
+    title: 'RL × RBV (coerência de narrativa)',
+    source: 'docs/dre-glossario.md',
+    excerpt:
+      'RBV neste fluxo refere-se ao cabeçalho comercial oficial da unidade; receita líquida usada pela controladoria aparece deduzida no bloco seguinte quando aplicável.',
+  },
 ];
+
+/** Subconjunto institucional mínimo para modo bitterPrompt (compacto para modelo forte). */
+export function compactStaticKnowledgeForBitterMode(): DreAssistantCitation[] {
+  return STATIC_KNOWLEDGE.slice(0, 4);
+}
+
+const STATIC_KNOWLEDGE_DOC_SOURCES = new Set(STATIC_KNOWLEDGE.map((c) => c.source));
+
+export function mergeCitationsForBitterPrompt(citations: DreAssistantCitation[]): DreAssistantCitation[] {
+  const nonStatic = citations.filter((c) => !STATIC_KNOWLEDGE_DOC_SOURCES.has(c.source));
+  const mergedOrdered: DreAssistantCitation[] = [];
+  const seenKey = new Set<string>();
+  for (const chunk of [...compactStaticKnowledgeForBitterMode(), ...nonStatic]) {
+    const k = `${chunk.source}::${chunk.title}`;
+    if (!seenKey.has(k)) {
+      seenKey.add(k);
+      mergedOrdered.push(chunk);
+    }
+  }
+  return mergedOrdered.slice(0, 8);
+}
+
+export interface PersonaMemoryCandidate {
+  kind: 'preference' | 'fact' | 'recurrent_doubt' | 'pace' | 'dre_ideal_state';
+  key: string;
+  value: Record<string, unknown>;
+  confidence: number;
+}
+
+const PERSONA_KIND_ALLOWLIST = new Set<PersonaMemoryCandidate['kind']>([
+  'pace',
+  'preference',
+  'recurrent_doubt',
+]);
+
+const PERSONA_KEYS_BY_KIND: Partial<Record<PersonaMemoryCandidate['kind'], Set<string>>> = {
+  pace: new Set(['ritmo_inferido']),
+  preference: new Set(['linguagem']),
+  recurrent_doubt: new Set(['auto_tag']),
+};
+
+function constrainPersonaValue(kind: PersonaMemoryCandidate['kind'], value: Record<string, unknown>) {
+  if (kind === 'pace') {
+    const text =
+      typeof value.text === 'string' ? value.text.trim().slice(0, 200) : null;
+    const raw =
+      typeof value.raw === 'string' ? value.raw.trim().slice(0, 240) : null;
+    const out: Record<string, unknown> = {};
+    if (text?.length) {
+      out.text = text;
+    }
+    if (raw?.length) {
+      out.raw = raw;
+    }
+    return out;
+  }
+  const texto = typeof value.texto === 'string' ? value.texto.trim().slice(0, 300) : null;
+  return texto?.length ? { texto } : {};
+}
+
+/**
+ * Extrai poucos candidates heurísticos (sem LLM) para memória persona.
+ * Produção faz merge com TTL + filtragem servidor.
+ */
+export function extractPersonaCandidatesFromTurn(userMessage: string): PersonaMemoryCandidate[] {
+  const n = normalizeText(userMessage);
+  if (n.length < 24) {
+    return [];
+  }
+  const picksRaw: PersonaMemoryCandidate[] = [];
+
+  const paceMatch = /\b(costumo|prefiro)\s+preencher\s+([\wÀ-ú\s]+)/i.exec(userMessage);
+  if (paceMatch?.[2]) {
+    picksRaw.push({
+      kind: 'pace',
+      key: 'ritmo_inferido',
+      value: { text: paceMatch[2].trim(), raw: userMessage.slice(0, 240) },
+      confidence: 0.55,
+    });
+  }
+
+  if (n.includes('prefiro')) {
+    picksRaw.push({
+      kind: 'preference',
+      key: 'linguagem',
+      value: { texto: userMessage.trim().slice(0, 300) },
+      confidence: 0.52,
+    });
+  }
+
+  if (/\b(sempre|toda vez|recorrentemente)\s+(tenho duvida)\b/i.test(n)) {
+    picksRaw.push({
+      kind: 'recurrent_doubt',
+      key: 'auto_tag',
+      value: { texto: userMessage.trim().slice(0, 300) },
+      confidence: 0.5,
+    });
+  }
+
+  const sanitized: PersonaMemoryCandidate[] = [];
+  for (const cand of picksRaw) {
+    if (!PERSONA_KIND_ALLOWLIST.has(cand.kind)) {
+      continue;
+    }
+    const allowedKeys = PERSONA_KEYS_BY_KIND[cand.kind];
+    if (!allowedKeys?.has(cand.key)) {
+      continue;
+    }
+    const value = constrainPersonaValue(cand.kind, cand.value);
+    if (!Object.keys(value).length) {
+      continue;
+    }
+    sanitized.push({ ...cand, value });
+  }
+
+  return sanitized.slice(0, 4);
+}
+
+const PHASE_PEDAGOGY: Record<number, string> = {
+  1: 'Primeiro seguramos RBV porque ela ordena todas as margens seguintes dentro da Lei das S.A. articuladas com NBC TG 26.',
+  2: 'Deduções e devoluções reduzem RBV até a base comercial oficial da unidade antes de custos diretos típicos de CMV/MC1.',
+  3: 'Eventos alto impacto ficam segregados aqui para evitar contaminar estruturas fixas e marketing médio.',
+  4: 'Variáveis operacionais acompanham volume sem ser evento próprio nem marketing institucional.',
+  5: 'Marketing aparece granular (digital/regional/brindes) para auditar política rede vs unidade.',
+  6: 'Inadimplência bruto + recuperações em campos paralelos aumenta transparência com controladoria.',
+  7: 'Folha CLT aparece antes do bloco genérico de estruturas para destacar política trabalhista local.',
+  8: 'CTO/utilidades/generais fecha custos estruturais antes do bloco tributário obrigatório ao EBITDA 2.',
+  9: 'Impostos encerrados aqui porque alimentam o EBITDA 2 perseguido no board Febracis.',
+  10: 'MC2 e EBITDA seguem apenas leitura no painel oficial — conferência regressiva para marketing e tributos.',
+};
 
 function normalizeText(value: string) {
   return value
@@ -634,6 +806,10 @@ export interface DeterministicCommandInput {
   skippedLineCodes: readonly string[];
   proposedValueFromSession: ProposedAssistantValue | null;
   drePhaseFromSession: number | null;
+  /** Contexto Humano+/temporal quando `DRE_AGENT_CONTEXT_V2` habilitado. */
+  conversationContext?: DreAgentConversationContext | null;
+  /** Séries KPI de competências passadas já filtradas (RLS) — comandos determinísticos. */
+  deterministicHistoricalSnapshots?: DreHistoricalDreSnapshot[] | null;
 }
 
 function citationForLine(line: DreInputCatalogLine): DreAssistantCitation {
@@ -668,7 +844,7 @@ export function runDeterministicCommand(input: DeterministicCommandInput): RunDe
       const phase = focus ? mapLineToPhase(focus) : null;
       return {
         result: {
-          answer: explainStartMessage(input.explainOnly),
+          answer: explainStartMessage(input.explainOnly, input.conversationContext),
           citations: FALLBACK_KNOWLEDGE_SNIPPET,
           fieldUpdates: [],
           focusLineCode: focus?.line_code ?? null,
@@ -860,6 +1036,36 @@ export function runDeterministicCommand(input: DeterministicCommandInput): RunDe
       };
     }
 
+    case 'explain_phase': {
+      const rawArg = cmd.args[0]?.trim();
+      const defaultPhase = focusFromSession
+        ? mapLineToPhase(focusFromSession)
+        : lines[0]
+          ? mapLineToPhase(lines[0])
+          : 1;
+      const phaseIdNum = rawArg ? parseInt(rawArg, 10) : Number(input.drePhaseFromSession ?? defaultPhase);
+      const phaseId = Number.isFinite(phaseIdNum) ? phaseIdNum : defaultPhase;
+      if (!Number.isFinite(phaseId) || phaseId < 1 || phaseId > DRE_PHASE_COUNT) {
+        return emptyPack({ answer: `Fase inválida. Informe um número entre 1 e ${DRE_PHASE_COUNT} (cmd:explain_phase <n>).` });
+      }
+      const pedagogia = PHASE_PEDAGOGY[phaseId] ?? 'Fase alinhada ao roteiro oficial Febracis / IFRS operacional.';
+      const inPhase = listLinesInPhase(phaseId, lines);
+      const exemplo = inPhase.slice(0, 4).map((l) => l.line_name).join(', ');
+      return {
+        result: {
+          answer: `Fase ${phaseId}: ${phaseTitle(phaseId)} — ${pedagogia} Linhas emblemáticas: ${exemplo || '(ver catálogo)'}. Comandos irmãos: cmd:list_phase ${phaseId} e cmd:phase_summary ${phaseId}.`,
+          citations: FALLBACK_KNOWLEDGE_SNIPPET,
+          fieldUpdates: [],
+          focusLineCode: focusFromSession?.line_code ?? inPhase[0]?.line_code ?? null,
+          nextPrompt: focusFromSession ? buildQuestionForLine(focusFromSession) : null,
+          requestSave: false,
+          requestSubmit: false,
+          mode: 'fallback',
+        },
+        sessionPatch: { dre_phase: phaseId },
+      };
+    }
+
     case 'where_am_i': {
       const focus =
         focusFromSession ?? findNextGuidedLine(lines, currentValues, null, skipOpts) ?? lines[0] ?? null;
@@ -1037,6 +1243,209 @@ export function runDeterministicCommand(input: DeterministicCommandInput): RunDe
       };
     }
 
+    case 'compare_with_prev_month': {
+      const snaps = [...(input.deterministicHistoricalSnapshots ?? [])].sort((a, b) => {
+        const [ay, am] = a.periodYm.split('-').map((x) => Number(x));
+        const [by, bm] = b.periodYm.split('-').map((x) => Number(x));
+        if (ay !== by) return (by ?? 0) - (ay ?? 0);
+        return (bm ?? 0) - (am ?? 0);
+      });
+      const prev = snaps[0];
+      if (!prev || prev.periodYm.length === 0) {
+        return emptyPack({
+          answer:
+            'Não há DRE anterior aprovada da mesma unidade no histórico devolvido agora pelo motor para comparar RBV/MC/EBITDA. Seguimos o rascunho atual.',
+        });
+      }
+
+      const currentGrossParsed = parseAssistantCurrencyReply(currentValues.gross_revenue ?? '');
+      const prevGross = typeof prev.gross_revenue === 'number' ? prev.gross_revenue : null;
+      let deltaRb = '';
+      if (prevGross !== null && prevGross > 0 && currentGrossParsed !== null && currentGrossParsed > 0) {
+        const ratio = Math.round(((currentGrossParsed - prevGross) / prevGross) * 100);
+        deltaRb =
+          ` RBV atual no rascunho (${formatMoneyBr(currentGrossParsed)}) vs competência anterior ${prev.periodLabelPtBr} (${formatMoneyBr(prevGross)}): delta aproximado ${ratio >= 0 ? '+' : ''}${ratio}% sobre a RBV aprovada do mês anterior.`;
+      } else {
+        deltaRb = ` Competência anterior aprovada: ${prev.periodLabelPtBr} com RBV ${
+          prev.gross_revenue !== null ? formatMoneyBr(prev.gross_revenue) : 'sem KPI no conjunto atual'
+        }. Envie RBV atual para eu citar variações numéricas.`;
+      }
+
+      let marketingCue = '';
+      const prevMk = typeof prev.marketing_total_approx === 'number' ? prev.marketing_total_approx : null;
+      if (prevMk !== null) {
+        marketingCue += ` Marketing total memorando ${prev.periodLabelPtBr}: ${formatMoneyBr(prevMk)} — use só como contexto oficial interno (nunca como ordem de preenchimento).`;
+      }
+
+      const nextGuide =
+        focusFromSession ??
+        findNextGuidedLine(lines, currentValues, null, skipOpts) ??
+        lines[0] ??
+        null;
+
+      return {
+        result: {
+          answer:
+            `Comparativo rápido (somente registos aprovados da mesma unidade dentro do escrow RLS atual): ${deltaRb}${marketingCue}`,
+          citations: FALLBACK_KNOWLEDGE_SNIPPET,
+          fieldUpdates: [],
+          focusLineCode: nextGuide?.line_code ?? null,
+          nextPrompt: nextGuide ? buildQuestionForLine(nextGuide) : null,
+          requestSave: false,
+          requestSubmit: false,
+          mode: 'fallback',
+        },
+        sessionPatch: { dre_phase: nextGuide ? mapLineToPhase(nextGuide) : undefined },
+      };
+    }
+
+    case 'summarize_franchise_history': {
+      const snaps = [...(input.deterministicHistoricalSnapshots ?? [])].sort((a, b) => {
+        const [ay, am] = a.periodYm.split('-').map((x) => Number(x));
+        const [by, bm] = b.periodYm.split('-').map((x) => Number(x));
+        if (ay !== by) return (by ?? 0) - (ay ?? 0);
+        return (bm ?? 0) - (am ?? 0);
+      });
+      if (snaps.length === 0) {
+        return emptyPack({
+          answer:
+            'Ainda não aparece competência prévia aprovada ao assistente dentro da janela consultada pela função oficial. Voltamos ao preenchimento desta competência.',
+        });
+      }
+
+      const linesSummary = snaps
+        .slice(0, Math.min(snaps.length, 4))
+        .map((s) => {
+          const rg =
+            typeof s.gross_revenue === 'number' ? formatMoneyBr(s.gross_revenue) : 'RBV indisponível no snapshot';
+          const e1 =
+            typeof s.ebitda_1 === 'number' ? formatMoneyBr(s.ebitda_1) : 'EBITDA 1 não presente nos dados brutos devolvidos';
+          return `• ${s.periodLabelPtBr}: RBV ${rg}; EBITDA 1 ${e1}.`;
+        })
+        .join('\n');
+
+      const nextGuide =
+        focusFromSession ?? findNextGuidedLine(lines, currentValues, null, skipOpts) ?? lines[0] ?? null;
+
+      return {
+        result: {
+          answer: `Resumo dos últimos meses já aprovados desta mesma franquia (não extrapole para mensagens vindas por fora):\n${linesSummary}`,
+          citations: FALLBACK_KNOWLEDGE_SNIPPET,
+          fieldUpdates: [],
+          focusLineCode: nextGuide?.line_code ?? null,
+          nextPrompt: nextGuide ? buildQuestionForLine(nextGuide) : null,
+          requestSave: false,
+          requestSubmit: false,
+          mode: 'fallback',
+        },
+        sessionPatch: { dre_phase: nextGuide ? mapLineToPhase(nextGuide) : undefined },
+      };
+    }
+
+    case 'set_ideal_state': {
+      const mkArg = cmd.args[0]?.replace(',', '.');
+      const ebArg = cmd.args[1]?.replace(',', '.');
+
+      const marketingPctRaw = mkArg !== undefined ? Number(mkArg) : Number.NaN;
+      const ebitdaPctRaw = ebArg !== undefined ? Number(ebArg) : Number.NaN;
+
+      if (!Number.isFinite(marketingPctRaw) || !Number.isFinite(ebitdaPctRaw)) {
+        return emptyPack({
+          answer:
+            'Uso: cmd:set_ideal_state <pct_marketing_rb> <pct_ebitda_rb>. Exemplo: cmd:set_ideal_state 8 22.',
+        });
+      }
+
+      if (marketingPctRaw < 0 || marketingPctRaw > 150 || ebitdaPctRaw < 0 || ebitdaPctRaw > 150) {
+        return emptyPack({
+          answer: 'Percentuais devem ficar dentro de valores plausíveis (0‑150%).',
+        });
+      }
+
+      const isa = {
+        marketing_pct_rbv_target: Number(marketingPctRaw.toFixed(3)),
+        ebitda_target_pct_of_gross: Number(ebitdaPctRaw.toFixed(3)),
+        updated_via: 'cmd:set_ideal_state',
+      };
+
+      const snapsSorted = [...(input.deterministicHistoricalSnapshots ?? [])].sort((a, b) => {
+        if (a.periodYm !== b.periodYm) {
+          return a.periodYm < b.periodYm ? 1 : -1;
+        }
+        return 0;
+      });
+
+      let comparative = '';
+      const recent = snapsSorted[0];
+      if (recent && typeof recent.gross_revenue === 'number' && recent.gross_revenue > 0) {
+        const mkImp =
+          typeof recent.marketing_total_approx === 'number'
+            ? (recent.marketing_total_approx / recent.gross_revenue) * 100
+            : null;
+        const ebImp =
+          typeof recent.ebitda_1 === 'number'
+            ? (recent.ebitda_1 / recent.gross_revenue) * 100
+            : null;
+        comparative = `\n\nReferência apenas para calibrar expectativas (${recent.periodLabelPtBr}, submissão aprovada já consolidada pelo motor oficial): sobre a RBV do snapshot, marketing somou cerca de ${
+          mkImp !== null && Number.isFinite(mkImp)
+            ? `${mkImp.toFixed(1)}%`
+            : '—'
+        } do bruto; EBITDA 1 representou ~${
+          ebImp !== null && Number.isFinite(ebImp)
+            ? `${ebImp.toFixed(1)}%`
+            : '—'
+        } sobre a mesma base. São números do passado já auditados — seus alvos DRE‑ISA ficam apenas como norte editorial até alinhar oficialmente à controladoria.\n`;
+      }
+
+      return {
+        result: {
+          answer:
+            `DRE‑ISA anotado: marketing alvo sobre RBV ≈ ${isa.marketing_pct_rbv_target}%; EBITDA alvo sobre RBV ≈ ${isa.ebitda_target_pct_of_gross}% — trato isto apenas como norte editorial interno até alinhar oficialmente à controladora.${comparative}`,
+          citations: FALLBACK_KNOWLEDGE_SNIPPET,
+          fieldUpdates: [],
+          focusLineCode: focusFromSession?.line_code ?? null,
+          nextPrompt:
+            focusFromSession ? buildQuestionForLine(focusFromSession) : null,
+          requestSave: false,
+          requestSubmit: false,
+          mode: 'fallback',
+          isaPayload: isa,
+        },
+        sessionPatch: { dre_phase: focusFromSession ? mapLineToPhase(focusFromSession) : undefined },
+      };
+    }
+
+    case 'turn_feedback': {
+      const mood = cmd.args[0]?.trim()?.toLowerCase();
+      const reason = cmd.args.slice(1).join(' ').trim();
+      if (!mood || (mood !== 'positivo' && mood !== 'negativo')) {
+        return emptyPack({
+          answer: 'Informe humor + texto opcional. Exemplo: cmd:turn_feedback positivo útil OU cmd:turn_feedback negativo faltou comparação M-1.',
+        });
+      }
+
+      const detail = reason?.length ? ` Motivo relatado (curto): ${reason.slice(0, 240)}` : '';
+
+      return {
+        result: {
+          answer: `Obrigado pelo feedback (${mood}) — apenas para curadoria interna.${detail}`,
+          citations: FALLBACK_KNOWLEDGE_SNIPPET,
+          fieldUpdates: [],
+          focusLineCode: focusFromSession?.line_code ?? null,
+          nextPrompt:
+            focusFromSession ? buildQuestionForLine(focusFromSession) : null,
+          requestSave: false,
+          requestSubmit: false,
+          mode: 'fallback',
+          feedbackTelemetry: {
+            mood: mood as 'positivo' | 'negativo',
+            reason: reason?.slice(0, 240) || undefined,
+          },
+        },
+        sessionPatch: {},
+      };
+    }
+
     case 'restart': {
       const focus =
         findNextGuidedLine(lines, currentValues, null, {
@@ -1071,11 +1480,34 @@ export function runDeterministicCommand(input: DeterministicCommandInput): RunDe
   }
 }
 
-function explainStartMessage(explainOnly: boolean): string {
-  if (explainOnly) {
-    return 'Olá! Modo orientação: explico campos na ordem da DRE oficial (Lei das S.A., NBC TG 26, IFRS alinhamento operacional nas unidades de franquia). Quem pode editar valores é só o perfil com operação — daqui navego com comandos determinísticos e sem alterar dados.';
+function localityHintPt(ctx?: DreAgentConversationContext | null): string {
+  if (!ctx) {
+    return '';
   }
-  return 'Olá! Você está guiado passo-a-passo: um perguntas por vez, sempre em reais. O sistema recalcula MC1/M2/EBITDA após você confirmar valores com “Confirmar”.';
+  const bits: string[] = [];
+  if (ctx.city) {
+    bits.push(ctx.city);
+  }
+  if (ctx.regionalName) {
+    bits.push(`regional ${ctx.regionalName}`);
+  }
+  return bits.length > 0 ? ` · ${bits.join(' · ')}` : '';
+}
+
+export function explainStartMessage(
+  explainOnly: boolean,
+  ctx?: DreAgentConversationContext | null,
+): string {
+  const greetingName = ctx?.userFirstName ? `Olá, ${ctx.userFirstName}!` : 'Olá!';
+  const franchise = ctx?.franchiseTradeName ? `"${ctx.franchiseTradeName}"` : 'esta unidade Febracis';
+  const when = ctx?.periodLabelPtBr ? ` (${ctx.periodLabelPtBr})` : '';
+  const scope = localityHintPt(ctx);
+
+  if (explainOnly) {
+    return `${greetingName} Modo orientação sobre a DRE de ${franchise}${when}${scope}: explico campos segundo Lei das S.A., NBC TG 26 e o glossário institucional, sem mexer valores. Status da submissão agora (operacional interno): ${submissionStatusLabelPt(ctx?.submissionStatus)}. Para editar, quem pode operar valores é o perfil com permissões ativas nesta mesma sessão oficial.`;
+  }
+
+  return `${greetingName} Aqui é o assistente Febracis guiando seu rascunho da DRE para ${franchise}${when}${scope}. Eu peço sempre um campo por vez, em reais; o sistema recalcula MC1, MC2 e EBITDA após as confirmações oficiais. Status da sua submissão neste servidor: ${submissionStatusLabelPt(ctx?.submissionStatus)}.`;
 }
 
 /** Lista ordenada (planilha / catálogo) para o prompt do modelo — sem expor line_code ao utilizador final. */
@@ -1445,7 +1877,7 @@ function runLocalAssistantTurnExplainOnly(input: {
   if (isGreetingOrStartFlow(normalizedMessage)) {
     return {
       answer:
-        'Olá! Você está no modo orientação: posso explicar campos da DRE, a ordem da planilha e as regras de envio. Quem digita os valores na submissão é o franqueado (ou administrador da unidade) com permissão de operação — daqui não altero números nem salvo rascunho.',
+        'Sou o Agente de Construção de DRE da Febracis. Você está no modo orientação: posso explicar campos da DRE, a ordem da planilha e as regras de envio. Quem digita os valores na submissão é o franqueado (ou administrador da unidade) com permissão de operação — daqui não altero números nem salvo rascunho.',
       citations: STATIC_KNOWLEDGE.slice(0, 2),
       fieldUpdates: [],
       focusLineCode: nextLine?.line_code ?? null,
@@ -1550,6 +1982,8 @@ export function runLocalAssistantTurn(input: {
   currentLineCode?: string | null;
   /** Só explicação: sem fieldUpdates nem pedidos de gravação. */
   explainOnly?: boolean;
+  /** Contexto humano/temporal (Feature flag servidor). */
+  conversationContext?: DreAgentConversationContext | null;
 }): DreAssistantTurnResult {
   if (input.explainOnly) {
     if (!input.lines.length) {
@@ -1607,8 +2041,14 @@ export function runLocalAssistantTurn(input: {
       input.lines[0] ??
       null;
 
+    const ctx = input.conversationContext ?? null;
+    const identity = 'Sou o Agente de Construção de DRE da Febracis. ';
+    const intro = ctx?.franchiseTradeName
+      ? `${identity}Vamos com calma com a DRE${ctx.periodLabelPtBr ? ` de ${ctx.periodLabelPtBr}` : ''}${ctx.city ? ` em ${ctx.city}` : ''} da "${ctx.franchiseTradeName}" — sempre um campo por vez, em reais; MC1, MC2 e EBITDA só aparecem com o motor oficial depois das confirmações. Estado documental (interno): ${submissionStatusLabelPt(ctx?.submissionStatus)}.`
+      : `${identity}Foco no preenchimento da DRE deste período. Vamos com calma: peço um valor de cada vez, sempre em reais, e o sistema recalcula MC1, MC2 e EBITDA sozinho. Quando estiver pronto, responda com o número ou peça ajuda específica de campo.`;
+
     return {
-      answer: `Olá! Fico feliz em te ajudar com a DRE deste período. Vamos com calma: eu vou te pedir um número de cada vez, sempre em reais, e o sistema recalcula MC1, MC2 e EBITDA sozinho. Quando estiver pronto, é só responder com o valor.`,
+      answer: intro,
       citations: STATIC_KNOWLEDGE.slice(0, 1),
       fieldUpdates: [],
       focusLineCode: nextLine?.line_code ?? null,

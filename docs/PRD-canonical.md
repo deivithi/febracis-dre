@@ -313,7 +313,7 @@ Do plano cockpit/mar‑2026 e auditorias:
 | `fieldUpdates` só editáveis + validação servidor | Persistir deltas em submissões travadas indevidas |
 | Fallback custo‑zero modelo local | Prompt injection sem sanitização servidor |
 
-Referências segurança e governança API: [`docs/security-review-2026-03-28.md`](./security-review-2026-03-28.md), [`references/audit-dre-agent-2026-05-08.md`](../references/audit-dre-agent-2026-05-08.md).
+Referências segurança e governança API: [`docs/security-review-2026-03-28.md`](./security-review-2026-03-28.md), [`references/audit-dre-agent-2026-05-08.md`](../references/audit-dre-agent-2026-05-08.md), [`docs/audit-dre-agent-2026-05-16.md`](./audit-dre-agent-2026-05-16.md).
 
 ### 9.2 Padrões de produto primeira geração
 
@@ -322,6 +322,54 @@ Hybrid RAG, memória conversa thread, memória usuário/franquia com **namespace
 ### 9.3 Rollout IA (síntese 3 ondas original)
 
 Ver §13 Fase cockpit + evoluções agent‑first.
+
+### 9.4 Contexto humano temporal, histórico e memória persona (flags servidor)
+
+Variáveis **sem `VITE_*`** (`api/agentFeatureFlags.ts`, `api/dre-agent.ts`) permitem rollout incremental sem alterar a UI:
+
+| Flag | Efeito principal |
+|------|------------------|
+| `DRE_AGENT_CONTEXT_V2` | Unidade/competência, datas civis BRT, regra de contenção texto (sem misturar franchises). |
+| `DRE_AGENT_HISTORY_CONTEXT` | RPC `fn_agent_historical_dre_context`: últimas DRE aprovadas **da mesma** `franchise_id`. |
+| `DRE_AGENT_PERSONA_MEMORY` | Migração `023_*`: `assistant_persona_memory`, merge no finalize do grafo + após `cmd:*`; FTS `fn_search_assistant_history`. |
+| `DRE_AGENT_IDEAL_STATE` | Grava ISA após `cmd:set_ideal_state`. |
+| `DRE_AGENT_VERIFY_LEARN` | Nó `verify_and_learn` no LangGraph só com telemetria (stub). |
+| `DRE_AGENT_BITTER_PROMPT` | Mensagem sistema extra: não mexer valores fora do protocolo. |
+
+Resposta HTTP ao cliente sanitizada (`sanitizeAssistantTurnForHttp`) — não expõe `isaPayload`, `feedbackTelemetry`, etc.
+
+Trocar modelo OpenRouter apenas com **`OPENROUTER_MODEL`** nos segredos da Vercel (confirmar sempre o slug no painel OpenRouter).
+
+### 9.5 Privacidade operacional, TTL e observabilidade segura
+
+| Mecanismo | Implementação |
+|-----------|----------------|
+| TTL memória persona | `DRE_AGENT_PERSONA_TTL_DAYS` (>0 dias UTC) → coluna `expires_at` nos upserts (`api/agentTurnPrivacy.ts` → `personaMemoryExpiresAtIso`). `0` ou ausente = sem expiração aplicada pelo servidor (legado). |
+| TTL ISA (`dre_ideal_state`) | `DRE_AGENT_ISA_TTL_DAYS` → `isaMemoryExpiresAtIso()` na mesma camada. |
+| Logs sem texto integral | `clipForOperationalLogSnippet` reduz e rotula trechos para métricas/eventos (`rate_limit_429`, fallback LLM, etc.) sem ecoar mensagens completas do utilizador. |
+| Métricas canónicas por turno | Evento estruturado `dre_agent_turn_ok` com `containment_franchise_id`, contagens de histórico/memória, flags `verify_learn`, `bitter_prompt`, `context_v2`, `fallback_flag`. |
+
+### 9.6 Postgres — histórico DRE e digest sob identidade do utilizador
+
+Migração **`024_agent_security_invoker_and_digest`**:
+
+- Vista `vw_agent_historical_dre_context` com **`security_invoker`** — avalia RLS das tabelas base como o utilizador autenticado (sem bypass).
+- Função `fn_agent_historical_dre_context` reprovada como **`SECURITY INVOKER`** + `search_path` fixo; valida `auth.uid()`, `can_access_franchise`, janela `p_months_back`.
+- Função **`fn_agent_weekly_feedback_digest(p_franchise_id uuid)`** — agrega feedback declarado (`assistant_feedback_capture`) nos últimos 7 dias, escopo sessões da franquia + `profile_id = auth.uid()`.
+- Índices auxiliares em `assistant_persona_memory` e `agent_messages` (payload feedback / verify_learn).
+
+Sanitização adicional no servidor: trechos **persona compacta** e **FTS** passam por `sanitizeUntrustedAgentTextSnippet` antes de entrar no prompt (`loadPersonaAndFtsBundles`, `buildAgentSituationPromptFragments`).
+
+### 9.7 Eval live (opt-in) e gate CI
+
+| Variável | Uso |
+|----------|-----|
+| `DRE_AGENT_LIVE_EVAL` | `1` ativa [`tests/integration/dre-agent-live-evals.test.ts`](../tests/integration/dre-agent-live-evals.test.ts) contra HTTP real quando credenciais presentes. |
+| `DRE_AGENT_EVAL_JWT`, `DRE_AGENT_EVAL_SESSION_ID`, `DRE_AGENT_EVAL_SUBMISSION_ID` | Obrigatórias para os três cenários smoke; ver [`tests/integration/README-dre-agent-live-evals.md`](../tests/integration/README-dre-agent-live-evals.md). |
+| `DRE_AGENT_EVAL_API_URL` | Opcional — URL completa do endpoint (`…/api/dre-agent`). |
+| `DRE_AGENT_LIVE_EVALS_REQUIRED` | Flag produto (`dreAgentFeatureFlags`) para gates futuros de release. |
+
+Smoke SQL documentado para `fn_agent_weekly_feedback_digest` no README de integração acima.
 
 ---
 
@@ -637,6 +685,8 @@ Cada hipótese está **explicitamente vinculada** a um critério de saída de fa
 
 | Versão | Data BRT | Origem | Notas majores |
 |--------|----------|--------|----------------|
+| **2.2-agent2** | **16/05/2026** | **Agente DRE — segurança invoker, TTL persona/ISA, digest, eval live** | §9.5–§9.7; `api/agentTurnPrivacy.ts`; migração **`024`** (`security_invoker`, digest); sanitização persona/FTS em `loadPersonaAndFtsBundles`; métricas `dre_agent_turn_ok`; testes Vitest integration live opt-in + anti-cross-franchise em `dre-agent-context.test.ts`; docs `docs/audit-dre-agent-2026-05-16.md`, `docs/agente-persona-febracis.md`, `RUNBOOK.md`, `references/ops-supabase-prod-migration-runbook.md`. |
+| **2.2-agent1** | **16/05/2026** | **Auditoria agente — contexto servidor v2 / histórico / persona** | §9.4; flags `DRE_AGENT_*`; `loadSessionContext` + fragmentos (`buildAgentSituationPromptFragments`); LangGraph persona no finalize + `verify_and_learn` (stub); HTTP `sanitizeAssistantTurnForHttp`; `.env.example` + `tests/unit/dre-agent-context.test.ts`. Migração **`023`**. Operação em `references/project-context.md`. |
 | **2.2-doc2** | **09/05/2026** | **Regra inviolável documentada — contrato de altura de widgets do `CustomizableDashboard`** | Criado `.cursor/rules/dashboard-widget-checklist.mdc` (`alwaysApply: true`) com Regras 1–4 (Slot vs Card, mudar `h` em `defaultLayouts`, lazy migration `MIN_HEIGHT_BY_TYPE`, excepções `KpiWidget`/`SparklineWidget`) + checklist de PR obrigatório. Cross-link curto em `.cursor/rules/task-completion-checklist.mdc` e em `AGENTS.md`. Objectivo: prevenir regressão do gap residual entre painel customizável e «Vista do escopo» (ver `2.2-ux5`) em deploys futuros. Sem mudança em código de produção. |
 | **2.2-ux5** | **09/05/2026** | **Dashboard — gap residual abaixo dos cartões do painel customizável (causa raiz: slot RGL > altura natural do `.card`)** | Correção CSS cirúrgica em `CustomizableDashboard.css`: `.dashboard-grid-tile__lazy` ganha `height: 100%; display: flex; flex-direction: column;` e o `.card` interno passa a `flex: 1 1 auto` com `card__body { flex: 1 1 auto; min-height: 0 }`. O `react-grid-layout` reserva um slot fixo (`h * rowHeight + (h-1) * margin`); sem este bloco, o `.card` ficava com altura natural do conteúdo e o restante do slot ficava transparente — visível como o gap de ~100-150 px entre «Fila de revisão» e «Vista do escopo». Padrão espelha `.holding-bento ... > .card { height: 100% }` já existente em `DashboardPage.css`. Não toca em copy, layout interno dos cartões, defaults nem `MIN_HEIGHT_BY_TYPE` (lazy migration de **2.2-ux4** continua válida). |
 | **2.2-ux4** | **09/05/2026** | **Dashboard — espaçamento entre painel customizável e «Vista do escopo»** | `defaultLayouts.ts`: blocos analíticos (`trend-chart`, `audit-feed`, `ranking` na primeira linha, `pending-queue` e linha inferior) ganham **+1 unidade** de altura no grid (`h: 9`) e deslocamento `y` da fila inferior `13 → 14`. `MIN_HEIGHT_BY_TYPE` em `CustomizableDashboard.tsx` sobe para **9** em `trend-chart`, `audit-feed` e `pending-queue`, forçando `isLayoutOutdated()` a aplicar lazy reset dos layouts gravados antes deste ajuste. Blueprints por tipo na galeria alinhados às novas alturas. |

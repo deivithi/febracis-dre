@@ -43,3 +43,25 @@ export function formatBrazilYearMonthLabel(reference: Date = new Date()): string
   const { year, month } = getBrazilCalendarYearMonth(reference);
   return `${year}-${String(month).padStart(2, '0')}`;
 }
+
+/** Nomes de mês pt-BR (competência civil Brasil). */
+const BRAZIL_MONTH_NAMES_PT = [
+  'janeiro',
+  'fevereiro',
+  'março',
+  'abril',
+  'maio',
+  'junho',
+  'julho',
+  'agosto',
+  'setembro',
+  'outubro',
+  'novembro',
+  'dezembro',
+] as const;
+
+/** Competência por extenso, ex.: "março de 2026". */
+export function formatBrazilCompetenciaPtBr(year: number, month: number): string {
+  const name = BRAZIL_MONTH_NAMES_PT[month - 1] ?? `mês ${month}`;
+  return `${name} de ${year}`;
+}

@@ -4,6 +4,13 @@
 
 **Contrato de avaliações do agente / cenários (ENTREGA 2):** [`docs/dre-agent-evals.yaml`](../docs/dre-agent-evals.yaml).
 
+## Agente DRE — migração 024 + TTL + eval live (16/05/2026 BRT)
+
+- **SQL:** `supabase/migrations/024_agent_security_invoker_and_digest.sql` — vista histórico com `security_invoker`, RPC histórico **SECURITY INVOKER**, `fn_agent_weekly_feedback_digest`, índices persona/messages. Rollback em `supabase/rollbacks/024_agent_security_invoker_and_digest.down.sql`. Roteiro produção: [`references/ops-supabase-prod-migration-runbook.md`](ops-supabase-prod-migration-runbook.md).
+- **API:** TTL `DRE_AGENT_PERSONA_TTL_DAYS` / `DRE_AGENT_ISA_TTL_DAYS` (`api/agentTurnPrivacy.ts`); persona/FTS sanitizados em `loadPersonaAndFtsBundles`; métricas `dre_agent_turn_ok`.
+- **Docs:** PRD §9.5–§9.7; [`docs/audit-dre-agent-2026-05-16.md`](../docs/audit-dre-agent-2026-05-16.md); [`RUNBOOK.md`](../RUNBOOK.md).
+- **Testes:** Vitest inclui `tests/integration/**`; eval HTTP opt-in `DRE_AGENT_LIVE_EVAL=1` — [`tests/integration/README-dre-agent-live-evals.md`](../tests/integration/README-dre-agent-live-evals.md).
+
 ## Dashboard customizável — reset automático de layouts antigos + audit filter defensivo (09/05/2026 BRT)
 
 **Sintoma reportado pelo utilizador (após deploy `ffb76bf`):**
@@ -261,6 +268,8 @@ Detalhe e comandos: [`operacoes-pendentes-supabase-vercel-2026-04-27.md`](./oper
 - Documento completo da auditoria: [`references/audit-dre-agent-2026-05-08.md`](./audit-dre-agent-2026-05-08.md).
 - Sem chaves remotas válidas **e** sem default resolvível (cenário só para forks que limpem as constantes) + sem `OPENROUTER_API_KEY`, o handler usa `runLocalAssistantTurn` (`mode: 'fallback'`); UI segue modo guiado local (detalhes em **Detalhes técnicos**).
 - Contexto no LLM: `retrieveRelevantAssistantKnowledge` (pontuação lexical sobre excertos curados + docs estáticos). Não substitui RAG com embeddings até existir pipeline de ingestão.
+- **Flags servidor (variáveis `DRE_AGENT_*`):** rollout incremental sem `VITE_*` — ver [`.env.example`](../.env.example) comentado na secção «Assistente DRE». `DRE_AGENT_CONTEXT_V2` ativa números e datas BRT + contenção texto; `DRE_AGENT_HISTORY_CONTEXT` chama RPC `fn_agent_historical_dre_context`; `DRE_AGENT_PERSONA_MEMORY` usa migração `023_*` (`assistant_persona_memory`, FTS, `fn_search_assistant_history`); `sanitizeAssistantTurnForHttp` evita payload interno ao cliente HTTP.
+- **Modelo router:** definir apenas `OPENROUTER_MODEL` nos segredos Vercel (slug actual no dashboard OpenRouter) sem alteração de código-fonte quando o handler usa OpenRouter.
 
 ##### Assistente guiado determinístico (`cmd:*` + painel)
 
@@ -279,7 +288,7 @@ Detalhe e comandos: [`operacoes-pendentes-supabase-vercel-2026-04-27.md`](./oper
 | **`full`** | `franchise_user` ou `system_admin` com submissão em estado editável | `fieldUpdates` validados (`validateAssistantFieldUpdates`), preview/save como hoje. |
 
 - **Fonte de verdade numérica:** `submission_input_values` + motor SQL; o modelo não deve exibir MC1/MC2/EBITDA calculados com valores — `stripCalculatedMetricClaimsFromAnswer` no finalize da API.
-- **Memória:** sessão `agent_sessions` por `profile_id` + `submission_id`; histórico recente até `AGENT_MESSAGE_HISTORY_LIMIT` (32); com ≥12 mensagens o prompt inclui `contexto_compacto` via `buildConversationSummaryFromMessages`.
+- **Memória:** sessão `agent_sessions` por `profile_id` + `submission_id`; histórico recente até `AGENT_MESSAGE_HISTORY_LIMIT` (32); com ≥12 mensagens o prompt inclui `contexto_compacto` via `buildConversationSummaryFromMessages`. Opcional (`DRE_AGENT_PERSONA_MEMORY` + Postgres): `assistant_persona_memory`.
 - **Fio da meada:** cada turno persiste em `state_json` o `flow_checkpoint` (`phase`, `line_code`, `filled_count`, `total_inputs`, `last_user_intent`) e `last_interaction_mode`. A UI mostra fase, “Próximo passo” e aviso de **realinhamento** quando a última intenção foi `off_topic`.
 - **Entrada off-topic:** heurística `classifyDreUserIntent` + turno local determinístico quando aplicável (`shouldUseDeterministicAssistantTurn`), sem depender só do LLM.
 - **Testes:** `npm run test` (Vitest) — `tests/unit/dre-agent-governance.test.ts`. Checklist manual pós-deploy: [`references/checklist-servidor-dre-agent.md`](./checklist-servidor-dre-agent.md).
