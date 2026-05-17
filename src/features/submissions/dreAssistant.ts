@@ -469,6 +469,12 @@ export const ASSISTANT_FALLBACK_COPY_VARIANTS = {
     'Vamos direto à planilha: o que preencher, onde e por quê. Assim eu te ajudo de verdade. {{realign}}',
     'Prefiro manter a conversa na DRE desta competência; é onde eu consigo ser mais útil. {{realign}}',
   ],
+  /** Ponte curta após `guide.help` em off-topic com campo em evidência — evita copy que só convida sem entregar texto. */
+  explain_off_topic_hint_after_substance: [
+    'Isto é o que a linha pede neste período para «{{field}}». Se precisar, puxamos outra linha do roteiro.',
+    'Posso ficar só neste ponto ou alinhar o próximo campo — você escolhe o ritmo.',
+    'Se ficou ponta solta sobre «{{field}}», diz qual ângulo que eu aprofundo.',
+  ],
   explain_continue_guided: [
     'Combinado. {{anchor}}',
     'Bora. {{anchor}}',
@@ -2030,6 +2036,16 @@ export function classifyDreUserIntent(rawMessage: string): DreUserIntentCategory
     'representa',
     'significa',
     'significado',
+    'detal',
+    'esclarec',
+    'planil',
+    'preenc',
+    'custo',
+    'logist',
+    'variav',
+    'roteir',
+    'cis',
+    'febracis',
   ];
 
   if (dreHints.some((hint) => n.includes(hint))) {
@@ -2323,14 +2339,38 @@ function runLocalAssistantTurnExplainOnly(input: {
       `${contSeed}|explain_continue_anchor`,
       helpLine ? { field: helpLine.line_name } : {},
     );
+    const ackHead = pickFallbackCopy('explain_continue_guided', `${contSeed}|explain_continue_guided_wrap`, {
+      anchor: anchorText,
+    });
+    /** Com campo em vista, não fica só no “combinado”: entrega já o texto do catálogo (evita prometer explicação e não cumprir). */
+    if (helpLine) {
+      const guide = getFieldGuide(helpLine);
+      const tailSeed = buildFallbackCopySeed(input.message, 'explain_field_tail', helpLine.line_code);
+      const tail = pickFallbackCopy('explain_field_tail', tailSeed, {});
+      return {
+        answer: `${ackHead}\n\n${guide.help} ${guide.example}\n\n${tail}`,
+        citations: [
+          {
+            title: guide.label,
+            source: `${helpLine.section_name} • ${helpLine.line_code}`,
+            excerpt: guide.help,
+          },
+        ],
+        fieldUpdates: [],
+        focusLineCode: helpLine.line_code,
+        nextPrompt: `Quer aprofundar outro campo da DRE?`,
+        requestSave: false,
+        requestSubmit: false,
+        mode: 'fallback',
+      };
+    }
+
     return {
-      answer: pickFallbackCopy('explain_continue_guided', `${contSeed}|explain_continue_guided_wrap`, {
-        anchor: anchorText,
-      }),
+      answer: ackHead,
       citations: STATIC_KNOWLEDGE.slice(0, 1),
       fieldUpdates: [],
-      focusLineCode: helpLine?.line_code ?? null,
-      nextPrompt: helpLine ? `Quer explicação sobre “${helpLine.line_name}”?` : null,
+      focusLineCode: null,
+      nextPrompt: null,
       requestSave: false,
       requestSubmit: false,
       mode: 'fallback',
@@ -2375,6 +2415,8 @@ function runLocalAssistantTurnExplainOnly(input: {
     normalizedMessage.includes('para que') ||
     normalizedMessage.includes('duvida') ||
     normalizedMessage.includes('explicar') ||
+    normalizedMessage.includes('detal') ||
+    normalizedMessage.includes('esclarec') ||
     Boolean(mentionedLine);
 
   if (fieldQuestionLike) {
@@ -2404,15 +2446,42 @@ function runLocalAssistantTurnExplainOnly(input: {
 
   if (classifyDreUserIntent(input.message) === 'off_topic') {
     const anchor = focusLine ?? nextLine;
-    const seed = buildFallbackCopySeed(input.message, 'explain_off_topic', anchor?.line_code ?? null);
-    const realignKey: DreAssistantFallbackCopyIntent = anchor ? 'explain_off_topic_realign_focus' : 'explain_off_topic_realign_loose';
-    const realign = pickFallbackCopy(realignKey, `${seed}|explain_off_topic_realign`, anchor ? { field: anchor.line_name } : {});
+    /** Com linha guiada definida: resposta primeiro com conteúdo real do campo (templates “Quer que eu detalhe?” sozinhos viram looping). */
+    if (anchor) {
+      const guide = getFieldGuide(anchor);
+      const tailSeed = buildFallbackCopySeed(input.message, 'explain_field_tail', anchor.line_code);
+      const tail = pickFallbackCopy('explain_field_tail', tailSeed, {});
+      const seedShort = buildFallbackCopySeed(input.message, 'explain_off_topic_hint_after_substance', anchor.line_code);
+      const bridge = pickFallbackCopy('explain_off_topic_hint_after_substance', seedShort, {
+        field: anchor.line_name,
+      });
+      return {
+        answer: `${guide.help} ${guide.example}\n\n${bridge}\n\n${tail}`,
+        citations: [
+          {
+            title: guide.label,
+            source: `${anchor.section_name} • ${anchor.line_code}`,
+            excerpt: guide.help,
+          },
+        ],
+        fieldUpdates: [],
+        focusLineCode: anchor.line_code,
+        nextPrompt: `Quer aprofundar outro campo da DRE?`,
+        requestSave: false,
+        requestSubmit: false,
+        mode: 'fallback',
+      };
+    }
+
+    const seed = buildFallbackCopySeed(input.message, 'explain_off_topic', null);
+    const realignKey: DreAssistantFallbackCopyIntent = 'explain_off_topic_realign_loose';
+    const realign = pickFallbackCopy(realignKey, `${seed}|explain_off_topic_realign`, {});
     return {
       answer: pickFallbackCopy('explain_off_topic', `${seed}|explain_off_topic_body`, { realign }),
       citations: STATIC_KNOWLEDGE.slice(0, 1),
       fieldUpdates: [],
-      focusLineCode: anchor?.line_code ?? null,
-      nextPrompt: anchor ? `Quer uma explicação sobre “${anchor.line_name}”?` : null,
+      focusLineCode: null,
+      nextPrompt: null,
       requestSave: false,
       requestSubmit: false,
       mode: 'fallback',
@@ -2626,6 +2695,8 @@ export function runLocalAssistantTurn(input: {
     normalizedMessage.includes('para que') ||
     normalizedMessage.includes('duvida') ||
     normalizedMessage.includes('explicar') ||
+    normalizedMessage.includes('detal') ||
+    normalizedMessage.includes('esclarec') ||
     mentionedLine
   ) {
     const helpLine = mentionedLine ?? focusLine ?? findNextGuidedLine(input.lines, input.currentValues);

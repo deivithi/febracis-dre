@@ -160,3 +160,36 @@ describe('runLocalAssistantTurn — continuação em modo full', () => {
     expect(full.answer).toMatch(/Taxa com Cartões/);
   });
 });
+
+describe('runLocalAssistantTurn — modo orientação: texto real do campo (anti-loop)', () => {
+  const logisticLine: DreInputCatalogLine[] = [
+    mockLine('variable_logistics', 'Custo Logístico Variável'),
+  ];
+
+  it('mensagem curtíssima classificada como off-topic, com campo em foco — entrega `getFieldGuide` primeiro (sem só “quer detalhar?”)', () => {
+    const r = runLocalAssistantTurn({
+      message: 'tipo assim',
+      lines: logisticLine,
+      currentValues: {},
+      currentLineCode: 'variable_logistics',
+      explainOnly: true,
+    });
+    expect(r.mode).toBe('fallback');
+    expect(classifyDreUserIntent('tipo assim')).toBe('off_topic');
+    expect(r.answer).toMatch(/custos variaveis de logistica/i);
+    expect(r.answer.toLowerCase()).not.toMatch(/^meu foco aqui e a dre deste periodo:? o que cada linha pede\b/);
+  });
+
+  it('continuação “sim” em modo orientação — inclui já a explicação do campo guiado', () => {
+    const r = runLocalAssistantTurn({
+      message: 'sim',
+      lines: logisticLine,
+      currentValues: {},
+      currentLineCode: 'variable_logistics',
+      explainOnly: true,
+    });
+    expect(isGuidedFlowContinuationMessage('sim')).toBe(true);
+    expect(r.mode).toBe('fallback');
+    expect(r.answer).toMatch(/custos variaveis de logistica/i);
+  });
+});
