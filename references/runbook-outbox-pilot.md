@@ -13,9 +13,11 @@ Transições de workflow em **`fn_set_submission_status`** escrevem na **mesma t
 1. `submissions` + `submission_status_history` + `period_franchise_status`
 2. Linha em **`outbox_events`** (só `submitted`, `approved`, `pending_adjustment`)
 
-O worker **`/api/outbox-dispatcher`** (Vercel Cron cada 5 min):
+O worker **`/api/outbox-dispatcher`** (relay outbox):
 
-1. `fn_claim_outbox_events` (SKIP LOCKED)
+1. **Vercel Cron** `0 11 * * *` UTC (fallback diário — plano Hobby)
+2. **Recomendado SLO ≤5 min:** workflow n8n `outbox-dispatcher-cron-v1.example.json` (schedule 5 min → GET dispatcher)
+3. `fn_claim_outbox_events` (SKIP LOCKED)
 2. POST para `OUTBOX_WEBHOOK_URL` **ou** log JSON (`log_only`)
 3. `fn_complete_outbox_event` → `published` ou `failed` + backoff
 
