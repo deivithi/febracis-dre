@@ -273,6 +273,7 @@ export interface SubmissionEditorRecord {
   reporting_period_id: string;
   event_id: string | null;
   version_number: number;
+  revision: number;
   status: string;
   notes: string | null;
   submitted_at: string | null;

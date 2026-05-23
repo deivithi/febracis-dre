@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://febracis.com.br/schemas/febracis-dre/outbox-webhook/v1.0.json",
+  "title": "Febracis DRE Outbox Webhook Envelope v1.0",
+  "description": "Contrato canónico POST OUTBOX_WEBHOOK_URL (dispatcher Vercel). Versionamento: path semver no campo contract_version; breaking change → v2.0 + URL nova ou header X-Febracis-Contract-Version.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "source",
+    "outbox_id",
+    "event_type",
+    "telemetry_event",
+    "payload",
+    "retry_count",
+    "dispatched_at"
+  ],
+  "properties": {
+    "contract_version": {
+      "type": "string",
+      "const": "1.0",
+      "description": "Versão do envelope. Consumidores devem rejeitar versões desconhecidas."
+    },
+    "source": {
+      "type": "string",
+      "const": "febracis-dre-outbox"
+    },
+    "outbox_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "PK public.outbox_events.id — chave de dedup PROD-02."
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "submission.submitted",
+        "submission.approved",
+        "submission.pending_adjustment"
+      ]
+    },
+    "telemetry_event": {
+      "type": "string",
+      "enum": [
+        "submission_submitted_valid",
+        "submission_approved",
+        "submission_returned_controller"
+      ],
+      "description": "Alinhado a specs/001-febracis-dre-mvp/contracts/events-telemetry.json"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "telemetry_event",
+        "submission_id",
+        "from_status",
+        "to_status",
+        "status_history_id"
+      ],
+      "properties": {
+        "telemetry_event": { "type": "string" },
+        "submission_id": { "type": "string", "format": "uuid" },
+        "from_status": { "type": "string" },
+        "to_status": { "type": "string" },
+        "reason": { "type": ["string", "null"] },
+        "changed_by": { "type": ["string", "null"], "format": "uuid" },
+        "changed_at": { "type": "string", "format": "date-time" },
+        "franchise_id": { "type": "string", "format": "uuid" },
+        "franchise_name": { "type": "string" },
+        "reporting_period_id": { "type": "string", "format": "uuid" },
+        "period_label": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$" },
+        "ebitda_2": { "type": ["number", "null"] },
+        "status_history_id": { "type": "string", "format": "uuid" }
+      }
+    },
+    "retry_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "dispatched_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC no dispatcher."
+    }
+  }
+}

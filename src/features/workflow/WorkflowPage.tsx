@@ -14,10 +14,13 @@ import {
 import {
   fetchPendingReviews,
   fetchSubmissionWorkspace,
-  formatApiError,
   reviewSubmission,
 } from '../shared/portal.api';
 import type { PendingReviewRow } from '../shared/portal.types';
+import {
+  formatSubmissionMutationError,
+  isConcurrentModificationError,
+} from '../submissions/submissionConcurrency';
 import {
   formatCurrency,
   formatDateTime,
@@ -224,12 +227,22 @@ export function WorkflowPage() {
 
   const reviewMutation = useMutation({
     mutationFn: ({ action, reason }: { action: 'start_review' | 'approve' | 'request_adjustment'; reason?: string }) =>
-      reviewSubmission(effectiveSubmissionId!, action, reason ?? null),
+      reviewSubmission(
+        effectiveSubmissionId!,
+        action,
+        reason ?? null,
+        workspaceQuery.data?.submission?.revision ?? 0,
+      ),
     onSuccess: async (_data, variables) => {
       setReviewReason('');
       await refreshWorkflowData();
       if (variables.action === 'approve') {
         showAppToast({ title: 'DRE aprovada com sucesso.', variant: 'success' });
+      }
+    },
+    onError: async (error) => {
+      if (isConcurrentModificationError(error)) {
+        await refreshWorkflowData();
       }
     },
   });
@@ -321,7 +334,10 @@ export function WorkflowPage() {
   );
 
   const currentError = reviewMutation.error
-    ? formatApiError(reviewMutation.error, 'Não conseguimos concluir a ação. Tente novamente em instantes.')
+    ? formatSubmissionMutationError(
+        reviewMutation.error,
+        'Não conseguimos concluir a ação. Tente novamente em instantes.',
+      )
     : null;
 
   if (workflowQuery.isLoading) {

@@ -26,6 +26,10 @@ import {
   updateAgentSessionState,
 } from '../shared/portal.api';
 import { sanitizeLegacySyntheticSubmissionNotes } from '../../lib/submissionNotesDisplay';
+import {
+  formatSubmissionMutationError,
+  isConcurrentModificationError,
+} from './submissionConcurrency';
 import { resolveAssistantInteractionMode, type AssistantProductTab } from './agentPermissions';
 import {
   buildQuestionForLine,
@@ -460,7 +464,14 @@ export function useSubmissionsWorkspace(opts?: SubmissionsWorkspaceOptions) {
       throw new Error('Submissão bloqueada — não é possível gravar alterações neste estado.');
     }
 
-    return saveSubmissionInputs(activeSubmissionId, buildSubmissionInputPayload(valueMap), notesText);
+    const expectedRevision = workspaceQuery.data?.submission?.revision ?? 0;
+
+    return saveSubmissionInputs(
+      activeSubmissionId,
+      buildSubmissionInputPayload(valueMap),
+      notesText,
+      expectedRevision,
+    );
   };
 
   const applyAssistantFieldUpdates = (result: DreAssistantTurnResult) => {
@@ -543,6 +554,11 @@ export function useSubmissionsWorkspace(opts?: SubmissionsWorkspaceOptions) {
         await reconcileDraftLineStringsAfterPersist(activeSubmissionId, editingSubmissionId);
       }
     },
+    onError: async (error) => {
+      if (isConcurrentModificationError(error)) {
+        await refreshOperationalData();
+      }
+    },
   });
 
   const submitMutation = useMutation({
@@ -561,14 +577,19 @@ export function useSubmissionsWorkspace(opts?: SubmissionsWorkspaceOptions) {
           `Preencha todos os campos da DRE antes de enviar (${check.filledCount}/${check.totalInputs} campos válidos).`,
         );
       }
-      await persistDraftValues(effectiveLineValues, effectiveNotes);
-      return submitSubmission(activeSubmissionId, effectiveNotes);
+      const saveResult = await persistDraftValues(effectiveLineValues, effectiveNotes);
+      return submitSubmission(activeSubmissionId, effectiveNotes, saveResult.revision);
     },
     onSuccess: async () => {
       showAppToast({ title: 'Submissão enviada com sucesso.', variant: 'success' });
       await refreshOperationalData();
       if (activeSubmissionId) {
         await reconcileDraftLineStringsAfterPersist(activeSubmissionId, editingSubmissionId);
+      }
+    },
+    onError: async (error) => {
+      if (isConcurrentModificationError(error)) {
+        await refreshOperationalData();
       }
     },
   });
@@ -762,9 +783,9 @@ export function useSubmissionsWorkspace(opts?: SubmissionsWorkspaceOptions) {
   const currentErrorMessage = createDraftMutation.error
     ? formatApiError(createDraftMutation.error, 'Não foi possível preparar a submissão.')
     : saveDraftMutation.error
-      ? formatApiError(saveDraftMutation.error, 'Não foi possível salvar o rascunho.')
+      ? formatSubmissionMutationError(saveDraftMutation.error, 'Não foi possível salvar o rascunho.')
       : submitMutation.error
-        ? formatApiError(submitMutation.error, 'Não foi possível enviar a submissão.')
+        ? formatSubmissionMutationError(submitMutation.error, 'Não foi possível enviar a submissão.')
         : null;
 
   const assistantErrorMessage = agentSessionQuery.error

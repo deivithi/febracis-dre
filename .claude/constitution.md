@@ -100,6 +100,8 @@
 - `.claude/rules/yagni-gate.md` — ñ adicionar features "preventivamente" antes da Fase B'
 - `.claude/rules/scope-confirmation-gate.md` — escopo migração ñ inclui Pulso
 - `.claude/skills/migration-febracis-dre-to-local/SKILL.md` — playbook 5 fases
+- `.claude/rules/ddia-core-activate.md` — catálogo dados [`docs/architecture/ddia/projects/febracis-dre.md`](../../docs/architecture/ddia/projects/febracis-dre.md)
+- [`references/runbook-pg17-dr.md`](../references/runbook-pg17-dr.md) — RPO/RTO, restore, política lag réplica
 - `memory/project_febracis_dre_local.md` — status + paths
 - `memory/feedback_supabase_free_tier_lockdown.md` — política $0/mês
 - `memory/feedback_supabase_local_safety.md` — vmIdleTimeout + carve-outs

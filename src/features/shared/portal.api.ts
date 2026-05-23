@@ -633,7 +633,7 @@ export async function ensureSubmissionVersion(
 export async function fetchSubmissionWorkspace(submissionId: string): Promise<SubmissionWorkspaceSnapshot> {
   const submissionResult = await supabase
     .from('submissions')
-    .select('id, franchise_id, reporting_period_id, event_id, version_number, status, notes, submitted_at, created_at')
+    .select('id, franchise_id, reporting_period_id, event_id, version_number, revision, status, notes, submitted_at, created_at')
     .eq('id', submissionId)
     .maybeSingle();
 
@@ -835,11 +835,13 @@ export async function saveSubmissionInputs(
   submissionId: string,
   inputs: Array<{ line_code: string; value_currency: number | null; notes?: string | null }>,
   notes?: string | null,
+  expectedRevision?: number | null,
 ) {
   const { data, error } = await supabase.rpc('fn_save_submission_inputs', {
     p_submission_id: submissionId,
     p_inputs: inputs,
     p_notes: notes ?? null,
+    p_expected_revision: expectedRevision ?? null,
   });
 
   if (error) {
@@ -851,6 +853,7 @@ export async function saveSubmissionInputs(
     status?: string;
     message: string;
     validation_count: number;
+    revision: number;
     kpis?: {
       gross_revenue?: number;
       mc1?: number;
@@ -861,10 +864,15 @@ export async function saveSubmissionInputs(
   };
 }
 
-export async function submitSubmission(submissionId: string, notes?: string | null) {
+export async function submitSubmission(
+  submissionId: string,
+  notes?: string | null,
+  expectedRevision?: number | null,
+) {
   const { data, error } = await supabase.rpc('fn_submit_submission', {
     p_submission_id: submissionId,
     p_notes: notes ?? null,
+    p_expected_revision: expectedRevision ?? null,
   });
 
   if (error) {
@@ -874,6 +882,7 @@ export async function submitSubmission(submissionId: string, notes?: string | nu
   return data as {
     ok: boolean;
     status: string;
+    revision?: number;
     blocking_errors?: number;
     message: string;
   };
@@ -883,11 +892,13 @@ export async function reviewSubmission(
   submissionId: string,
   action: 'start_review' | 'approve' | 'request_adjustment',
   reason?: string | null,
+  expectedRevision?: number | null,
 ) {
   const { data, error } = await supabase.rpc('fn_review_submission', {
     p_submission_id: submissionId,
     p_action: action,
     p_reason: reason ?? null,
+    p_expected_revision: expectedRevision ?? null,
   });
 
   if (error) {
@@ -897,6 +908,7 @@ export async function reviewSubmission(
   return data as {
     status: string;
     message: string;
+    revision?: number;
   };
 }
 

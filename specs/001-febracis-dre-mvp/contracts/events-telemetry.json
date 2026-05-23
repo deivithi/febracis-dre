@@ -16,6 +16,10 @@
       "description": "Transição para estado submetido válido (marca fim do funil first_open → submit)."
     },
     {
+      "name": "submission_approved",
+      "description": "Aprovação oficial pela controladoria (via outbox submission.approved)."
+    },
+    {
       "name": "submission_returned_controller",
       "description": "Devolução oficial pela controladoria (taxa de devoluções / ciclo)."
     },

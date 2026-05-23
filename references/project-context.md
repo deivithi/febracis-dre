@@ -242,6 +242,61 @@ Detalhe e comandos: [`operacoes-pendentes-supabase-vercel-2026-04-27.md`](./oper
 - Supabase (auth, dados, RPC/views)
 - API serverless: `api/dre-agent.ts` (assistente DRE; Vercel)
 
+### Postgres PG17 local — DR / backup (DDIA Cap. 5)
+
+> Runbook operacional: [`references/runbook-pg17-dr.md`](./runbook-pg17-dr.md). Constitution local: [`../.claude/constitution.md`](../.claude/constitution.md).
+
+| Parâmetro | Valor acordado | Estado |
+|-----------|----------------|--------|
+| **RPO** | ≤ 24 h (`pg_dump` 03:00 BRT) | Ativo via cron |
+| **RTO** (meta) | ≤ 2 h | **1º drill pendente** |
+| **Produção app** | Supabase Cloud `vwxgrjjwbvdiaqxqbryk` | PG17 = paridade / futuro primary |
+| **Read replica lag** | N/A (single-primary) | Política ≤ 5 s quando réplica existir |
+
+Checks rápidos (PowerShell, raiz do repo):
+
+```powershell
+.\scripts\pg17\run-pg17-wsl.ps1 health
+.\scripts\pg17\run-pg17-wsl.ps1 backup-verify
+```
+
+**Último drill registado:** — (pendente). Após drill, atualizar [`runbook-pg17-dr.md`](./runbook-pg17-dr.md) §8 e a linha acima.
+
+### Outbox transacional — workflow submissões (DDIA Caps 10–11)
+
+> Piloto migration **017** · Runbook: [`references/runbook-outbox-pilot.md`](./runbook-outbox-pilot.md)
+
+| Componente | Detalhe |
+|------------|---------|
+| Enqueue | `fn_set_submission_status` → `outbox_events` (mesma TX) |
+| Relay | `GET/POST /api/outbox-dispatcher` — cron Vercel `*/5 * * * *` |
+| Env | `CRON_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, opcional `OUTBOX_WEBHOOK_URL` |
+| Eventos | `submitted`, `approved`, `pending_adjustment` |
+
+**Aplicar migration 017** no Supabase remoto antes do próximo deploy que dependa do outbox.
+
+### Transacções e write skew (DDIA Cap. 7)
+
+> Migration **018** · Runbook: [`references/runbook-transactions-cap7.md`](./runbook-transactions-cap7.md)
+
+| Mecanismo | Onde |
+|-----------|------|
+| `submissions.revision` + `p_expected_revision` | save / submit / review RPCs |
+| `SELECT … FOR UPDATE` | `fn_require_submission_row_lock` |
+| Advisory lock | `fn_create_submission_version` |
+
+**Aplicar migration 018** após 017 no Supabase remoto.
+
+### SLOs e load parameters (DDIA Cap. 1)
+
+> SSOT monorepo: [`docs/architecture/ddia/projects/SLO-LOAD-SSOT.md`](../../docs/architecture/ddia/projects/SLO-LOAD-SSOT.md) · Catálogo: [`docs/architecture/ddia/projects/febracis-dre.md`](../../docs/architecture/ddia/projects/febracis-dre.md)
+
+Baselines Telemetry PRD §15 ainda 🔴 — SLOs marcados [Meta PRD] / [Verificado repo] no catálogo.
+
+### Contrato outbox webhook v1.0 (Cap 4)
+
+Schema + doc: `specs/001-febracis-dre-mvp/contracts/outbox-webhook-v1.*` · n8n exemplo: `automacoes/febracis-dre/outbox-consumer-v1.example.json`
+
 ### Datas, fuso e competência (BRT)
 
 - **Fuso canónico operacional:** `America/Sao_Paulo` — exposto como `BRAZIL_IANA_TIMEZONE` em [`src/utils/brazilTimezone.ts`](../src/utils/brazilTimezone.ts) (`getBrazilCalendarDateParts`, `formatBrazilYearMonthLabel`, etc.). `formatDate` / `formatDateTime` em [`src/utils/formatters.ts`](../src/utils/formatters.ts) usam o mesmo fuso, para que prazos e etiquetas não dependam do fuso do browser.
