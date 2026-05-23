@@ -69,6 +69,6 @@ Resposta JSON inclui `revision` quando aplicável.
 
 ## 7. Referências
 
-- [`../supabase/migrations/018_submission_concurrency.sql`](../supabase/migrations/018_submission_concurrency.sql)
+- [`../supabase/migrations/026_submission_concurrency.sql`](../supabase/migrations/026_submission_concurrency.sql)
 - Outbox: [`runbook-outbox-pilot.md`](./runbook-outbox-pilot.md)
 - DDIA catálogo: [`../../docs/architecture/ddia/projects/febracis-dre.md`](../../docs/architecture/ddia/projects/febracis-dre.md)

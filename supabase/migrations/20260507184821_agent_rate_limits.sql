@@ -1,0 +1,2 @@
+-- Baseline remoto (já aplicada via timestamp 20260507184821).
+-- Equivalente local: 015_agent_rate_limits.sql

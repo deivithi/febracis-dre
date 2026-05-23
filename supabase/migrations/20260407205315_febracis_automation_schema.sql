@@ -1,0 +1,2 @@
+-- Baseline remoto (já aplicada via timestamp 20260407205315).
+-- Stub local para alinhar histórico CLI com Supabase Cloud.

@@ -273,7 +273,9 @@ Checks rápidos (PowerShell, raiz do repo):
 | Env | `CRON_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, opcional `OUTBOX_WEBHOOK_URL` |
 | Eventos | `submitted`, `approved`, `pending_adjustment` |
 
-**Aplicar migration 017** no Supabase remoto antes do próximo deploy que dependa do outbox.
+**Migrations 025/026 aplicadas em produção** (23/05/2026 BRT) via `supabase db query --linked`.
+
+**Aplicar migration 025** no Supabase remoto antes do próximo deploy que dependa do outbox.
 
 ### Transacções e write skew (DDIA Cap. 7)
 
@@ -285,7 +287,7 @@ Checks rápidos (PowerShell, raiz do repo):
 | `SELECT … FOR UPDATE` | `fn_require_submission_row_lock` |
 | Advisory lock | `fn_create_submission_version` |
 
-**Aplicar migration 018** após 017 no Supabase remoto.
+**Migration 026** (revision + locks) aplicada em produção após 025.
 
 ### SLOs e load parameters (DDIA Cap. 1)
 

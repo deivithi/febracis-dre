@@ -1,6 +1,6 @@
 # Runbook — Outbox piloto (workflow submissões)
 
-> **DDIA Caps 10–11** · Migration `017_outbox_events.sql` · Relay `api/outbox-dispatcher.ts`
+> **DDIA Caps 10–11** · Migration `025_outbox_events.sql` · Relay `api/outbox-dispatcher.ts`
 
 **Última revisão:** 23/05/2026 BRT
 

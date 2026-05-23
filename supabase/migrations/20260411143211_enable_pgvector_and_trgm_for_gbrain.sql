@@ -1,0 +1,1 @@
+-- Baseline remoto (já aplicada via timestamp 20260411143211).

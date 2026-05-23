@@ -1,0 +1,2 @@
+-- Baseline remoto (já aplicada via timestamp 20260507184829).
+-- Equivalente local: 016_harden_audit_log_insert.sql
