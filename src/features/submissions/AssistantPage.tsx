@@ -1,5 +1,6 @@
 import { useSearchParams } from 'react-router-dom';
 import { AssistantDock } from './components/AssistantDock';
+import { AssistantMemoryNotice } from './components/AssistantMemoryNotice';
 import { useSubmissionsWorkspace } from './useSubmissionsWorkspace';
 import type { AssistantProductTab } from './agentPermissions';
 import './SubmissionsPage.css';
@@ -104,6 +105,8 @@ export function AssistantPage() {
       {w.assistantErrorMessage ? (
         <div className="inline-message inline-message--danger">{w.assistantErrorMessage}</div>
       ) : null}
+
+      <AssistantMemoryNotice franchiseId={w.resolvedFranchiseId} />
 
       <div className="assistant-hub-workbench-minimal" data-testid="assistant-hub-workbench">
         <AssistantDock
