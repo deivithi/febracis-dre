@@ -214,7 +214,7 @@ async function loadPersonaAndFtsBundles(input: {
   if (input.flags.personaMemory) {
     const { data, error } = await input.supabase
       .from('assistant_persona_memory')
-      .select('kind,key,value,confidence,expires_at')
+      .select('id,kind,key,value,confidence,expires_at')
       .eq('profile_id', input.profileId)
       .eq('franchise_id', input.franchiseId)
       .is('deleted_at', null)
@@ -232,8 +232,12 @@ async function loadPersonaAndFtsBundles(input: {
         detail: error.message,
       });
     } else {
+      // Recall hardening (Fase 1d): marca como "vistos" os fatos efetivamente recuperados,
+      // para manter úteis frescos (last_seen) e permitir futura limpeza por desuso (LGPD).
+      const touchedPersonaIds: string[] = [];
       for (const row of data ?? []) {
         const r = row as {
+          id: string;
           kind: string;
           key: string;
           value: Record<string, unknown>;
@@ -250,6 +254,10 @@ async function loadPersonaAndFtsBundles(input: {
             : Number.NaN;
         if (Number.isFinite(expMs) && expMs < Date.now()) {
           continue;
+        }
+
+        if (typeof r.id === 'string' && r.id.length > 0) {
+          touchedPersonaIds.push(r.id);
         }
 
         const summaryTail = typeof r.value === 'object'
@@ -270,6 +278,25 @@ async function loadPersonaAndFtsBundles(input: {
         const safePersonaLine = sanitizeUntrustedAgentTextSnippet(rawPersonaLine);
         if (safePersonaLine.length > 0) {
           personaFactsCompactLines.push(safePersonaLine);
+        }
+      }
+
+      if (touchedPersonaIds.length > 0) {
+        // Fail-soft: o recall já está montado; um erro aqui não deve quebrar o turno.
+        const { error: touchError } = await input.supabase
+          .from('assistant_persona_memory')
+          .update({ last_seen_at: new Date().toISOString() })
+          .in('id', touchedPersonaIds)
+          .is('deleted_at', null);
+        if (touchError) {
+          logJson({
+            ...input.logCtx,
+            level: 'warn',
+            msg: 'persona_memory_touch_fail_soft',
+            event: 'supabase_error',
+            errorCode: 'PERSONA_TOUCH',
+            detail: touchError.message,
+          });
         }
       }
     }
