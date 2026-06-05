@@ -161,6 +161,8 @@ describe('dre-agent handler (gate + rate limit)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.AGENT_RATE_LIMIT_ENABLED = 'true';
+    process.env.SUPABASE_URL = 'https://example.supabase.co';
+    process.env.SUPABASE_ANON_KEY = 'test-anon-key';
     mockCreateClient.mockImplementation(() => ({
       auth: {
         getUser: vi.fn().mockResolvedValue({
@@ -177,6 +179,8 @@ describe('dre-agent handler (gate + rate limit)', () => {
 
   afterEach(() => {
     delete process.env.AGENT_RATE_LIMIT_ENABLED;
+    delete process.env.SUPABASE_URL;
+    delete process.env.SUPABASE_ANON_KEY;
   });
 
   it('corpo inválido → 400 com code INVALID_INPUT e issues', async () => {
