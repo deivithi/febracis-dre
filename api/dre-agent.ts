@@ -55,6 +55,7 @@ import {
 import { formatBrazilCompetenciaPtBr, getBrazilCalendarDateParts, formatBrazilYearMonthLabel } from '../src/utils/brazilTimezone.js';
 import {
   firstNameFromFullName,
+  agentUserRoleLabelPt,
   buildAgentSituationPromptFragments,
   sanitizeUntrustedAgentTextSnippet,
   type DreAgentConversationContext,
@@ -852,6 +853,7 @@ async function loadSessionContext(
 
     agentConversationContext = {
       userFirstName: firstNameFromFullName(profRow.data?.full_name),
+      userRoleLabel: agentUserRoleLabelPt(roleCodes),
       franchiseTradeName: franchiseRow.data?.trade_name ?? null,
       regionalName,
       city: franchiseRow.data?.city ?? null,

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  agentUserRoleLabelPt,
   buildAgentSituationPromptFragments,
   sanitizeUntrustedAgentTextSnippet,
   type DreAgentConversationContext,
@@ -85,5 +86,55 @@ describe('buildAgentSituationPromptFragments', () => {
     expect(safe.includes('\u0000')).toBe(false);
     expect(safe.startsWith('xy')).toBe(true);
     expect(safe.length).toBeLessThanOrEqual(440);
+  });
+
+  it('inclui contexto_papel quando há userRoleLabel (identidade — Fase 1)', () => {
+    const ctx: DreAgentConversationContext = {
+      userFirstName: 'Ana',
+      userRoleLabel: 'responsável pela unidade (preenche a DRE)',
+      franchiseTradeName: 'Unidade Demo',
+      regionalName: null,
+      city: null,
+      state: null,
+      periodYm: '2026-01',
+      periodLabelPtBr: 'janeiro de 2026',
+      submissionStatus: 'draft',
+    };
+
+    const lines = buildAgentSituationPromptFragments(ctx);
+    const papel = lines.find((line) => line.startsWith('contexto_papel:'));
+    expect(papel).toBeTruthy();
+    expect(papel!).toContain('responsável pela unidade');
+  });
+
+  it('omite contexto_papel quando userRoleLabel é ausente', () => {
+    const ctx: DreAgentConversationContext = {
+      userFirstName: 'Ana',
+      franchiseTradeName: 'Unidade Demo',
+      regionalName: null,
+      city: null,
+      state: null,
+      periodYm: '2026-01',
+      periodLabelPtBr: 'janeiro de 2026',
+      submissionStatus: 'draft',
+    };
+    const lines = buildAgentSituationPromptFragments(ctx);
+    expect(lines.some((line) => line.startsWith('contexto_papel:'))).toBe(false);
+  });
+});
+
+describe('agentUserRoleLabelPt', () => {
+  it('escolhe o papel de maior prioridade de acesso', () => {
+    expect(agentUserRoleLabelPt(['franchise_user', 'system_admin'])).toBe('administrador do sistema');
+    expect(agentUserRoleLabelPt(['regional_manager', 'franchise_user'])).toBe('gestor regional');
+    expect(agentUserRoleLabelPt(['franchise_user'])).toBe('responsável pela unidade (preenche a DRE)');
+    expect(agentUserRoleLabelPt(['finance_controller'])).toContain('controladoria');
+  });
+
+  it('devolve null sem papéis e o código cru quando desconhecido', () => {
+    expect(agentUserRoleLabelPt([])).toBeNull();
+    expect(agentUserRoleLabelPt(null)).toBeNull();
+    expect(agentUserRoleLabelPt(undefined)).toBeNull();
+    expect(agentUserRoleLabelPt(['mystery_role'])).toBe('mystery_role');
   });
 });
