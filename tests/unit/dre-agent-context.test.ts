@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  agentPriorSessionsLabelPt,
   agentUserRoleLabelPt,
   buildAgentSituationPromptFragments,
   sanitizeUntrustedAgentTextSnippet,
@@ -136,5 +137,35 @@ describe('agentUserRoleLabelPt', () => {
     expect(agentUserRoleLabelPt(null)).toBeNull();
     expect(agentUserRoleLabelPt(undefined)).toBeNull();
     expect(agentUserRoleLabelPt(['mystery_role'])).toBe('mystery_role');
+  });
+});
+
+describe('agentPriorSessionsLabelPt + contexto_continuidade (Fase 1a+)', () => {
+  it('devolve null na primeira conversa (<= 1 sessão)', () => {
+    expect(agentPriorSessionsLabelPt(0)).toBeNull();
+    expect(agentPriorSessionsLabelPt(1)).toBeNull();
+    expect(agentPriorSessionsLabelPt(null)).toBeNull();
+    expect(agentPriorSessionsLabelPt(undefined)).toBeNull();
+  });
+
+  it('sinaliza continuidade a partir da 2ª sessão', () => {
+    expect(agentPriorSessionsLabelPt(2)).toContain('ja conversaram antes');
+    expect(agentPriorSessionsLabelPt(7)).toContain('ja conversaram antes');
+  });
+
+  it('injeta contexto_continuidade no prompt quando há priorSessionsLabel', () => {
+    const ctx: DreAgentConversationContext = {
+      userFirstName: 'Ana',
+      priorSessionsLabel: agentPriorSessionsLabelPt(3),
+      franchiseTradeName: 'Unidade Demo',
+      regionalName: null,
+      city: null,
+      state: null,
+      periodYm: '2026-01',
+      periodLabelPtBr: 'janeiro de 2026',
+      submissionStatus: 'draft',
+    };
+    const lines = buildAgentSituationPromptFragments(ctx);
+    expect(lines.some((line) => line.startsWith('contexto_continuidade:'))).toBe(true);
   });
 });

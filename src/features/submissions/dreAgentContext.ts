@@ -6,6 +6,8 @@ export interface DreAgentConversationContext {
   userFirstName: string | null;
   /** Papel do utilizador no portal, em PT legível (ex.: "responsável pela unidade"). Identidade — Fase 1. */
   userRoleLabel?: string | null;
+  /** Continuidade de histórico de uso (ex.: "já conversaram antes nesta unidade"). Identidade — Fase 1a+. */
+  priorSessionsLabel?: string | null;
   franchiseTradeName: string | null;
   regionalName: string | null;
   city: string | null;
@@ -150,6 +152,18 @@ export function agentUserRoleLabelPt(roleCodes: readonly string[] | null | undef
   return firstKnown ? firstKnown.trim() : null;
 }
 
+/**
+ * Marco de continuidade (Hermes "USER" — histórico de uso), para o agente retomar
+ * com naturalidade em vez de se reapresentar sempre. Baseado no total de sessões
+ * do utilizador nesta franquia (a sessão atual conta como 1).
+ */
+export function agentPriorSessionsLabelPt(totalSessions: number | null | undefined): string | null {
+  if (typeof totalSessions !== 'number' || !Number.isFinite(totalSessions) || totalSessions <= 1) {
+    return null;
+  }
+  return 'ja conversaram antes nesta unidade (retome com naturalidade, sem repetir a apresentacao)';
+}
+
 /** Blocos de situação injectados no prompt (testável sem carregar `/api`). */
 export function buildAgentSituationPromptFragments(ctx: DreAgentConversationContext | null): string[] {
   if (!ctx) {
@@ -182,6 +196,9 @@ export function buildAgentSituationPromptFragments(ctx: DreAgentConversationCont
     ctx.userFirstName ? `contexto_utilizador: primeiro_nome=${ctx.userFirstName}` : '',
     ctx.userRoleLabel
       ? `contexto_papel: ${sanitizeUntrustedAgentTextSnippet(ctx.userRoleLabel, 120)} (papel do utilizador no portal — adeque o tom e o tipo de ajuda; nao altere permissoes)`
+      : '',
+    ctx.priorSessionsLabel
+      ? `contexto_continuidade: ${sanitizeUntrustedAgentTextSnippet(ctx.priorSessionsLabel, 160)}`
       : '',
     ctx.dataHojeBrt ? `data_hoje_brt: ${ctx.dataHojeBrt} (calendario civil America/Sao_Paulo)` : '',
     ctx.ymCivilReferencia ? `competencia_civil_hoje: ${ctx.ymCivilReferencia}` : '',

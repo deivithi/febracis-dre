@@ -56,6 +56,7 @@ import { formatBrazilCompetenciaPtBr, getBrazilCalendarDateParts, formatBrazilYe
 import {
   firstNameFromFullName,
   agentUserRoleLabelPt,
+  agentPriorSessionsLabelPt,
   buildAgentSituationPromptFragments,
   sanitizeUntrustedAgentTextSnippet,
   type DreAgentConversationContext,
@@ -799,7 +800,7 @@ async function loadSessionContext(
   let agentConversationContext: DreAgentConversationContext | null = null;
 
   if (resolvedFlags.contextV2) {
-    const [profRow, franchiseRow, reportingRow] = await Promise.all([
+    const [profRow, franchiseRow, reportingRow, priorSessionsRow] = await Promise.all([
       supabase.from('profiles').select('full_name').eq('id', profileId).maybeSingle(),
       supabase
         .from('franchises')
@@ -811,6 +812,11 @@ async function loadSessionContext(
         .select('label,year,month')
         .eq('id', reportingPeriodId)
         .maybeSingle(),
+      supabase
+        .from('agent_sessions')
+        .select('id', { count: 'exact', head: true })
+        .eq('profile_id', profileId)
+        .eq('franchise_id', franchiseId),
     ]);
 
     let regionalName: string | null = null;
@@ -854,6 +860,7 @@ async function loadSessionContext(
     agentConversationContext = {
       userFirstName: firstNameFromFullName(profRow.data?.full_name),
       userRoleLabel: agentUserRoleLabelPt(roleCodes),
+      priorSessionsLabel: agentPriorSessionsLabelPt(priorSessionsRow.count ?? 0),
       franchiseTradeName: franchiseRow.data?.trade_name ?? null,
       regionalName,
       city: franchiseRow.data?.city ?? null,
